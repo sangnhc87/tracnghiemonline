@@ -22,7 +22,160 @@ function hideTeacherDashboard() { hideAllScreens(); getEl("loginScreen").style.d
 function showUploadForm() { getEl("uploadForm").style.display = "block"; getEl("submissionsView").style.display = "none"; getEl("examsManagementView").style.display = "none"; }
 function viewSubmissions() { getEl("uploadForm").style.display = "none"; getEl("submissionsView").style.display = "block"; getEl("examsManagementView").style.display = "none"; loadSubmissions(); }
 async function loadSubmissions() { const tableBody = getEl("submissionsTableBody"); tableBody.innerHTML = `<tr><td colspan="5">Đang tải...</td></tr>`; try { const submissionsSnapshot = await db.collection("submissions").where("teacherId","==",currentTeacherId).orderBy("timestamp","desc").get(); tableBody.innerHTML = ""; if (submissionsSnapshot.empty) { tableBody.innerHTML = `<tr><td colspan="5">Chưa có bài nộp nào.</td></tr>`; return; } submissionsSnapshot.forEach(doc => { const data=doc.data(); const row=tableBody.insertRow(); row.insertCell().textContent=data.timestamp?data.timestamp.toDate().toLocaleString():"N/A"; row.insertCell().textContent=data.examCode; row.insertCell().textContent=data.studentName; row.insertCell().textContent=data.className; row.insertCell().textContent=data.score.toFixed(2); }); } catch(error) { Swal.fire("Lỗi", `Lỗi tải bài nộp: ${error.message||error.details}`,"error"); tableBody.innerHTML=`<tr><td colspan="5">Lỗi khi tải bài nộp.</td></tr>`; } }
-async function loadTeacherDataForDashboard() { getEl("uploadForm").style.display = "none"; getEl("submissionsView").style.display = "none"; getEl("examsManagementView").style.display = "block"; const tableBody = getEl("examsTableBody"); tableBody.innerHTML = `<tr><td colspan="4">Đang tải...</td></tr>`; try { const examsResult = await functions.httpsCallable("getTeacherExams")(); const exams = examsResult.data; tableBody.innerHTML = ""; if (!exams || exams.length === 0) { tableBody.innerHTML = `<tr><td colspan="4">Chưa có đề thi nào.</td></tr>`; return; } exams.forEach(exam => { const row = tableBody.insertRow(); row.insertCell().textContent = exam.examCode; row.insertCell().textContent = exam.timeLimit; row.insertCell().textContent = exam.keys ? exam.keys.length : 0; row.insertCell().innerHTML = `<button onclick="editExam('${exam.id}')" class="btn btn-icon"><i class="fas fa-edit"></i></button><button onclick="deleteExam('${exam.id}','${exam.examCode}')" class="btn btn-icon"><i class="fas fa-trash"></i></button>`; }); } catch (error) { Swal.fire("Lỗi", `Lỗi tải danh sách đề thi: ${error.message||error.details}`, "error"); tableBody.innerHTML = `<tr><td colspan="4">Lỗi khi tải đề thi.</td></tr>`; } }
+// Dán đoạn code này vào phần "HÀM CHO GIAO DIỆN GIÁO VIÊN" trong main.js
+async function loadTeacherDataForDashboard() {
+  if (!currentTeacherId) return;
+  getEl("examsManagementView").style.display = "block";
+  getEl("submissionsView").style.display = "none";
+  const tableBody = getEl("examsTableBody");
+  tableBody.innerHTML = `<tr><td colspan="7" style="text-align: center;">Đang tải danh sách đề thi...</td></tr>`;
+
+  try {
+    const getExamsCallable = functions.httpsCallable("getTeacherFullExams"); // Cần hàm mới lấy cả đáp án
+    const examsResult = await getExamsCallable();
+    renderExamsAsSheet(examsResult.data);
+  } catch (error) {
+    console.error("Error loading teacher exams:", error);
+    Swal.fire("Lỗi", `Lỗi tải danh sách đề thi: ${error.message || error.details}`, "error");
+    tableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: red;">Lỗi khi tải đề thi.</td></tr>`;
+  }
+}
+
+// Render dữ liệu đề thi ra bảng HTML có thể chỉnh sửa
+function renderExamsAsSheet(exams) {
+  const tableBody = getEl("examsTableBody");
+  tableBody.innerHTML = ""; // Xóa nội dung cũ
+
+  if (!exams || exams.length === 0) {
+    addRowToExamsTable(); // Nếu chưa có đề nào, thêm 1 hàng trống
+    return;
+  }
+
+  exams.forEach(exam => {
+    const row = tableBody.insertRow();
+    row.dataset.examId = exam.id; // Lưu ID của đề thi vào thuộc tính data của hàng
+
+    // Các ô có thể chỉnh sửa
+    row.insertCell().textContent = exam.examCode || "";
+    row.cells[0].contentEditable = true;
+    
+    row.insertCell().textContent = exam.timeLimit || 90;
+    row.cells[1].contentEditable = true;
+
+    row.insertCell().textContent = Array.isArray(exam.keys) ? exam.keys.join("|") : "";
+    row.cells[2].contentEditable = true;
+
+    row.insertCell().textContent = Array.isArray(exam.cores) ? exam.cores.join("|") : "";
+    row.cells[3].contentEditable = true;
+    
+    row.insertCell().textContent = Array.isArray(exam.questionTexts) ? exam.questionTexts.join("\n") : "";
+    row.cells[4].contentEditable = true;
+
+    row.insertCell().textContent = Array.isArray(exam.explanations) ? exam.explanations.join("\n") : "";
+    row.cells[5].contentEditable = true;
+
+    // Ô hành động
+    const actionsCell = row.insertCell();
+    actionsCell.innerHTML = `<button class="delete-row-btn" onclick="deleteRow(this)" title="Xóa hàng này"><i class="fas fa-trash-alt"></i></button>`;
+  });
+}
+
+// Thêm một hàng trống mới vào bảng
+function addRowToExamsTable() {
+  const tableBody = getEl("examsTableBody");
+  const row = tableBody.insertRow();
+  row.dataset.examId = ""; // Hàng mới chưa có ID
+
+  for (let i = 0; i < 6; i++) {
+    const cell = row.insertCell();
+    cell.contentEditable = true;
+    if (i === 1) cell.textContent = "90"; // Mặc định thời gian
+  }
+  
+  const actionsCell = row.insertCell();
+  actionsCell.innerHTML = `<button class="delete-row-btn" onclick="deleteRow(this)" title="Xóa hàng này"><i class="fas fa-trash-alt"></i></button>`;
+}
+
+// Xóa một hàng khỏi bảng (chưa xóa khỏi DB)
+function deleteRow(button) {
+  const row = button.parentElement.parentElement;
+  const examId = row.dataset.examId;
+
+  if (examId) {
+    // Nếu hàng này đã có trong DB, cần xác nhận xóa
+    Swal.fire({
+      title: 'Xác nhận xóa',
+      text: "Bạn có chắc muốn xóa vĩnh viễn đề thi này khỏi cơ sở dữ liệu? Hành động này không thể hoàn tác.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Vâng, xóa nó!',
+      cancelButtonText: 'Hủy'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        const deleteExamCallable = functions.httpsCallable("deleteExam");
+        try {
+          await deleteExamCallable({ examId: examId });
+          Swal.fire('Đã xóa!', 'Đề thi đã được xóa khỏi cơ sở dữ liệu.', 'success');
+          row.remove(); // Xóa hàng khỏi giao diện
+        } catch (error) {
+          Swal.fire('Lỗi', `Lỗi khi xóa đề thi: ${error.message || error.details}`, 'error');
+        }
+      }
+    });
+  } else {
+    // Nếu là hàng mới, chỉ cần xóa khỏi giao diện
+    row.remove();
+  }
+}
+
+// Hàm lưu tất cả thay đổi từ bảng vào Firestore
+async function saveAllExams() {
+  const tableBody = getEl("examsTableBody");
+  const rows = tableBody.querySelectorAll("tr");
+  const examsToSave = [];
+
+  for (const row of rows) {
+    const exam = {
+      id: row.dataset.examId || null, // null nếu là hàng mới
+      examCode: row.cells[0].textContent.trim(),
+      timeLimit: parseInt(row.cells[1].textContent.trim(), 10) || 90,
+      keys: row.cells[2].textContent.trim(),
+      cores: row.cells[3].textContent.trim(),
+      questionTexts: row.cells[4].textContent.trim(),
+      explanations: row.cells[5].textContent.trim(),
+    };
+
+    // Chỉ lưu các hàng có Mã Đề
+    if (exam.examCode) {
+      examsToSave.push(exam);
+    }
+  }
+
+  if (examsToSave.length === 0) {
+    Swal.fire("Thông tin", "Không có dữ liệu đề thi để lưu.", "info");
+    return;
+  }
+
+  Swal.fire({
+    title: "Đang lưu tất cả đề thi...",
+    allowOutsideClick: false,
+    didOpen: () => { Swal.showLoading(); }
+  });
+
+  try {
+    const saveExamsCallable = functions.httpsCallable("saveAllExams");
+    const result = await saveExamsCallable({ exams: examsToSave });
+    Swal.fire("Thành công!", result.data.message, "success");
+    // Tải lại dữ liệu từ server để cập nhật ID cho các hàng mới
+    loadTeacherDataForDashboard();
+  } catch (error) {
+    console.error("Error saving all exams:", error);
+    Swal.fire("Lỗi", `Lỗi khi lưu đề thi: ${error.message || error.details}`, "error");
+  }
+}
+
 function showExamForm(examData = null) { const isEdit = !!examData; getEl("examFormTitle").textContent = isEdit ? `Sửa Đề thi: ${examData.examCode}` : "Thêm Đề thi mới"; getEl("examId").value = isEdit ? examData.id : ""; getEl("examFormCode").value = isEdit ? examData.examCode : ""; getEl("examFormTime").value = isEdit ? examData.timeLimit : 90; getEl("examFormKeys").value = isEdit && examData.keys ? examData.keys.join("|") : ""; getEl("examFormCores").value = isEdit && examData.cores ? examData.cores.join("|") : ""; getEl("examFormQuestions").value = isEdit && examData.questionTexts ? examData.questionTexts.join("\n") : ""; getEl("examFormExplanations").value = isEdit && examData.explanations ? examData.explanations.join("\n") : ""; getEl("examFormModal").style.display = "flex"; }
 function hideExamForm() { getEl("examFormModal").style.display = "none"; }
 async function handleExamFormSubmit() { const examId = getEl("examId").value; const examData = { examCode: getEl("examFormCode").value.trim(), timeLimit: parseInt(getEl("examFormTime").value,10), keys: getEl("examFormKeys").value, cores: getEl("examFormCores").value, questionTexts: getEl("examFormQuestions").value, explanations: getEl("examFormExplanations").value }; if (!examData.examCode || !examData.keys || !examData.cores || !examData.questionTexts) { Swal.fire("Lỗi", "Mã đề, Đáp án, Điểm, và Câu hỏi không được trống.", "error"); return; } const functionName = examId ? "updateExam" : "addExam"; Swal.fire({ title: "Đang xử lý...", allowOutsideClick: false, didOpen: () => Swal.showLoading() }); try { const result = await functions.httpsCallable(functionName)({ examId, examData }); Swal.fire("Thành công!", result.data.message, "success"); hideExamForm(); loadTeacherDataForDashboard(); } catch (error) { Swal.fire("Lỗi", `Lỗi khi lưu đề thi: ${error.message||error.details}`, "error"); } }

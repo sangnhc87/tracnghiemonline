@@ -16,7 +16,7 @@
     <!-- Your Custom CSS -->
     <link rel="stylesheet" href="css/style.css" />
 
-    <!-- Firebase SDKs (Compatibility version for easy use) -->
+    <!-- Firebase SDKs (Compatibility version) -->
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
@@ -30,9 +30,9 @@
     <!-- Teacher Login/Management Screen (hidden by default) -->
     <div id="teacherLogin" class="container" style="display:none;">
       <h2>Chào mừng Giáo viên!</h2>
-      <button onclick="signInWithGoogle()" class="btn-google"><i class="fab fa-google"></i> Đăng nhập với Google</button>
+      <button onclick="signInWithGoogle()" class="btn btn-google"><i class="fab fa-google"></i> Đăng nhập với Google</button>
       <div id="teacherInfo" style="margin-top:20px;"></div>
-      <label for="teacherAliasInput" style="display:block; text-align:left; margin-top: 15px;">Mã Alias của bạn (học sinh sẽ dùng để tìm bạn):</label>
+      <label for="teacherAliasInput" style="display:block; text-align:left; margin-top: 15px;">Mã Alias của bạn:</label>
       <input type="text" id="teacherAliasInput" placeholder="Ví dụ: sangmath" />
       <button onclick="updateTeacherAlias()" class="btn btn-primary">Cập nhật Alias</button>
       <button onclick="showTeacherDashboard()" class="btn btn-secondary">Quản lý Đề thi</button>
@@ -75,55 +75,52 @@
     </div>
 
     <!-- Teacher Dashboard -->
-    <div id="teacherDashboard" class="container" style="display:none;">
+    <div id="teacherDashboard" class="container" style="display:none; max-width: 95%;">
       <h2>Bảng điều khiển</h2>
       <p>Chào mừng <span id="teacherDashboardName"></span>. Bạn còn <span id="trialRemainingDays"></span> ngày dùng thử.</p>
       <div class="dashboard-controls">
-        <button onclick="showUploadForm()" class="btn btn-secondary"><i class="fas fa-file-upload"></i> Tải lên từ File</button>
-        <button onclick="showExamForm()" class="btn btn-primary"><i class="fas fa-plus"></i> Thêm Đề thi mới</button>
+        <button onclick="showExamsManagement()" class="btn btn-secondary"><i class="fas fa-edit"></i> Quản lý Đề thi</button>
+        <button onclick="saveAllExams()" class="btn btn-primary"><i class="fas fa-save"></i> Lưu tất cả thay đổi</button>
         <button onclick="viewSubmissions()" class="btn btn-info"><i class="fas fa-list-check"></i> Xem Bài nộp</button>
         <button onclick="hideTeacherDashboard()" class="btn btn-danger"><i class="fas fa-arrow-left"></i> Quay lại</button>
       </div>
 
-      <div id="examsManagementView" style="margin-top: 20px;">
-        <h3>Quản lý Đề thi</h3>
-        <div class="table-wrapper"><table border="1"><thead><tr><th>Mã Đề</th><th>Thời gian (phút)</th><th>Số câu</th><th>Hành động</th></tr></thead><tbody id="examsTableBody"></tbody></table></div>
+      <!-- Exams Management View (Sheet-like interface) -->
+      <div id="examsManagementView" class="table-wrapper" style="margin-top: 20px;">
+        <h3>Quản lý Đề thi (Chỉnh sửa trực tiếp trên bảng)</h3>
+        <p class="form-hint">Nhấp vào các ô để sửa. Nội dung dài có thể xuống dòng.</p>
+        <table id="exams-sheet-table">
+            <thead>
+                <tr>
+                    <th>Mã Đề</th>
+                    <th>Thời gian (phút)</th>
+                    <th>Đáp án (phân cách bởi | )</th>
+                    <th>Cấu trúc điểm (phân cách bởi | )</th>
+                    <th>Nội dung câu hỏi (mỗi câu một dòng)</th>
+                    <th>Lời giải (mỗi lời giải một dòng)</th>
+                    <th>Hành động</th>
+                </tr>
+            </thead>
+            <tbody id="examsTableBody">
+                <!-- Dữ liệu đề thi sẽ được JS chèn vào đây -->
+            </tbody>
+        </table>
+        <button onclick="addRowToExamsTable()" class="btn btn-secondary" style="margin-top: 15px;"><i class="fas fa-plus"></i> Thêm hàng mới</button>
       </div>
       
-      <div id="uploadForm" style="display:none; margin-top: 20px;" class="dashboard-section">
-          <h3>Tải lên dữ liệu</h3>
-          <label for="fileInputExams">Tải lên đề thi (CSV/JSON):</label>
-          <input type="file" id="fileInputExams" accept=".csv,.json" />
-          <button onclick="uploadExamsFile()" class="btn btn-primary">Tải lên Đề thi</button>
-          <p class="form-hint">Format: <code>examCode, keys, cores, questionTexts, explanations, timeLimit</code></p>
-          <hr/>
-          <label for="fileInputClasses">Tải lên lớp học (CSV/JSON):</label>
-          <input type="file" id="fileInputClasses" accept=".csv,.json" />
-          <button onclick="uploadClassesFile()" class="btn btn-primary">Tải lên Lớp học</button>
-          <p class="form-hint">Format: <code>name, students</code> (VD: "Nguyễn A, Trần B")</p>
-      </div>
-
+      <!-- Submissions View -->
       <div id="submissionsView" style="display:none; margin-top: 20px;" class="dashboard-section">
           <h3>Bài nộp của học sinh</h3>
-          <div class="table-wrapper"><table><thead><tr><th>Thời gian</th><th>Mã đề</th><th>Họ tên</th><th>Lớp</th><th>Điểm</th></tr></thead><tbody id="submissionsTableBody"></tbody></table></div>
-      </div>
-    </div>
-
-    <!-- Add/Edit Exam Modal Form -->
-    <div id="examFormModal" class="modal-backdrop" style="display: none;">
-      <div class="modal-content">
-        <h2 id="examFormTitle">Thêm Đề thi mới</h2>
-        <input type="hidden" id="examId" />
-        <div class="form-group"><label for="examFormCode">Mã Đề</label><input type="text" id="examFormCode" required></div>
-        <div class="form-group"><label for="examFormTime">Thời gian (phút)</label><input type="number" id="examFormTime" value="90" required></div>
-        <div class="form-group"><label for="examFormKeys">Đáp án (phân cách bởi |)</label><textarea id="examFormKeys" rows="3"></textarea></div>
-        <div class="form-group"><label for="examFormCores">Điểm (phân cách bởi |)</label><textarea id="examFormCores" rows="3"></textarea></div>
-        <div class="form-group"><label for="examFormQuestions">Câu hỏi (mỗi câu 1 dòng)</label><textarea id="examFormQuestions" rows="10"></textarea></div>
-        <div class="form-group"><label for="examFormExplanations">Lời giải (mỗi lời giải 1 dòng)</label><textarea id="examFormExplanations" rows="10"></textarea></div>
-        <div class="modal-actions">
-          <button onclick="hideExamForm()" class="btn btn-secondary">Hủy</button>
-          <button onclick="handleExamFormSubmit()" class="btn btn-primary">Lưu</button>
-        </div>
+          <div class="table-wrapper">
+              <table>
+                  <thead>
+                      <tr><th>Thời gian</th><th>Mã đề</th><th>Họ tên</th><th>Lớp</th><th>Điểm</th></tr>
+                  </thead>
+                  <tbody id="submissionsTableBody">
+                      <!-- Dữ liệu bài nộp sẽ được JS chèn vào đây -->
+                  </tbody>
+              </table>
+          </div>
       </div>
     </div>
 

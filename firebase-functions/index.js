@@ -453,3 +453,99 @@ exports.helloWorldTest = functions.https.onCall((data, context) => {
   functions.logger.info("Hello World Test: Hàm đã được gọi!");
   return { message: "Hello from Firebase Cloud Functions!" };
 });
+// Thêm vào cuối file firebase-functions/index.js
+
+/**
+ * Hàm lấy đầy đủ thông tin của TẤT CẢ đề thi (bao gồm cả đáp án) để giáo viên sửa.
+ */
+exports.getTeacherFullExams = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Chỉ giáo viên mới được phép xem chi tiết đề thi.");
+  }
+  const userId = context.auth.uid;
+
+  const examsSnapshot = await db.collection("exams").where("teacherId", "==", userId).get();
+  const exams = examsSnapshot.docs.map((doc) => {
+    return { id: doc.id, ...doc.data() };
+  });
+  return exams;
+});
+
+/**
+ * Hàm cho giáo viên xóa một đề thi.
+ */
+exports.deleteExam = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Chỉ giáo viên mới được phép xóa đề thi.");
+  }
+  const userId = context.auth.uid;
+  const { examId } = data;
+
+  if (!examId) {
+    throw new functions.https.HttpsError("invalid-argument", "Thiếu ID của đề thi.");
+  }
+
+  const examRef = db.collection("exams").doc(examId);
+  const doc = await examRef.get();
+  if (!doc.exists || doc.data().teacherId !== userId) {
+    throw new functions.https.HttpsError("permission-denied", "Bạn không có quyền xóa đề thi này.");
+  }
+
+  await examRef.delete();
+  return { success: true, message: "Đã xóa đề thi thành công." };
+});
+
+/**
+ * Hàm lưu TẤT CẢ đề thi từ giao diện sheet.
+ * Sẽ cập nhật các đề đã có ID và tạo mới các đề chưa có ID.
+ */
+exports.saveAllExams = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Chỉ giáo viên mới được phép lưu đề thi.");
+  }
+  const userId = context.auth.uid;
+  const { exams } = data;
+
+  if (!Array.isArray(exams)) {
+    throw new functions.https.HttpsError("invalid-argument", "Dữ liệu không hợp lệ.");
+  }
+
+  const batch = db.batch();
+  for (const exam of exams) {
+    const keysStrArray = String(exam.keys || "").split("|");
+    const questionTypes = keysStrArray.map((key) => {
+      if (key.length === 1 && "ABCD".includes(key)) return "MC";
+      if (/^[TF]+$/.test(key)) return "TF";
+      if (/^-?[0-9.]+$/.test(key)) return "Numeric";
+      return "Unknown";
+    });
+    const tfCounts = keysStrArray.map((key) => (/^[TF]+$/.test(key) ? key.length : 0));
+
+    const examData = {
+      teacherId: userId,
+      examCode: String(exam.examCode).trim(),
+      keys: keysStrArray,
+      cores: String(exam.cores || "").split("|"),
+      questionTexts: String(exam.questionTexts || "").split(/\r?\n/),
+      explanations: String(exam.explanations || "").split(/\r?\n/),
+      timeLimit: exam.timeLimit ? parseInt(exam.timeLimit, 10) : 90,
+      questionTypes: questionTypes,
+      tfCounts: tfCounts,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    if (exam.id) {
+      // Cập nhật đề thi đã có
+      const examRef = db.collection("exams").doc(exam.id);
+      batch.update(examRef, examData);
+    } else {
+      // Thêm đề thi mới
+      const newExamRef = db.collection("exams").doc();
+      examData.createdAt = admin.firestore.FieldValue.serverTimestamp();
+      batch.set(newExamRef, examData);
+    }
+  }
+
+  await batch.commit();
+  return { success: true, message: "Đã lưu tất cả các thay đổi thành công!" };
+});

@@ -615,3 +615,48 @@ body {
         padding: 12px 25px;
     }
 }
+
+/* Thêm vào cuối file public/css/style.css */
+
+#exams-sheet-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+#exams-sheet-table th, 
+#exams-sheet-table td {
+  border: 1px solid #ccc;
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+#exams-sheet-table th {
+  background-color: #f2f2f2;
+  font-weight: bold;
+  position: sticky;
+  top: 0;
+}
+
+#exams-sheet-table td[contenteditable="true"] {
+  background-color: #fff;
+  white-space: pre-wrap; /* Cho phép xuống dòng bên trong ô */
+  word-break: break-word;
+  min-width: 150px; /* Độ rộng tối thiểu cho các ô */
+}
+
+#exams-sheet-table td[contenteditable="true"]:focus {
+  background-color: #e3f2fd;
+  outline: 2px solid #007bff;
+}
+
+.delete-row-btn {
+  background: none;
+  border: none;
+  color: #dc3545;
+  cursor: pointer;
+  font-size: 1.2em;
+}
+.delete-row-btn:hover {
+  color: #a71d2a;
+}
