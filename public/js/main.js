@@ -1,12 +1,13 @@
 // public/js/main.js
 let examData = null, timerInterval = null, classData = {}, currentTeacherId = null, currentTeacherAlias = null;
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
+  apiKey: "AIzaSyCaybcU4Er3FM3C7mh_rCun7tLXx3uCfa8",
   authDomain: "sangnhc.firebaseapp.com",
   projectId: "sangnhc",
-  storageBucket: "sangnhc.appspot.com",
+  storageBucket: "sangnhc.firebasestorage.app",
   messagingSenderId: "1066567815353",
   appId: "1:1066567815353:web:ae68c784b9e964a6778b68",
+  measurementId: "G-7J4HT6HKPG"
 };
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth(), db = firebase.firestore(), functions = firebase.functions();
