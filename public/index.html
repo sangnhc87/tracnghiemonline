@@ -1,139 +1,134 @@
 <!DOCTYPE html>
 <html lang="vi">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hệ thống Thi Online - tracnghiemonline</title>
 
-    <!-- Liên kết với Font Awesome để dùng icon -->
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome (for icons) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-    <!-- Liên kết với file CSS tùy chỉnh của bạn -->
+    <!-- Your Custom CSS -->
     <link rel="stylesheet" href="css/style.css" />
 
-    <!-- public/index.html -> trong thẻ <head> -->
-<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-functions-compat.js"></script>
+    <!-- Firebase SDKs (Compatibility version for easy use) -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-functions-compat.js"></script>
 
-    <!-- SweetAlert2 để hiển thị thông báo đẹp mắt hơn -->
+    <!-- SweetAlert2 (for beautiful alerts) -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
 
-  </head>
-  <body>
-
-    <!-- Giao diện Giáo viên Đăng nhập / Quản lý (mặc định ẩn) -->
-    <div id="teacherLogin" style="display:none;">
+    <!-- Teacher Login/Management Screen (hidden by default) -->
+    <div id="teacherLogin" class="container" style="display:none;">
       <h2>Chào mừng Giáo viên!</h2>
-      <button onclick="signInWithGoogle()">Đăng nhập với Google</button>
+      <button onclick="signInWithGoogle()" class="btn-google"><i class="fab fa-google"></i> Đăng nhập với Google</button>
       <div id="teacherInfo" style="margin-top:20px;"></div>
       <label for="teacherAliasInput" style="display:block; text-align:left; margin-top: 15px;">Mã Alias của bạn (học sinh sẽ dùng để tìm bạn):</label>
       <input type="text" id="teacherAliasInput" placeholder="Ví dụ: sangmath" />
-      <button onclick="updateTeacherAlias()">Cập nhật Alias</button>
-      <button onclick="signOut()" style="background-color: #f44336;">Đăng xuất</button>
-      <button onclick="showTeacherDashboard()" style="background-color: #2196F3;">Quản lý Đề thi / Lớp</button>
+      <button onclick="updateTeacherAlias()" class="btn btn-primary">Cập nhật Alias</button>
+      <button onclick="showTeacherDashboard()" class="btn btn-secondary">Quản lý Đề thi</button>
+      <button onclick="signOut()" class="btn btn-danger">Đăng xuất</button>
     </div>
 
-    <!-- Màn hình Đăng nhập Học sinh -->
+    <!-- Student Login Screen -->
     <div id="loginScreen" class="login-container">
       <h2>Vào thi</h2>
       <label for="teacherAlias">Mã Giáo viên (Alias):</label>
-      <input type="text" id="teacherAlias" placeholder="Nhập mã Alias của giáo viên (ví dụ: sangmath)" />
-      <input type="text" id="examCode" placeholder="Nhập mã đề (ví dụ TEST)" />
+      <input type="text" id="teacherAlias" placeholder="Nhập mã Alias của giáo viên" />
+      <input type="text" id="examCode" placeholder="Nhập mã đề" />
       <label for="classSelect">Chọn Lớp:</label>
-      <select id="classSelect">
-        <option value="">-- Chọn lớp --</option>
-      </select>
+      <select id="classSelect"><option value="">-- Chọn lớp --</option></select>
       <label for="studentSelect">Chọn Họ tên:</label>
-      <select id="studentSelect">
-        <option value="">-- Chọn tên --</option>
-      </select>
-      <button onclick="startExam()">Start</button>
+      <select id="studentSelect"><option value="">-- Chọn tên --</option></select>
+      <button onclick="startExam()">Bắt đầu thi</button>
       <p style="margin-top: 20px;">Bạn là giáo viên? <a href="#" onclick="showTeacherLogin()">Đăng nhập tại đây</a></p>
     </div>
 
-    <!-- Hiệu ứng Loading -->
-    <div id="loading" class="loading" style="display:none;">Đang load đề thi...</div>
+    <!-- Loading Spinner -->
+    <div id="loading" class="loading" style="display:none;">Đang tải...</div>
 
-    <!-- Đồng hồ đếm ngược -->
+    <!-- Countdown Timer -->
     <div id="timer-container" class="timer-container" style="display:none;">
       <div id="timer" class="timer"></div>
     </div>
 
-    <!-- Giao diện đề thi -->
+    <!-- Quiz Interface -->
     <div id="quiz" style="display:none;"></div>
     <button id="gradeBtn" style="display:none;" onclick="gradeQuiz()"><i class="fas fa-check-circle"></i>Chấm điểm & Nộp bài</button>
 
-    <!-- Bảng điểm -->
+    <!-- Result Display -->
     <div id="result-container" style="display:none;">
       <h2>Kết quả bài thi</h2>
-      <p>Chúc mừng bạn đã hoàn thành bài thi!</p>
       <p>Họ tên: <span id="student-name"></span></p>
       <p>Lớp: <span id="student-class"></span></p>
       <p>Mã đề: <span id="exam-code"></span></p>
       <p>Điểm số: <span id="score" class="score"></span></p>
     </div>
 
-    <!-- Dashboard Giáo viên -->
-    <div id="teacherDashboard" style="display:none;">
-      <h2>Bảng điều khiển Giáo viên</h2>
+    <!-- Teacher Dashboard -->
+    <div id="teacherDashboard" class="container" style="display:none;">
+      <h2>Bảng điều khiển</h2>
       <p>Chào mừng <span id="teacherDashboardName"></span>. Bạn còn <span id="trialRemainingDays"></span> ngày dùng thử.</p>
-      <div style="display:flex; justify-content: center; gap: 10px; margin-bottom: 20px;">
-        <button onclick="showUploadForm()" style="background-color: #4CAF50;">Tải lên Đề thi / Lớp</button>
-        <button onclick="viewSubmissions()" style="background-color: #2196F3;">Xem Bài nộp</button>
-        <button onclick="hideTeacherDashboard()" style="background-color: #f44336;">Quay lại màn hình chính</button>
+      <div class="dashboard-controls">
+        <button onclick="showUploadForm()" class="btn btn-secondary"><i class="fas fa-file-upload"></i> Tải lên từ File</button>
+        <button onclick="showExamForm()" class="btn btn-primary"><i class="fas fa-plus"></i> Thêm Đề thi mới</button>
+        <button onclick="viewSubmissions()" class="btn btn-info"><i class="fas fa-list-check"></i> Xem Bài nộp</button>
+        <button onclick="hideTeacherDashboard()" class="btn btn-danger"><i class="fas fa-arrow-left"></i> Quay lại</button>
       </div>
 
-
-      <div id="uploadForm" style="display:none; margin-top: 20px; border: 1px solid #ccc; padding: 20px; border-radius: 8px;">
+      <div id="examsManagementView" style="margin-top: 20px;">
+        <h3>Quản lý Đề thi</h3>
+        <div class="table-wrapper"><table border="1"><thead><tr><th>Mã Đề</th><th>Thời gian (phút)</th><th>Số câu</th><th>Hành động</th></tr></thead><tbody id="examsTableBody"></tbody></table></div>
+      </div>
+      
+      <div id="uploadForm" style="display:none; margin-top: 20px;" class="dashboard-section">
           <h3>Tải lên dữ liệu</h3>
-          <label for="fileInputExams" style="display:block; text-align:left; margin-bottom: 5px;">Tải lên đề thi (CSV/JSON):</label>
-          <input type="file" id="fileInputExams" accept=".csv,.json" /><br><br>
-          <button onclick="uploadExamsFile()" style="width:auto; padding: 8px 15px; font-size: 14px; background-color: #4CAF50;">Tải lên Đề thi</button>
-          <p style="margin-top:10px; font-size: 13px; color: #666; text-align: left;">
-            Format CSV/JSON đề thi: Mỗi hàng/đối tượng là 1 đề thi. Các cột/trường bắt buộc: <br>
-            <code>examCode</code> (Mã đề), <code>keys</code> (Đáp án, VD: A|B|TF|1.23), <br>
-            <code>cores</code> (Điểm số, VD: 1|0.25,0.5,0.75,1|1.5), <br>
-            <code>questionTexts</code> (Nội dung câu hỏi, dùng \n cho xuống dòng), <br>
-            <code>explanations</code> (Lời giải, dùng \n cho xuống dòng).
-          </p>
-
-          <hr style="margin: 25px 0;">
-
-          <label for="fileInputClasses" style="margin-top: 20px; display:block; text-align:left; margin-bottom: 5px;">Tải lên lớp học (CSV/JSON):</label>
-          <input type="file" id="fileInputClasses" accept=".csv,.json" /><br><br>
-          <button onclick="uploadClassesFile()" style="width:auto; padding: 8px 15px; font-size: 14px; background-color: #2196F3;">Tải lên Lớp học</button>
-          <p style="margin-top:10px; font-size: 13px; color: #666; text-align: left;">
-            Format CSV/JSON lớp học: Mỗi hàng/đối tượng là 1 lớp. Các cột/trường bắt buộc:<br>
-            <code>name</code> (Tên lớp, VD: 10A), <br>
-            <code>students</code> (Danh sách tên học sinh cách nhau bằng dấu phẩy, VD: "Nguyễn A, Trần B").
-          </p>
+          <label for="fileInputExams">Tải lên đề thi (CSV/JSON):</label>
+          <input type="file" id="fileInputExams" accept=".csv,.json" />
+          <button onclick="uploadExamsFile()" class="btn btn-primary">Tải lên Đề thi</button>
+          <p class="form-hint">Format: <code>examCode, keys, cores, questionTexts, explanations, timeLimit</code></p>
+          <hr/>
+          <label for="fileInputClasses">Tải lên lớp học (CSV/JSON):</label>
+          <input type="file" id="fileInputClasses" accept=".csv,.json" />
+          <button onclick="uploadClassesFile()" class="btn btn-primary">Tải lên Lớp học</button>
+          <p class="form-hint">Format: <code>name, students</code> (VD: "Nguyễn A, Trần B")</p>
       </div>
 
-      <div id="submissionsView" style="display:none; margin-top: 20px;">
+      <div id="submissionsView" style="display:none; margin-top: 20px;" class="dashboard-section">
           <h3>Bài nộp của học sinh</h3>
-          <div style="overflow-x: auto;">
-            <table border="1" style="width:100%; border-collapse: collapse; min-width: 600px;">
-                <thead>
-                    <tr>
-                      <th>Thời gian</th>
-                      <th>Mã đề</th>
-                      <th>Họ tên</th>
-                      <th>Lớp</th>
-                      <th>Điểm</th>
-                    </tr>
-                </thead>
-                <tbody id="submissionsTableBody">
-                    <!-- Data will be loaded here -->
-                </tbody>
-            </table>
-          </div>
+          <div class="table-wrapper"><table><thead><tr><th>Thời gian</th><th>Mã đề</th><th>Họ tên</th><th>Lớp</th><th>Điểm</th></tr></thead><tbody id="submissionsTableBody"></tbody></table></div>
       </div>
     </div>
 
-    <!-- Liên kết với file JavaScript tùy chỉnh của bạn (đặt ở cuối body để HTML tải trước) -->
+    <!-- Add/Edit Exam Modal Form -->
+    <div id="examFormModal" class="modal-backdrop" style="display: none;">
+      <div class="modal-content">
+        <h2 id="examFormTitle">Thêm Đề thi mới</h2>
+        <input type="hidden" id="examId" />
+        <div class="form-group"><label for="examFormCode">Mã Đề</label><input type="text" id="examFormCode" required></div>
+        <div class="form-group"><label for="examFormTime">Thời gian (phút)</label><input type="number" id="examFormTime" value="90" required></div>
+        <div class="form-group"><label for="examFormKeys">Đáp án (phân cách bởi |)</label><textarea id="examFormKeys" rows="3"></textarea></div>
+        <div class="form-group"><label for="examFormCores">Điểm (phân cách bởi |)</label><textarea id="examFormCores" rows="3"></textarea></div>
+        <div class="form-group"><label for="examFormQuestions">Câu hỏi (mỗi câu 1 dòng)</label><textarea id="examFormQuestions" rows="10"></textarea></div>
+        <div class="form-group"><label for="examFormExplanations">Lời giải (mỗi lời giải 1 dòng)</label><textarea id="examFormExplanations" rows="10"></textarea></div>
+        <div class="modal-actions">
+          <button onclick="hideExamForm()" class="btn btn-secondary">Hủy</button>
+          <button onclick="handleExamFormSubmit()" class="btn btn-primary">Lưu</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Your Custom JavaScript (must be at the end of the body) -->
     <script src="js/main.js"></script>
 
-  </body>
+</body>
 </html>
