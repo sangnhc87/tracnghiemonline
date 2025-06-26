@@ -7,7 +7,7 @@
   },
   "functions": [
     {
-      "source": "functions",
+      "source": "firebase-function",
       "codebase": "default",
       "ignore": [
         "node_modules",
