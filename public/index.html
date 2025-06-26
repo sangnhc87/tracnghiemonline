@@ -83,13 +83,15 @@
         <h2 id="examFormTitle">Thêm Đề thi mới</h2>
         <input type="hidden" id="examId" />
         <div class="form-grid">
-          <div class="form-group"><label for="examFormCode">Mã Đề</label><input type="text" id="examFormCode" required></div>
+          <div class="form-group"><label for="examFormCode">Mã Đề</label><input type="text" id="examFormCode" placeholder="Ví dụ: TOAN11_GK1" required></div>
           <div class="form-group"><label for="examFormTime">Thời gian (phút)</label><input type="number" id="examFormTime" value="90" required></div>
         </div>
-        <div class="form-group"><label for="examFormKeys">Đáp án (phân cách bởi |)</label><textarea id="examFormKeys" rows="3"></textarea></div>
-        <div class="form-group"><label for="examFormCores">Điểm (phân cách bởi |)</label><textarea id="examFormCores" rows="3"></textarea></div>
-        <div class="form-group"><label for="examFormQuestions">Câu hỏi (mỗi câu 1 dòng)</label><textarea id="examFormQuestions" rows="10"></textarea></div>
-        <div class="form-group"><label for="examFormExplanations">Lời giải (mỗi lời giải 1 dòng)</label><textarea id="examFormExplanations" rows="10"></textarea></div>
+        <div class="form-group"><label for="examFormKeys">Đáp án (phân cách bởi |)</label><textarea id="examFormKeys" rows="3" placeholder="Ví dụ: A|B|C|TF|1.23"></textarea></div>
+        <div class="form-group"><label for="examFormCores">Điểm (phân cách bởi |)</label><textarea id="examFormCores" rows="3" placeholder="Ví dụ: 0.25|0.25|0.25|0.1,0.25|0.5"></textarea></div>
+        <div class="form-group"><label for="examFormQuestions">Nội dung câu hỏi (mỗi câu một dòng)</label><textarea id="examFormQuestions" rows="10" placeholder="Câu 1: ...
+Câu 2: ..."></textarea></div>
+        <div class="form-group"><label for="examFormExplanations">Lời giải (mỗi lời giải một dòng)</label><textarea id="examFormExplanations" rows="10" placeholder="Lời giải câu 1...
+Lời giải câu 2..."></textarea></div>
         <div class="modal-actions"><button onclick="hideExamForm()" class="btn btn-secondary">Hủy</button><button onclick="handleExamFormSubmit()" class="btn btn-primary">Lưu</button></div>
       </div>
     </div>
@@ -98,8 +100,10 @@
       <div class="modal-content">
         <h2 id="classFormTitle">Thêm Lớp mới</h2>
         <input type="hidden" id="classId" />
-        <div class="form-group"><label for="classFormName">Tên Lớp</label><input type="text" id="classFormName" required></div>
-        <div class="form-group"><label for="classFormStudents">Danh sách học sinh (mỗi em một dòng)</label><textarea id="classFormStudents" rows="15"></textarea></div>
+        <div class="form-group"><label for="classFormName">Tên Lớp</label><input type="text" id="classFormName" placeholder="Ví dụ: 10A1" required></div>
+        <div class="form-group"><label for="classFormStudents">Danh sách học sinh (mỗi em một dòng)</label><textarea id="classFormStudents" rows="15" placeholder="Nguyễn Văn A
+Trần Thị B
+Lê Văn C"></textarea></div>
         <div class="modal-actions"><button onclick="hideClassForm()" class="btn btn-secondary">Hủy</button><button onclick="handleClassFormSubmit()" class="btn btn-primary">Lưu</button></div>
       </div>
     </div>
