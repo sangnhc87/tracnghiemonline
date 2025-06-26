@@ -6,105 +6,160 @@
     <title>Hệ thống Thi Online - tracnghiemonline</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css" integrity="sha512-xh6O/CkQoPOWDdYTDqeRdPCVd1SpvCA9XXcUnZS2FmJNp1coAFzvtCN9BmamE+4aHK8yyUHUSCcJHgXloTyT2A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="css/style.css" />
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-functions-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-functions-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
 
-    <div id="teacherLogin" class="container">
-      <h2>Chào mừng Giáo viên</h2>
-      <button onclick="signInWithGoogle()" class="btn btn-google"><i class="fab fa-google"></i> Đăng nhập với Google</button>
-      <div id="teacherInfo"></div>
-      <label for="teacherAliasInput">Mã Alias của bạn:</label>
-      <input type="text" id="teacherAliasInput" placeholder="Ví dụ: sangmath" />
-      <button onclick="updateTeacherAlias()" class="btn btn-primary">Cập nhật Alias</button>
-      <button onclick="showTeacherDashboard()" class="btn btn-secondary">Quản lý</button>
-      <button onclick="signOut()" class="btn btn-danger">Đăng xuất</button>
-    </div>
-
-    <div id="loginScreen" class="login-container">
-      <h2>Vào thi</h2>
-      <label for="teacherAlias">Mã Giáo viên (Alias):</label>
-      <input type="text" id="teacherAlias" placeholder="Nhập mã Alias của giáo viên" />
-      <input type="text" id="examCode" placeholder="Nhập mã đề" />
-      <label for="classSelect">Chọn Lớp:</label>
-      <select id="classSelect"><option value="">-- Chọn lớp --</option></select>
-      <label for="studentSelect">Chọn Họ tên:</label>
-      <select id="studentSelect"><option value="">-- Chọn tên --</option></select>
-      <button onclick="startExam()">Bắt đầu thi</button>
-      <p>Bạn là giáo viên? <a href="#" onclick="showTeacherLogin()">Đăng nhập tại đây</a></p>
-    </div>
-
-    <div id="loading" class="loading" style="display:none;">Đang tải...</div>
-
-    <div id="timer-container" class="timer-container" style="display:none;"><div id="timer"></div></div>
-
-    <div id="quiz" style="display:none;"></div>
-    <button id="gradeBtn" style="display:none;" onclick="gradeQuiz()"><i class="fas fa-check-circle"></i>Chấm điểm & Nộp bài</button>
-
-    <div id="result-container" style="display:none;">
-      <h2>Kết quả bài thi</h2>
-      <p>Họ tên: <span id="student-name"></span></p><p>Lớp: <span id="student-class"></span></p>
-      <p>Mã đề: <span id="exam-code"></span></p><p>Điểm số: <span id="score" class="score"></span></p>
-    </div>
-
-    <div id="teacherDashboard" class="container" style="display:none; max-width: 90%;">
-      <h2>Bảng điều khiển</h2>
-      <p>Chào mừng <span id="teacherDashboardName"></span>. Bạn còn <span id="trialRemainingDays"></span> ngày dùng thử.</p>
-      <div class="dashboard-controls">
-        <button onclick="hideTeacherDashboard()" class="btn btn-danger"><i class="fas fa-arrow-left"></i> Quay lại</button>
-      </div>
-      <div class="dashboard-grid">
-        <div class="dashboard-column">
-          <h3><i class="fas fa-file-alt"></i> Đề thi</h3>
-          <div id="exam-list" class="item-list"></div>
-          <button onclick="showExamForm()" class="btn btn-primary"><i class="fas fa-plus"></i> Thêm Đề thi mới</button>
+    <div id="app">
+        <div id="teacherLogin" class="container card">
+            <h2>Chào mừng Giáo viên</h2>
+            <div id="teacherInfo" style="display: none;"></div>
+            <button onclick="signInWithGoogle()" class="btn btn-google"><i class="fab fa-google"></i> Đăng nhập với Google</button>
+            <div id="teacherActions" style="display: none;">
+                <label for="teacherAliasInput">Mã Alias của bạn:</label>
+                <input type="text" id="teacherAliasInput" placeholder="Ví dụ: sangmath" />
+                <button onclick="updateTeacherAlias()" class="btn btn-primary">Cập nhật Alias</button>
+                <button onclick="showTeacherDashboard()" class="btn btn-secondary"><i class="fas fa-tasks"></i> Vào trang quản lý</button>
+                <button onclick="signOut()" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i> Đăng xuất</button>
+            </div>
         </div>
-        <div class="dashboard-column">
-          <h3><i class="fas fa-users"></i> Lớp học</h3>
-          <div id="class-list" class="item-list"></div>
-          <button onclick="showClassForm()" class="btn btn-primary"><i class="fas fa-plus"></i> Thêm Lớp mới</button>
+
+        <div id="loginScreen" class="container card">
+            <h2>Vào thi</h2>
+            <div class="form-group">
+                <label for="teacherAlias">Mã Giáo viên (Alias):</label>
+                <input type="text" id="teacherAlias" placeholder="Nhập mã Alias của giáo viên" />
+            </div>
+            <div class="form-group">
+                <label for="examCode">Mã đề thi:</label>
+                <input type="text" id="examCode" placeholder="Nhập mã đề" />
+            </div>
+            <div class="form-group">
+                <label for="classSelect">Chọn Lớp:</label>
+                <select id="classSelect"><option value="">-- Chọn lớp --</option></select>
+            </div>
+            <div class="form-group">
+                <label for="studentSelect">Chọn Họ tên:</label>
+                <select id="studentSelect"><option value="">-- Chọn tên --</option></select>
+            </div>
+            <button onclick="startExam()" class="btn btn-primary btn-full"><i class="fas fa-play-circle"></i> Bắt đầu thi</button>
+            <p class="form-link">Bạn là giáo viên? <a href="#" onclick="showTeacherLogin()">Đăng nhập tại đây</a></p>
         </div>
-        <div class="dashboard-column">
-          <h3><i class="fas fa-list-check"></i> Bài nộp gần đây</h3>
-          <div id="submission-list" class="item-list"></div>
+
+        <div id="loading" class="loading-overlay" style="display:none;">
+            <div class="spinner"></div>
+            <p>Đang tải...</p>
         </div>
-      </div>
+
+        <div id="timer-container" class="timer-container" style="display:none;"><div id="timer"></div></div>
+
+        <div id="quiz" class="quiz-container" style="display:none;"></div>
+        <button id="gradeBtn" style="display:none;" class="btn btn-success btn-full" onclick="gradeQuiz()"><i class="fas fa-check-circle"></i> Chấm điểm & Nộp bài</button>
+
+        <div id="result-container" class="container card" style="display:none;">
+            <h2>Kết quả bài thi</h2>
+            <div class="result-details">
+                <p><strong>Họ tên:</strong> <span id="student-name"></span></p>
+                <p><strong>Lớp:</strong> <span id="student-class"></span></p>
+                <p><strong>Mã đề:</strong> <span id="exam-code"></span></p>
+            </div>
+            <p class="score-label">Điểm số:</p>
+            <p><span id="score" class="score"></span></p>
+        </div>
+
+        <div id="teacherDashboard" class="dashboard-container" style="display:none;">
+            <header class="dashboard-header">
+                <h2>Bảng điều khiển</h2>
+                <div class="header-info">
+                    <span>Chào <strong id="teacherDashboardName"></strong>!</span>
+                    <span><i class="fas fa-hourglass-half"></i> <span id="trialRemainingDays"></span> ngày dùng thử</span>
+                    <button onclick="hideTeacherDashboard()" class="btn btn-danger"><i class="fas fa-arrow-left"></i> Quay lại</button>
+                </div>
+            </header>
+            <div class="dashboard-grid">
+                <div class="dashboard-column card">
+                    <h3><i class="fas fa-file-alt"></i> Đề thi</h3>
+                    <div id="exam-list" class="item-list"></div>
+                    <button onclick="showExamForm()" class="btn btn-primary btn-full"><i class="fas fa-plus"></i> Thêm Đề thi mới</button>
+                </div>
+                <div class="dashboard-column card">
+                    <h3><i class="fas fa-users"></i> Lớp học</h3>
+                    <div id="class-list" class="item-list"></div>
+                    <button onclick="showClassForm()" class="btn btn-primary btn-full"><i class="fas fa-plus"></i> Thêm Lớp mới</button>
+                </div>
+                <div class="dashboard-column card">
+                    <h3><i class="fas fa-list-check"></i> Bài nộp gần đây</h3>
+                    <div id="submission-list" class="item-list"></div>
+                </div>
+            </div>
+        </div>
     </div>
 
+    <!-- MODALS -->
     <div id="examFormModal" class="modal-backdrop" style="display: none;">
-      <div class="modal-content">
+      <div class="modal-content card">
         <h2 id="examFormTitle">Thêm Đề thi mới</h2>
         <input type="hidden" id="examId" />
-        <div class="form-grid">
-          <div class="form-group"><label for="examFormCode">Mã Đề</label><input type="text" id="examFormCode" placeholder="Ví dụ: TOAN11_GK1" required></div>
-          <div class="form-group"><label for="examFormTime">Thời gian (phút)</label><input type="number" id="examFormTime" value="90" required></div>
+        <div class="modal-body">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="examFormCode">Mã Đề</label>
+                    <input type="text" id="examFormCode" placeholder="Ví dụ: TOAN11_GK1" required>
+                </div>
+                <div class="form-group">
+                    <label for="examFormTime">Thời gian (phút)</label>
+                    <input type="number" id="examFormTime" value="90" required>
+                </div>
+                <div class="form-group">
+                    <label for="examFormKeys">Đáp án (phân cách bởi |)</label>
+                    <textarea id="examFormKeys" rows="3" placeholder="A|B|C|TF|1.23"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="examFormCores">Điểm (phân cách bởi |)</label>
+                    <textarea id="examFormCores" rows="3" placeholder="0.25|0.25|0.25|0.1,0.25|0.5"></textarea>
+                </div>
+                <div class="form-group full-width">
+                    <label for="examFormQuestions">Nội dung câu hỏi (mỗi câu một dòng)</label>
+                    <textarea id="examFormQuestions" rows="8" placeholder="Câu 1: ..."></textarea>
+                </div>
+                <div class="form-group full-width">
+                    <label for="examFormExplanations">Lời giải (mỗi lời giải một dòng)</label>
+                    <textarea id="examFormExplanations" rows="8" placeholder="Lời giải câu 1..."></textarea>
+                </div>
+            </div>
         </div>
-        <div class="form-group"><label for="examFormKeys">Đáp án (phân cách bởi |)</label><textarea id="examFormKeys" rows="3" placeholder="Ví dụ: A|B|C|TF|1.23"></textarea></div>
-        <div class="form-group"><label for="examFormCores">Điểm (phân cách bởi |)</label><textarea id="examFormCores" rows="3" placeholder="Ví dụ: 0.25|0.25|0.25|0.1,0.25|0.5"></textarea></div>
-        <div class="form-group"><label for="examFormQuestions">Nội dung câu hỏi (mỗi câu một dòng)</label><textarea id="examFormQuestions" rows="10" placeholder="Câu 1: ...
-Câu 2: ..."></textarea></div>
-        <div class="form-group"><label for="examFormExplanations">Lời giải (mỗi lời giải một dòng)</label><textarea id="examFormExplanations" rows="10" placeholder="Lời giải câu 1...
-Lời giải câu 2..."></textarea></div>
-        <div class="modal-actions"><button onclick="hideExamForm()" class="btn btn-secondary">Hủy</button><button onclick="handleExamFormSubmit()" class="btn btn-primary">Lưu</button></div>
+        <div class="modal-actions">
+            <button onclick="hideExamForm()" class="btn btn-secondary">Hủy</button>
+            <button onclick="handleExamFormSubmit()" class="btn btn-primary">Lưu</button>
+        </div>
       </div>
     </div>
     
     <div id="classFormModal" class="modal-backdrop" style="display: none;">
-      <div class="modal-content">
+      <div class="modal-content card">
         <h2 id="classFormTitle">Thêm Lớp mới</h2>
         <input type="hidden" id="classId" />
-        <div class="form-group"><label for="classFormName">Tên Lớp</label><input type="text" id="classFormName" placeholder="Ví dụ: 10A1" required></div>
-        <div class="form-group"><label for="classFormStudents">Danh sách học sinh (mỗi em một dòng)</label><textarea id="classFormStudents" rows="15" placeholder="Nguyễn Văn A
-Trần Thị B
-Lê Văn C"></textarea></div>
-        <div class="modal-actions"><button onclick="hideClassForm()" class="btn btn-secondary">Hủy</button><button onclick="handleClassFormSubmit()" class="btn btn-primary">Lưu</button></div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="classFormName">Tên Lớp</label>
+                <input type="text" id="classFormName" placeholder="Ví dụ: 10A1" required>
+            </div>
+            <div class="form-group">
+                <label for="classFormStudents">Danh sách học sinh (mỗi em một dòng)</label>
+                <textarea id="classFormStudents" rows="15" placeholder="Nguyễn Văn A..."></textarea>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button onclick="hideClassForm()" class="btn btn-secondary">Hủy</button>
+            <button onclick="handleClassFormSubmit()" class="btn btn-primary">Lưu</button>
+        </div>
       </div>
     </div>
     
