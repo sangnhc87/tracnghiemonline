@@ -15,12 +15,10 @@ const db = admin.firestore();
  * @return {Array<string>} Mảng các chuỗi đã được xử lý.
  */
 const processImagePlaceholders = (textArray) => {
-  // Sửa lỗi chính tả: ArrayArray -> Array.isArray
   if (!Array.isArray(textArray)) {
     return [];
   }
   return textArray.map((text) => {
-    // Chuyển đổi thành chuỗi trước khi replace để tránh lỗi
     text = String(text);
     text = text.replace(/sangnhc1/g, "https://gitlab.com/nguyensangnhc/pic4web/-/raw/main/Hinh");
     text = text.replace(/sangnhc2/g, "https://gitlab.com/nguyensangnhc/tikz4web/-/raw/main/Hinh");
@@ -37,7 +35,7 @@ const processImagePlaceholders = (textArray) => {
  * Tạo hồ sơ mới nếu chưa có, hoặc kiểm tra và chuẩn hóa hồ sơ cũ.
  * @param {Object} data - Dữ liệu không sử dụng.
  * @param {Object} context - Ngữ cảnh xác thực của người dùng.
- * @return {Promise<Object>} Thông tin hồ sơ giáo viên.
+ * @returns {Promise<Object>} Thông tin hồ sơ giáo viên.
  */
 exports.onTeacherSignIn = functions.https.onCall(async (data, context) => {
   functions.logger.info("onTeacherSignIn: Hàm đã được gọi.");
@@ -106,7 +104,7 @@ exports.onTeacherSignIn = functions.https.onCall(async (data, context) => {
  * Hàm kiểm tra trạng thái dùng thử của giáo viên.
  * @param {Object} data - Dữ liệu không sử dụng.
  * @param {Object} context - Ngữ cảnh xác thực của người dùng.
- * @return {Promise<Object>} Trạng thái dùng thử.
+ * @returns {Promise<Object>} Trạng thái dùng thử.
  */
 exports.checkTrialStatus = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -115,28 +113,24 @@ exports.checkTrialStatus = functions.https.onCall(async (data, context) => {
   const userId = context.auth.uid;
   const userDoc = await db.collection("users").doc(userId).get();
 
-  if (!userDoc.exists || userDoc.data().role !== "teacher") {
+  if (!userDoc.exists || !userDoc.data() || userDoc.data().role !== "teacher") {
     throw new functions.https.HttpsError("permission-denied", "Bạn không phải giáo viên hoặc tài khoản không hợp lệ.");
   }
 
   const trialEndDate = userDoc.data().trialEndDate;
   if (!trialEndDate || !(trialEndDate instanceof admin.firestore.Timestamp)) {
-    return { isActive: false, remainingDays: 0, message: "Lỗi dữ liệu thời gian dùng thử. Vui lòng liên hệ quản trị viên." };
+    return { isActive: false, remainingDays: 0, message: "Lỗi dữ liệu thời gian dùng thử." };
   }
 
   const remainingDays = Math.ceil((trialEndDate.toMillis() - Date.now()) / (1000 * 60 * 60 * 24));
-
-  return {
-    isActive: remainingDays > 0,
-    remainingDays: Math.max(0, remainingDays),
-  };
+  return { isActive: remainingDays > 0, remainingDays: Math.max(0, remainingDays) };
 });
 
 /**
  * Hàm cho giáo viên cập nhật mã Alias của mình.
  * @param {Object} data - Chứa trường 'alias' mới.
  * @param {Object} context - Ngữ cảnh xác thực của người dùng.
- * @return {Promise<Object>} Trạng thái cập nhật.
+ * @returns {Promise<Object>} Trạng thái cập nhật.
  */
 exports.updateTeacherAlias = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -163,19 +157,17 @@ exports.updateTeacherAlias = functions.https.onCall(async (data, context) => {
  * Hàm tải danh sách đề thi của một giáo viên.
  * @param {Object} data - Dữ liệu không sử dụng.
  * @param {Object} context - Ngữ cảnh xác thực của người dùng.
- * @return {Promise<Array>} Danh sách các đề thi.
+ * @returns {Promise<Array>} Danh sách các đề thi.
  */
 exports.getTeacherExams = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError("unauthenticated", "Chỉ giáo viên đã đăng nhập mới có thể xem đề thi.");
   }
   const userId = context.auth.uid;
-
   const userDoc = await db.collection("users").doc(userId).get();
-  if (!userDoc.exists || !userDoc.data().trialEndDate || userDoc.data().trialEndDate.toMillis() < Date.now()) {
+  if (!userDoc.exists || !userDoc.data() || !userDoc.data().trialEndDate || userDoc.data().trialEndDate.toMillis() < Date.now()) {
     throw new functions.https.HttpsError("permission-denied", "Thời gian dùng thử của bạn đã hết. Vui lòng liên hệ quản trị viên.");
   }
-
   const examsSnapshot = await db.collection("exams").where("teacherId", "==", userId).get();
   const exams = examsSnapshot.docs.map((doc) => {
     const examData = doc.data();
@@ -183,7 +175,6 @@ exports.getTeacherExams = functions.https.onCall(async (data, context) => {
     delete examData.cores;
     return { id: doc.id, ...examData };
   });
-  functions.logger.info(`Teacher ${userId} fetched ${exams.length} exams.`);
   return exams;
 });
 
@@ -191,25 +182,22 @@ exports.getTeacherExams = functions.https.onCall(async (data, context) => {
  * Hàm tải danh sách lớp và học sinh của một giáo viên.
  * @param {Object} data - Dữ liệu không sử dụng.
  * @param {Object} context - Ngữ cảnh xác thực của người dùng.
- * @return {Promise<Object>} Đối tượng chứa danh sách lớp và học sinh.
+ * @returns {Promise<Object>} Đối tượng chứa danh sách lớp và học sinh.
  */
 exports.getTeacherClasses = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError("unauthenticated", "Chỉ giáo viên đã đăng nhập mới có thể xem danh sách lớp.");
   }
   const userId = context.auth.uid;
-
   const userDoc = await db.collection("users").doc(userId).get();
-  if (!userDoc.exists || !userDoc.data().trialEndDate || userDoc.data().trialEndDate.toMillis() < Date.now()) {
+  if (!userDoc.exists || !userDoc.data() || !userDoc.data().trialEndDate || userDoc.data().trialEndDate.toMillis() < Date.now()) {
     throw new functions.https.HttpsError("permission-denied", "Thời gian dùng thử của bạn đã hết.");
   }
-
   const classesSnapshot = await db.collection("classes").where("teacherId", "==", userId).get();
   const classData = {};
   classesSnapshot.forEach((doc) => {
     classData[doc.data().name] = doc.data().students || [];
   });
-  functions.logger.info(`Teacher ${userId} fetched ${Object.keys(classData).length} classes.`);
   return classData;
 });
 
@@ -217,30 +205,25 @@ exports.getTeacherClasses = functions.https.onCall(async (data, context) => {
  * Hàm cho giáo viên tải lên danh sách đề thi từ file CSV/JSON.
  * @param {Object} data - Chứa mảng 'exams' cần tải lên.
  * @param {Object} context - Ngữ cảnh xác thực của người dùng.
- * @return {Promise<Object>} Trạng thái tải lên.
+ * @returns {Promise<Object>} Trạng thái tải lên.
  */
 exports.uploadExams = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError("unauthenticated", "Chỉ giáo viên mới có thể tải lên đề thi.");
   }
   const userId = context.auth.uid;
-
   const userDoc = await db.collection("users").doc(userId).get();
-  if (!userDoc.exists || !userDoc.data().trialEndDate || userDoc.data().trialEndDate.toMillis() < Date.now()) {
+  if (!userDoc.exists || !userDoc.data() || !userDoc.data().trialEndDate || userDoc.data().trialEndDate.toMillis() < Date.now()) {
     throw new functions.https.HttpsError("permission-denied", "Thời gian dùng thử của bạn đã hết. Không thể tải lên đề thi.");
   }
-
   const examsToUpload = data.exams;
   if (!Array.isArray(examsToUpload) || examsToUpload.length === 0) {
     throw new functions.https.HttpsError("invalid-argument", "Không có dữ liệu đề thi để tải lên.");
   }
-
   const batch = db.batch();
-  let uploadedCount = 0;
   for (const exam of examsToUpload) {
     if (exam.examCode) {
       const keysStrArray = String(exam.keys || "").split("|").filter((x) => x !== "");
-      const coreStrArray = String(exam.cores || "").split("|").filter((x) => x !== "");
       const questionTypes = keysStrArray.map((key) => {
         if (key.length === 1 && ["A", "B", "C", "D"].includes(key)) return "MC";
         if (/^[TF]+$/.test(key)) return "TF";
@@ -248,13 +231,12 @@ exports.uploadExams = functions.https.onCall(async (data, context) => {
         return "Unknown";
       });
       const tfCounts = keysStrArray.map((key) => (/^[TF]+$/.test(key) ? key.length : 0));
-
       const newExamRef = db.collection("exams").doc();
       batch.set(newExamRef, {
         teacherId: userId,
         examCode: String(exam.examCode).trim(),
         keys: keysStrArray,
-        cores: coreStrArray,
+        cores: String(exam.cores || "").split("|").filter((x) => x !== ""),
         questionTexts: String(exam.questionTexts || "").split(/\r?\n/),
         explanations: String(exam.explanations || "").split(/\r?\n/),
         timeLimit: exam.timeLimit ? parseInt(exam.timeLimit, 10) : 90,
@@ -262,42 +244,35 @@ exports.uploadExams = functions.https.onCall(async (data, context) => {
         tfCounts: tfCounts,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-      uploadedCount++;
     }
   }
   await batch.commit();
-  functions.logger.info(`Teacher ${userId} uploaded ${uploadedCount} exams.`);
-  return { success: true, message: `Đã tải lên ${uploadedCount} đề thi thành công!` };
+  return { success: true, message: `Đã tải lên ${examsToUpload.length} đề thi.` };
 });
 
 /**
  * Hàm cho giáo viên tải lên danh sách lớp và học sinh từ file CSV/JSON.
  * @param {Object} data - Chứa mảng 'classes' cần tải lên.
  * @param {Object} context - Ngữ cảnh xác thực của người dùng.
- * @return {Promise<Object>} Trạng thái tải lên.
+ * @returns {Promise<Object>} Trạng thái tải lên.
  */
 exports.uploadClasses = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError("unauthenticated", "Chỉ giáo viên mới có thể tải lên danh sách lớp.");
   }
   const userId = context.auth.uid;
-
   const userDoc = await db.collection("users").doc(userId).get();
-  if (!userDoc.exists || !userDoc.data().trialEndDate || userDoc.data().trialEndDate.toMillis() < Date.now()) {
-    throw new functions.https.HttpsError("permission-denied", "Thời gian dùng thử của bạn đã hết. Không thể tải lên danh sách lớp.");
+  if (!userDoc.exists || !userDoc.data() || !userDoc.data().trialEndDate || userDoc.data().trialEndDate.toMillis() < Date.now()) {
+    throw new functions.https.HttpsError("permission-denied", "Thời gian dùng thử của bạn đã hết.");
   }
-
   const classesToUpload = data.classes;
   if (!Array.isArray(classesToUpload) || classesToUpload.length === 0) {
     throw new functions.https.HttpsError("invalid-argument", "Không có dữ liệu lớp để tải lên.");
   }
-
   const batch = db.batch();
-  let uploadedCount = 0;
   for (const _class of classesToUpload) {
     if (_class.name) {
-      const studentsArray = Array.isArray(_class.students) ? _class.students.map((s) => String(s).trim()).filter((s) => s !== "") : String(_class.students || "").split(",").map((s) => String(s).trim()).filter((s) => s !== "");
-
+      const studentsArray = Array.isArray(_class.students) ? _class.students.map((s) => String(s).trim()).filter((s) => s) : String(_class.students || "").split(",").map((s) => String(s).trim()).filter((s) => s);
       const newClassRef = db.collection("classes").doc();
       batch.set(newClassRef, {
         teacherId: userId,
@@ -305,14 +280,11 @@ exports.uploadClasses = functions.https.onCall(async (data, context) => {
         students: studentsArray,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-      uploadedCount++;
     }
   }
   await batch.commit();
-  functions.logger.info(`Teacher ${userId} uploaded ${uploadedCount} classes.`);
-  return { success: true, message: `Đã tải lên ${uploadedCount} lớp học thành công!` };
+  return { success: true, message: `Đã tải lên ${classesToUpload.length} lớp học.` };
 });
-
 
 // --- CÁC HÀM DÀNH CHO HỌC SINH (KHÔNG YÊU CẦU ĐĂNG NHẬP FIREBASE AUTH) ---
 
@@ -320,32 +292,27 @@ exports.uploadClasses = functions.https.onCall(async (data, context) => {
  * Hàm tải danh sách lớp và học sinh cho học sinh, dựa vào Alias của giáo viên.
  * @param {Object} data - Chứa 'teacherAlias'.
  * @param {Object} context - Ngữ cảnh xác thực (không bắt buộc).
- * @return {Promise<Object>} Đối tượng chứa danh sách lớp và học sinh.
+ * @returns {Promise<Object>} Đối tượng chứa danh sách lớp và học sinh.
  */
 exports.getClassesForStudent = functions.https.onCall(async (data, context) => {
   const teacherAlias = String(data.teacherAlias).trim().toLowerCase();
   if (!teacherAlias) {
     throw new functions.https.HttpsError("invalid-argument", "Mã giáo viên (Alias) là bắt buộc.");
   }
-
   const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
   if (teacherSnapshot.empty) {
-    throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên với Alias này. Vui lòng kiểm tra lại mã.");
+    throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên với Alias này.");
   }
   const teacherDoc = teacherSnapshot.docs[0];
-  const teacherId = teacherDoc.id;
   const teacherData = teacherDoc.data();
-
   if (!teacherData.trialEndDate || teacherData.trialEndDate.toMillis() < Date.now()) {
-    throw new functions.https.HttpsError("permission-denied", "Giáo viên này đã hết thời gian dùng thử. Vui lòng liên hệ giáo viên của bạn.");
+    throw new functions.https.HttpsError("permission-denied", "Giáo viên này đã hết hạn dùng thử.");
   }
-
-  const classesSnapshot = await db.collection("classes").where("teacherId", "==", teacherId).get();
+  const classesSnapshot = await db.collection("classes").where("teacherId", "==", teacherDoc.id).get();
   const classData = {};
   classesSnapshot.forEach((doc) => {
     classData[doc.data().name] = doc.data().students || [];
   });
-  functions.logger.info(`Student requested classes for alias ${teacherAlias}, found ${Object.keys(classData).length} classes.`);
   return classData;
 });
 
@@ -353,38 +320,31 @@ exports.getClassesForStudent = functions.https.onCall(async (data, context) => {
  * Hàm tải đề thi cho học sinh. Chỉ trả về thông tin không nhạy cảm.
  * @param {Object} data - Chứa 'teacherAlias' và 'examCode'.
  * @param {Object} context - Ngữ cảnh xác thực (không bắt buộc).
- * @return {Promise<Object>} Đối tượng đề thi (chỉ phần không nhạy cảm).
+ * @returns {Promise<Object>} Đối tượng đề thi (chỉ phần không nhạy cảm).
  */
 exports.loadExamForStudent = functions.https.onCall(async (data, context) => {
   const { teacherAlias, examCode } = data;
   if (!teacherAlias || !examCode) {
-    throw new functions.https.HttpsError("invalid-argument", "Mã giáo viên (Alias) và Mã đề thi là bắt buộc.");
+    throw new functions.https.HttpsError("invalid-argument", "Mã giáo viên và Mã đề là bắt buộc.");
   }
-
   const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
   if (teacherSnapshot.empty) {
     throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên với Alias này.");
   }
   const teacherDoc = teacherSnapshot.docs[0];
-  const teacherId = teacherDoc.id;
   const teacherData = teacherDoc.data();
-
   if (!teacherData.trialEndDate || teacherData.trialEndDate.toMillis() < Date.now()) {
-    throw new functions.https.HttpsError("permission-denied", "Giáo viên này đã hết thời gian dùng thử. Không thể bắt đầu bài thi.");
+    throw new functions.https.HttpsError("permission-denied", "Giáo viên này đã hết hạn dùng thử.");
   }
-
   const examSnapshot = await db.collection("exams")
-    .where("teacherId", "==", teacherId)
+    .where("teacherId", "==", teacherDoc.id)
     .where("examCode", "==", examCode)
     .limit(1)
     .get();
   if (examSnapshot.empty) {
     throw new functions.https.HttpsError("not-found", `Không tìm thấy đề thi ${examCode} của giáo viên này.`);
   }
-
   const examData = examSnapshot.docs[0].data();
-  functions.logger.info(`Student requested exam ${examCode} for alias ${teacherAlias}.`);
-
   return {
     questionTexts: processImagePlaceholders(examData.questionTexts),
     explanations: processImagePlaceholders(examData.explanations),
@@ -398,59 +358,45 @@ exports.loadExamForStudent = functions.https.onCall(async (data, context) => {
  * Hàm chấm điểm và nộp bài. Toàn bộ logic chấm điểm được thực hiện an toàn trên server.
  * @param {Object} data - Chứa 'teacherAlias', 'examCode', 'studentName', 'className', và 'answers'.
  * @param {Object} context - Ngữ cảnh xác thực (không bắt buộc).
- * @return {Promise<Object>} Điểm số và chi tiết kết quả để client hiển thị.
+ * @returns {Promise<Object>} Điểm số và chi tiết kết quả để client hiển thị.
  */
 exports.submitExam = functions.https.onCall(async (data, context) => {
   const { teacherAlias, examCode, studentName, className, answers } = data;
-
   if (!teacherAlias || !examCode || !studentName || !className || !answers) {
-    throw new functions.https.HttpsError("invalid-argument", "Thiếu dữ liệu nộp bài bắt buộc.");
+    throw new functions.https.HttpsError("invalid-argument", "Thiếu dữ liệu nộp bài.");
   }
-
   const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
   if (teacherSnapshot.empty) {
     throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên với Alias này.");
   }
   const teacherDoc = teacherSnapshot.docs[0];
-  const teacherId = teacherDoc.id;
   const teacherData = teacherDoc.data();
-
   if (!teacherData.trialEndDate || teacherData.trialEndDate.toMillis() < Date.now()) {
-    throw new functions.https.HttpsError("permission-denied", "Giáo viên này đã hết thời gian dùng thử. Bài thi không thể nộp.");
+    throw new functions.https.HttpsError("permission-denied", "Giáo viên này đã hết hạn dùng thử.");
   }
-
   const examSnapshot = await db.collection("exams")
-    .where("teacherId", "==", teacherId)
+    .where("teacherId", "==", teacherDoc.id)
     .where("examCode", "==", examCode)
     .limit(1)
     .get();
   if (examSnapshot.empty) {
-    throw new functions.https.HttpsError("not-found", `Không tìm thấy đề thi ${examCode} của giáo viên này để chấm điểm.`);
+    throw new functions.https.HttpsError("not-found", `Không tìm thấy đề thi ${examCode} để chấm điểm.`);
   }
-
   const examData = examSnapshot.docs[0].data();
   const keys = examData.keys;
   const cores = examData.cores;
   const questionTypes = examData.questionTypes || [];
-
   let score = 0;
   const detailedResults = {};
-
   keys.forEach((key, i) => {
     let questionScore = 0;
     const userAnswer = answers[`q${i}`];
     const type = questionTypes[i] || "Unknown";
-
     if (type === "MC") {
       if (userAnswer === key) {
         questionScore = parseFloat(cores[0] || 0);
       }
-      detailedResults[`q${i}`] = {
-        userAnswer: userAnswer,
-        correctAnswer: key,
-        scoreEarned: questionScore,
-        type: "MC",
-      };
+      detailedResults[`q${i}`] = { userAnswer: userAnswer, correctAnswer: key, scoreEarned: questionScore, type: "MC" };
     } else if (type === "TF") {
       const totalTF = key.length;
       let countCorrect = 0;
@@ -466,28 +412,17 @@ exports.submitExam = functions.https.onCall(async (data, context) => {
       if (countCorrect >= 1 && countCorrect <= tfScores.length) {
         questionScore = tfScores[countCorrect - 1];
       }
-      detailedResults[`q${i}`] = {
-        userAnswer: userSubAnswers,
-        correctAnswer: key,
-        scoreEarned: questionScore,
-        type: "TF",
-      };
+      detailedResults[`q${i}`] = { userAnswer: userSubAnswers, correctAnswer: key, scoreEarned: questionScore, type: "TF" };
     } else if (type === "Numeric") {
       if (parseFloat(userAnswer) === parseFloat(key)) {
         questionScore = parseFloat(cores[2] || 0);
       }
-      detailedResults[`q${i}`] = {
-        userAnswer: userAnswer,
-        correctAnswer: key,
-        scoreEarned: questionScore,
-        type: "Numeric",
-      };
+      detailedResults[`q${i}`] = { userAnswer: userAnswer, correctAnswer: key, scoreEarned: questionScore, type: "Numeric" };
     }
     score += questionScore;
   });
-
   await db.collection("submissions").add({
-    teacherId: teacherId,
+    teacherId: teacherDoc.id,
     timestamp: admin.firestore.FieldValue.serverTimestamp(),
     examCode: examCode,
     studentName: studentName,
@@ -495,8 +430,6 @@ exports.submitExam = functions.https.onCall(async (data, context) => {
     answers: answers,
     score: parseFloat(score.toFixed(2)),
   });
-  functions.logger.info(`Student ${studentName} submitted exam ${examCode} for teacher ${teacherAlias} with score ${score.toFixed(2)}.`);
-
   return {
     score: parseFloat(score.toFixed(2)),
     examData: {
@@ -508,4 +441,15 @@ exports.submitExam = functions.https.onCall(async (data, context) => {
     },
     detailedResults: detailedResults,
   };
+});
+
+/**
+ * Hàm kiểm tra đơn giản để xem Cloud Functions có hoạt động không.
+ * @param {Object} data - Dữ liệu không sử dụng.
+ * @param {Object} context - Ngữ cảnh xác thực (không bắt buộc).
+ * @returns {Object} Một thông báo thành công.
+ */
+exports.helloWorldTest = functions.https.onCall((data, context) => {
+  functions.logger.info("Hello World Test: Hàm đã được gọi!");
+  return { message: "Hello from Firebase Cloud Functions!" };
 });

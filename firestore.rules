@@ -1,18 +1,51 @@
-rules_version='2'
+// firestore.rules
+rules_version = '2'; // Sử dụng phiên bản rules mới nhất
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Quy tắc cho collection 'users' (Giáo viên)
+    // Mỗi giáo viên chỉ có thể đọc và cập nhật thông tin hồ sơ của CHÍNH MÌNH (dựa trên UID).
+    // Cho phép tạo mới hồ sơ khi đăng nhập lần đầu (UID sẽ khớp với request.auth.uid).
+    // Không cho phép xóa hồ sơ qua client.
+    match /users/{userId} {
+      allow read, update: if request.auth.uid == userId;
+      allow create: if request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    // Quy tắc cho collection 'exams' (Đề thi)
+    match /exams/{examId} {
+      // Giáo viên chỉ có thể đọc, tạo, cập nhật, xóa đề thi của MÌNH.
+      // teacherId trong document của đề thi phải khớp với UID của giáo viên đang yêu cầu.
+      allow read, write: if request.auth.uid != null && request.auth.uid == resource.data.teacherId;
+      // QUAN TRỌNG: KHÔNG CÓ QUY TẮC NÀO CHO PHÉP HỌC SINH ĐỌC TRỰC TIẾP TỪ ĐÂY.
+      // Việc đọc đề thi (phần không nhạy cảm) cho học sinh sẽ được thực hiện thông qua Cloud Functions
+      // (hàm `loadExamForStudent`), đảm bảo an toàn vì Cloud Functions có quyền Admin.
+    }
+
+    // Quy tắc cho collection 'classes' (Lớp học)
+    match /classes/{classId} {
+      // Giáo viên chỉ có thể đọc, tạo, cập nhật, xóa danh sách lớp của MÌNH.
+      // teacherId trong document của lớp phải khớp với UID của giáo viên đang yêu cầu.
+      allow read, write: if request.auth.uid != null && request.auth.uid == resource.data.teacherId;
+      // Tương tự exams, học sinh không được đọc trực tiếp từ đây.
+      // Việc tải danh sách lớp cho học sinh sẽ qua Cloud Functions (hàm `getClassesForStudent`).
+    }
+
+    // Quy tắc cho collection 'submissions' (Bài nộp của học sinh)
+    match /submissions/{submissionId} {
+      // Giáo viên chỉ có thể đọc bài nộp của học sinh thuộc về đề thi của MÌNH.
+      // resource.data.teacherId là ID của giáo viên trong bài nộp.
+      allow read: if request.auth.uid != null && request.auth.uid == resource.data.teacherId;
+      // KHÔNG CHO PHÉP bất kỳ client nào (kể cả giáo viên) ghi dữ liệu trực tiếp vào đây.
+      // Việc ghi bài nộp sẽ do Cloud Functions xử lý (hàm `submitExam`), đảm bảo tính toàn vẹn và bảo mật.
+      allow write: if false;
+    }
+
+    // Quy tắc mặc định cho mọi thứ khác - không cho phép truy cập nếu không có quy tắc cụ thể.
     match /{document=**} {
-      // This rule allows anyone with your database reference to view, edit,
-      // and delete all data in your database. It is useful for getting
-      // started, but it is configured to expire after 30 days because it
-      // leaves your app open to attackers. At that time, all client
-      // requests to your database will be denied.
-      //
-      // Make sure to write security rules for your app before that time, or
-      // else all client requests to your database will be denied until you
-      // update your rules.
-      allow read, write: if request.time < timestamp.date(2025, 7, 26);
+      allow read, write: if false;
     }
   }
 }
