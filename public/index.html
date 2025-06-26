@@ -4,42 +4,30 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hệ thống Thi Online - tracnghiemonline</title>
-
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-
-    <!-- Font Awesome (for icons) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-
-    <!-- Your Custom CSS -->
     <link rel="stylesheet" href="css/style.css" />
-
-    <!-- Firebase SDKs (Compatibility version) -->
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-functions-compat.js"></script>
-
-    <!-- SweetAlert2 (for beautiful alerts) -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
 
-    <!-- Teacher Login/Management Screen (hidden by default) -->
     <div id="teacherLogin" class="container" style="display:none;">
-      <h2>Chào mừng Giáo viên!</h2>
+      <h2>Chào mừng Giáo viên</h2>
       <button onclick="signInWithGoogle()" class="btn btn-google"><i class="fab fa-google"></i> Đăng nhập với Google</button>
-      <div id="teacherInfo" style="margin-top:20px;"></div>
-      <label for="teacherAliasInput" style="display:block; text-align:left; margin-top: 15px;">Mã Alias của bạn:</label>
+      <div id="teacherInfo"></div>
+      <label for="teacherAliasInput">Mã Alias của bạn:</label>
       <input type="text" id="teacherAliasInput" placeholder="Ví dụ: sangmath" />
       <button onclick="updateTeacherAlias()" class="btn btn-primary">Cập nhật Alias</button>
-      <button onclick="showTeacherDashboard()" class="btn btn-secondary">Quản lý Đề thi</button>
+      <button onclick="showTeacherDashboard()" class="btn btn-secondary">Quản lý</button>
       <button onclick="signOut()" class="btn btn-danger">Đăng xuất</button>
     </div>
 
-    <!-- Student Login Screen -->
     <div id="loginScreen" class="login-container">
       <h2>Vào thi</h2>
       <label for="teacherAlias">Mã Giáo viên (Alias):</label>
@@ -50,22 +38,16 @@
       <label for="studentSelect">Chọn Họ tên:</label>
       <select id="studentSelect"><option value="">-- Chọn tên --</option></select>
       <button onclick="startExam()">Bắt đầu thi</button>
-      <p style="margin-top: 20px;">Bạn là giáo viên? <a href="#" onclick="showTeacherLogin()">Đăng nhập tại đây</a></p>
+      <p>Bạn là giáo viên? <a href="#" onclick="showTeacherLogin()">Đăng nhập tại đây</a></p>
     </div>
 
-    <!-- Loading Spinner -->
     <div id="loading" class="loading" style="display:none;">Đang tải...</div>
 
-    <!-- Countdown Timer -->
-    <div id="timer-container" class="timer-container" style="display:none;">
-      <div id="timer" class="timer"></div>
-    </div>
+    <div id="timer-container" class="timer-container" style="display:none;"><div id="timer"></div></div>
 
-    <!-- Quiz Interface -->
     <div id="quiz" style="display:none;"></div>
     <button id="gradeBtn" style="display:none;" onclick="gradeQuiz()"><i class="fas fa-check-circle"></i>Chấm điểm & Nộp bài</button>
 
-    <!-- Result Display -->
     <div id="result-container" style="display:none;">
       <h2>Kết quả bài thi</h2>
       <p>Họ tên: <span id="student-name"></span></p>
@@ -74,97 +56,40 @@
       <p>Điểm số: <span id="score" class="score"></span></p>
     </div>
 
-    <!-- public/index.html -->
-
-<!-- ... (các div khác như teacherLogin, loginScreen, v.v. giữ nguyên) ... -->
-
-<!-- Teacher Dashboard -->
-<div id="teacherDashboard" class="container" style="display:none; max-width: 95%;">
-  <h2>Bảng điều khiển</h2>
-  <p>Chào mừng <span id="teacherDashboardName"></span>. Bạn còn <span id="trialRemainingDays"></span> ngày dùng thử.</p>
-  
-  <div class="dashboard-controls">
-    <button onclick="saveAllData()" class="btn btn-primary"><i class="fas fa-save"></i> Lưu tất cả thay đổi</button>
-    <button onclick="viewSubmissions()" class="btn btn-info"><i class="fas fa-list-check"></i> Xem Bài nộp của học sinh</button>
-    <button onclick="hideTeacherDashboard()" class="btn btn-danger"><i class="fas fa-arrow-left"></i> Quay lại</button>
-  </div>
-
-  <!-- Tab Navigation -->
-  <div class="tab-nav">
-    <button class="tab-link active" onclick="openTab(event, 'Exams')">Quản lý Đề thi</button>
-    <button class="tab-link" onclick="openTab(event, 'Classes')">Quản lý Lớp học</button>
-  </div>
-
-  <!-- Tab Content: Exams -->
-  <div id="Exams" class="tab-content" style="display: block;">
-    <h3>Đề thi (Chỉnh sửa trực tiếp)</h3>
-    <p class="form-hint">Nhấp vào ô để sửa. Nhấp đúp để mở cửa sổ chỉnh sửa lớn hơn.</p>
-    <div class="table-wrapper">
-      <table id="exams-sheet-table">
-        <thead>
-          <tr>
-            <th>Mã Đề</th>
-            <th>Thời gian (phút)</th>
-            <th>Đáp án (phân cách bởi | )</th>
-            <th>Điểm (phân cách bởi | )</th>
-            <th>Nội dung câu hỏi (mỗi câu một dòng)</th>
-            <th>Lời giải (mỗi lời giải một dòng)</th>
-            <th>Hành động</th>
-          </tr>
-        </thead>
-        <tbody id="examsTableBody"></tbody>
-      </table>
+    <div id="teacherDashboard" class="container" style="display:none; max-width: 95%;">
+      <h2>Bảng điều khiển</h2>
+      <p>Chào mừng <span id="teacherDashboardName"></span>. Bạn còn <span id="trialRemainingDays"></span> ngày dùng thử.</p>
+      <div class="dashboard-controls">
+        <button onclick="saveAllData()" class="btn btn-primary"><i class="fas fa-save"></i> Lưu tất cả</button>
+        <button onclick="viewSubmissions()" class="btn btn-info"><i class="fas fa-list-check"></i> Xem Bài nộp</button>
+        <button onclick="hideTeacherDashboard()" class="btn btn-danger"><i class="fas fa-arrow-left"></i> Quay lại</button>
+      </div>
+      <div class="tab-nav">
+        <button class="tab-link active" onclick="openTab(event, 'Exams')">Quản lý Đề thi</button>
+        <button class="tab-link" onclick="openTab(event, 'Classes')">Quản lý Lớp học</button>
+      </div>
+      <div id="Exams" class="tab-content" style="display: block;">
+        <h3>Đề thi (Chỉnh sửa trực tiếp)</h3>
+        <p class="form-hint">Nhấp vào ô để sửa. Nhấp đúp để mở cửa sổ lớn hơn.</p>
+        <div class="table-wrapper"><table id="exams-sheet-table"><thead><tr><th>Mã Đề</th><th>Thời gian (phút)</th><th>Đáp án (|)</th><th>Điểm (|)</th><th>Câu hỏi (mỗi câu 1 dòng)</th><th>Lời giải (mỗi lời giải 1 dòng)</th><th>Hành động</th></tr></thead><tbody id="examsTableBody"></tbody></table></div>
+        <button onclick="addRowToExamsTable()" class="btn btn-secondary"><i class="fas fa-plus"></i> Thêm Đề thi</button>
+      </div>
+      <div id="Classes" class="tab-content">
+        <h3>Lớp học (Chỉnh sửa trực tiếp)</h3>
+        <p class="form-hint">Nhấp vào ô để sửa. Dán danh sách học sinh, mỗi em một dòng.</p>
+        <div class="table-wrapper"><table id="classes-sheet-table"><thead><tr><th>Tên Lớp</th><th>Danh sách Học sinh (mỗi em một dòng)</th><th>Hành động</th></tr></thead><tbody id="classesTableBody"></tbody></table></div>
+        <button onclick="addRowToClassesTable()" class="btn btn-secondary"><i class="fas fa-plus"></i> Thêm Lớp</button>
+      </div>
+      <div id="Submissions" class="tab-content">
+        <h3>Bài nộp của học sinh</h3>
+        <div class="table-wrapper"><table><thead><tr><th>Thời gian</th><th>Mã đề</th><th>Họ tên</th><th>Lớp</th><th>Điểm</th></tr></thead><tbody id="submissionsTableBody"></tbody></table></div>
+      </div>
     </div>
-    <button onclick="addRowToExamsTable()" class="btn btn-secondary" style="margin-top: 15px;"><i class="fas fa-plus"></i> Thêm Đề thi mới</button>
-  </div>
 
-  <!-- Tab Content: Classes -->
-  <div id="Classes" class="tab-content">
-    <h3>Lớp học (Chỉnh sửa trực tiếp)</h3>
-    <p class="form-hint">Nhấp vào ô để sửa. Dán danh sách học sinh, mỗi em một dòng.</p>
-    <div class="table-wrapper">
-      <table id="classes-sheet-table">
-        <thead>
-          <tr>
-            <th>Tên Lớp</th>
-            <th>Danh sách Học sinh (mỗi em một dòng)</th>
-            <th>Hành động</th>
-          </tr>
-        </thead>
-        <tbody id="classesTableBody"></tbody>
-      </table>
+    <div id="editorModal" class="modal-backdrop" style="display: none;">
+      <div class="modal-content"><h2 id="editorTitle">Chỉnh sửa</h2><textarea id="editorTextarea"></textarea><div class="modal-actions"><button onclick="closeEditorModal()" class="btn btn-secondary">Hủy</button><button onclick="saveEditorContent()" class="btn btn-primary">Lưu</button></div></div>
     </div>
-    <button onclick="addRowToClassesTable()" class="btn btn-secondary" style="margin-top: 15px;"><i class="fas fa-plus"></i> Thêm Lớp mới</button>
-  </div>
 
-  <!-- Tab Content: Submissions -->
-  <div id="Submissions" class="tab-content">
-    <h3>Bài nộp của học sinh</h3>
-    <div class="table-wrapper">
-        <table>
-            <thead><tr><th>Thời gian</th><th>Mã đề</th><th>Họ tên</th><th>Lớp</th><th>Điểm</th></tr></thead>
-            <tbody id="submissionsTableBody"></tbody>
-        </table>
-    </div>
-  </div>
-</div>
-
-<!-- Modal chỉnh sửa nội dung lớn -->
-<div id="editorModal" class="modal-backdrop" style="display: none;">
-  <div class="modal-content" style="max-width: 80%; height: 80%;">
-    <h2 id="editorTitle">Chỉnh sửa nội dung</h2>
-    <textarea id="editorTextarea" style="width: 100%; height: calc(100% - 120px); resize: none;"></textarea>
-    <div class="modal-actions">
-      <button onclick="closeEditorModal()" class="btn btn-secondary">Hủy</button>
-      <button onclick="saveEditorContent()" class="btn btn-primary">Lưu</button>
-    </div>
-  </div>
-</div>
-
-<!-- ... (phần còn lại của body và script tag) ... -->
-
-    <!-- Your Custom JavaScript (must be at the end of the body) -->
     <script src="js/main.js"></script>
-
 </body>
 </html>
