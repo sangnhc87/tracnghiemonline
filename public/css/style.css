@@ -660,3 +660,69 @@ body {
 .delete-row-btn:hover {
   color: #a71d2a;
 }
+/* Thêm vào cuối file public/css/style.css */
+
+/* Tab Navigation */
+.tab-nav {
+  overflow: hidden;
+  border-bottom: 1px solid #ccc;
+  margin-bottom: 20px;
+}
+.tab-nav button {
+  background-color: inherit;
+  float: left;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 14px 16px;
+  transition: 0.3s;
+  font-size: 17px;
+  color: #555;
+  border-radius: 8px 8px 0 0;
+  box-shadow: none !important;
+}
+.tab-nav button:hover {
+  background-color: #ddd;
+}
+.tab-nav button.active {
+  background-color: #007bff;
+  color: white;
+}
+.tab-content {
+  display: none;
+  padding: 6px 12px;
+}
+
+/* Cải thiện bảng "giống sheet" */
+#exams-sheet-table td[contenteditable="true"],
+#classes-sheet-table td[contenteditable="true"] {
+  background-color: #fff;
+  white-space: pre-wrap; /* Cho phép xuống dòng bên trong ô */
+  word-break: break-word;
+  max-height: 150px; /* Giới hạn chiều cao ô */
+  overflow-y: auto; /* Thêm thanh cuộn nếu nội dung quá dài */
+  display: block; /* Cần thiết để max-height và overflow hoạt động trên <td> */
+}
+#exams-sheet-table td[contenteditable="true"]:focus,
+#classes-sheet-table td[contenteditable="true"]:focus {
+  background-color: #e3f2fd;
+  outline: 2px solid #007bff;
+}
+
+/* Style cho modal chỉnh sửa lớn */
+#editorModal .modal-content {
+  max-width: 80vw;
+  height: 80vh;
+}
+#editorTextarea {
+  width: 100%;
+  height: calc(100% - 120px);
+  resize: none;
+  font-family: monospace;
+  font-size: 16px;
+  line-height: 1.5;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 10px;
+  box-sizing: border-box;
+}

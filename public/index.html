@@ -74,55 +74,94 @@
       <p>Điểm số: <span id="score" class="score"></span></p>
     </div>
 
-    <!-- Teacher Dashboard -->
-    <div id="teacherDashboard" class="container" style="display:none; max-width: 95%;">
-      <h2>Bảng điều khiển</h2>
-      <p>Chào mừng <span id="teacherDashboardName"></span>. Bạn còn <span id="trialRemainingDays"></span> ngày dùng thử.</p>
-      <div class="dashboard-controls">
-        <button onclick="showExamsManagement()" class="btn btn-secondary"><i class="fas fa-edit"></i> Quản lý Đề thi</button>
-        <button onclick="saveAllExams()" class="btn btn-primary"><i class="fas fa-save"></i> Lưu tất cả thay đổi</button>
-        <button onclick="viewSubmissions()" class="btn btn-info"><i class="fas fa-list-check"></i> Xem Bài nộp</button>
-        <button onclick="hideTeacherDashboard()" class="btn btn-danger"><i class="fas fa-arrow-left"></i> Quay lại</button>
-      </div>
+    <!-- public/index.html -->
 
-      <!-- Exams Management View (Sheet-like interface) -->
-      <div id="examsManagementView" class="table-wrapper" style="margin-top: 20px;">
-        <h3>Quản lý Đề thi (Chỉnh sửa trực tiếp trên bảng)</h3>
-        <p class="form-hint">Nhấp vào các ô để sửa. Nội dung dài có thể xuống dòng.</p>
-        <table id="exams-sheet-table">
-            <thead>
-                <tr>
-                    <th>Mã Đề</th>
-                    <th>Thời gian (phút)</th>
-                    <th>Đáp án (phân cách bởi | )</th>
-                    <th>Cấu trúc điểm (phân cách bởi | )</th>
-                    <th>Nội dung câu hỏi (mỗi câu một dòng)</th>
-                    <th>Lời giải (mỗi lời giải một dòng)</th>
-                    <th>Hành động</th>
-                </tr>
-            </thead>
-            <tbody id="examsTableBody">
-                <!-- Dữ liệu đề thi sẽ được JS chèn vào đây -->
-            </tbody>
-        </table>
-        <button onclick="addRowToExamsTable()" class="btn btn-secondary" style="margin-top: 15px;"><i class="fas fa-plus"></i> Thêm hàng mới</button>
-      </div>
-      
-      <!-- Submissions View -->
-      <div id="submissionsView" style="display:none; margin-top: 20px;" class="dashboard-section">
-          <h3>Bài nộp của học sinh</h3>
-          <div class="table-wrapper">
-              <table>
-                  <thead>
-                      <tr><th>Thời gian</th><th>Mã đề</th><th>Họ tên</th><th>Lớp</th><th>Điểm</th></tr>
-                  </thead>
-                  <tbody id="submissionsTableBody">
-                      <!-- Dữ liệu bài nộp sẽ được JS chèn vào đây -->
-                  </tbody>
-              </table>
-          </div>
-      </div>
+<!-- ... (các div khác như teacherLogin, loginScreen, v.v. giữ nguyên) ... -->
+
+<!-- Teacher Dashboard -->
+<div id="teacherDashboard" class="container" style="display:none; max-width: 95%;">
+  <h2>Bảng điều khiển</h2>
+  <p>Chào mừng <span id="teacherDashboardName"></span>. Bạn còn <span id="trialRemainingDays"></span> ngày dùng thử.</p>
+  
+  <div class="dashboard-controls">
+    <button onclick="saveAllData()" class="btn btn-primary"><i class="fas fa-save"></i> Lưu tất cả thay đổi</button>
+    <button onclick="viewSubmissions()" class="btn btn-info"><i class="fas fa-list-check"></i> Xem Bài nộp của học sinh</button>
+    <button onclick="hideTeacherDashboard()" class="btn btn-danger"><i class="fas fa-arrow-left"></i> Quay lại</button>
+  </div>
+
+  <!-- Tab Navigation -->
+  <div class="tab-nav">
+    <button class="tab-link active" onclick="openTab(event, 'Exams')">Quản lý Đề thi</button>
+    <button class="tab-link" onclick="openTab(event, 'Classes')">Quản lý Lớp học</button>
+  </div>
+
+  <!-- Tab Content: Exams -->
+  <div id="Exams" class="tab-content" style="display: block;">
+    <h3>Đề thi (Chỉnh sửa trực tiếp)</h3>
+    <p class="form-hint">Nhấp vào ô để sửa. Nhấp đúp để mở cửa sổ chỉnh sửa lớn hơn.</p>
+    <div class="table-wrapper">
+      <table id="exams-sheet-table">
+        <thead>
+          <tr>
+            <th>Mã Đề</th>
+            <th>Thời gian (phút)</th>
+            <th>Đáp án (phân cách bởi | )</th>
+            <th>Điểm (phân cách bởi | )</th>
+            <th>Nội dung câu hỏi (mỗi câu một dòng)</th>
+            <th>Lời giải (mỗi lời giải một dòng)</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody id="examsTableBody"></tbody>
+      </table>
     </div>
+    <button onclick="addRowToExamsTable()" class="btn btn-secondary" style="margin-top: 15px;"><i class="fas fa-plus"></i> Thêm Đề thi mới</button>
+  </div>
+
+  <!-- Tab Content: Classes -->
+  <div id="Classes" class="tab-content">
+    <h3>Lớp học (Chỉnh sửa trực tiếp)</h3>
+    <p class="form-hint">Nhấp vào ô để sửa. Dán danh sách học sinh, mỗi em một dòng.</p>
+    <div class="table-wrapper">
+      <table id="classes-sheet-table">
+        <thead>
+          <tr>
+            <th>Tên Lớp</th>
+            <th>Danh sách Học sinh (mỗi em một dòng)</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody id="classesTableBody"></tbody>
+      </table>
+    </div>
+    <button onclick="addRowToClassesTable()" class="btn btn-secondary" style="margin-top: 15px;"><i class="fas fa-plus"></i> Thêm Lớp mới</button>
+  </div>
+
+  <!-- Tab Content: Submissions -->
+  <div id="Submissions" class="tab-content">
+    <h3>Bài nộp của học sinh</h3>
+    <div class="table-wrapper">
+        <table>
+            <thead><tr><th>Thời gian</th><th>Mã đề</th><th>Họ tên</th><th>Lớp</th><th>Điểm</th></tr></thead>
+            <tbody id="submissionsTableBody"></tbody>
+        </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal chỉnh sửa nội dung lớn -->
+<div id="editorModal" class="modal-backdrop" style="display: none;">
+  <div class="modal-content" style="max-width: 80%; height: 80%;">
+    <h2 id="editorTitle">Chỉnh sửa nội dung</h2>
+    <textarea id="editorTextarea" style="width: 100%; height: calc(100% - 120px); resize: none;"></textarea>
+    <div class="modal-actions">
+      <button onclick="closeEditorModal()" class="btn btn-secondary">Hủy</button>
+      <button onclick="saveEditorContent()" class="btn btn-primary">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- ... (phần còn lại của body và script tag) ... -->
 
     <!-- Your Custom JavaScript (must be at the end of the body) -->
     <script src="js/main.js"></script>
