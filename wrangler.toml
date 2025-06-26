@@ -1,0 +1,8 @@
+# wrangler.toml
+name = "tracnghiemonline" # Tên dự án Pages của bạn trên Cloudflare
+pages_build_output_dir = "public" # Chỉ định rõ thư mục output là "public"
+
+[vars]
+# Bạn có thể thêm các biến môi trường khác ở đây nếu cần,
+# nhưng CLOUDFLARE_PAGES_IGNORED_DIRS thường không được đặt ở đây.
+# Tuy nhiên, việc có file này sẽ thay đổi cách wrangler hoạt động.
