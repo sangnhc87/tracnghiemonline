@@ -1,4 +1,6 @@
-// public/js/main.js
+// public/js/main.js (Phiên bản cuối cùng)
+
+// --- BIẾN TOÀN CỤC & HÀM TIỆN ÍCH ---
 let examData = null, timerInterval = null, classData = {}, currentTeacherId = null, currentTeacherAlias = null, currentEditingCell = null;
 const getEl = (id) => document.getElementById(id);
 
@@ -14,10 +16,10 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth(), db = firebase.firestore(), functions = firebase.functions();
 
+// --- HÀM QUẢN LÝ GIAO DIỆN ---
 function hideAllScreens() { ["loginScreen", "teacherLogin", "loading", "timer-container", "quiz", "gradeBtn", "result-container", "teacherDashboard"].forEach(id => getEl(id).style.display = "none"); }
 function showLoginScreen() { hideAllScreens(); getEl("loginScreen").style.display = "block"; }
 function showTeacherLogin() { hideAllScreens(); getEl("teacherLogin").style.display = "block"; }
-
 function openTab(evt, tabName) {
   document.querySelectorAll(".tab-content").forEach(tab => tab.style.display = "none");
   document.querySelectorAll(".tab-link").forEach(link => link.classList.remove("active"));
@@ -25,12 +27,14 @@ function openTab(evt, tabName) {
   evt.currentTarget.classList.add("active");
 }
 
+// --- HÀM XÁC THỰC & QUẢN LÝ TÀI KHOẢN GIÁO VIÊN ---
 function signInWithGoogle() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).then(result => { const user = result.user; currentTeacherId = user.uid; functions.httpsCallable("onTeacherSignIn")().then(res => { const data = res.data; getEl("teacherInfo").innerHTML = `Chào mừng <b>${user.displayName||user.email}</b>!<br>Trial đến: <b>${new Date(data.trialEndDate).toLocaleDateString()}</b>.<br>Còn <b>${Math.ceil((new Date(data.trialEndDate).getTime()-Date.now())/(1e3*60*60*24))}</b> ngày.<br>Alias: <b>${data.teacherAlias||"Chưa có"}</b>`; currentTeacherAlias = data.teacherAlias; getEl("teacherAliasInput").value = data.teacherAlias||""; }).catch(error => { Swal.fire("Lỗi", `Lỗi xử lý đăng nhập: ${error.message||error.details}`, "error"); auth.signOut(); }); }).catch(error => Swal.fire("Lỗi", "Lỗi đăng nhập Google: " + error.message, "error")); }
 function signOut() { auth.signOut().then(() => { Swal.fire("Thông báo", "Đăng xuất thành công!", "success"); hideAllScreens(); getEl("loginScreen").style.display = "block"; }).catch(error => Swal.fire("Lỗi", "Lỗi đăng xuất: " + error.message, "error")); }
 function updateTeacherAlias() { if (!currentTeacherId) { Swal.fire("Cảnh báo", "Bạn cần đăng nhập.", "warning"); return; } const alias = getEl("teacherAliasInput").value.trim(); if (!alias) { Swal.fire("Cảnh báo", "Alias không được trống.", "warning"); return; } functions.httpsCallable("updateTeacherAlias")({ alias: alias }).then(res => { Swal.fire("Thông báo", res.data.message, "success"); getEl("teacherInfo").innerHTML = getEl("teacherInfo").innerHTML.replace(/Alias: <b[^>]*>.*<\/b>/, `Alias: <b>${alias}</b>`); }).catch(error => Swal.fire("Lỗi", `Lỗi cập nhật Alias: ${error.message||error.details}`, "error")); }
-async function showTeacherDashboard() { if (!currentTeacherId) { Swal.fire("Cảnh báo", "Bạn cần đăng nhập.", "warning"); return; } hideAllScreens(); getEl("teacherDashboard").style.display = "block"; try { const trialResult = await functions.httpsCallable("checkTrialStatus")(); getEl("trialRemainingDays").textContent = trialResult.data.isActive ? trialResult.data.remainingDays : "đã hết!"; const userDoc = await db.collection("users").doc(currentTeacherId).get(); getEl("teacherDashboardName").textContent = userDoc.exists ? userDoc.data().name || userDoc.data().email : "Không rõ"; loadTeacherDataForDashboard(); } catch (error) { Swal.fire("Lỗi", `Không thể tải dữ liệu dashboard: ${error.message||error.details}`, "error"); } }
-function hideTeacherDashboard() { hideAllScreens(); getEl("loginScreen").style.display = "block"; }
+async function showTeacherDashboard() { if (!currentTeacherId) { Swal.fire("Cảnh báo", "Bạn cần đăng nhập.", "warning"); return; } hideAllScreens(); getEl("teacherDashboard").style.display = "block"; try { const trialResult = await functions.httpsCallable("checkTrialStatus")(); getEl("trialRemainingDays").textContent = trialResult.data.isActive ? trialResult.data.remainingDays : "đã hết!"; const userDoc = await db.collection("users").doc(currentTeacherId).get(); getEl("teacherDashboardName").textContent = userDoc.exists ? userDoc.data().name || userDoc.data().email : ""; loadTeacherDataForDashboard(); } catch (error) { Swal.fire("Lỗi", `Không thể tải dữ liệu dashboard: ${error.message||error.details}`, "error"); } }
+function hideTeacherDashboard() { hideAllScreens(); showTeacherLogin(); }
 
+// --- DASHBOARD GIÁO VIÊN: QUẢN LÝ DẠNG SHEET ---
 async function loadTeacherDataForDashboard() {
   openTab({ currentTarget: document.querySelector(".tab-link.active") || document.querySelector(".tab-link") }, "Exams");
   const examsTableBody = getEl("examsTableBody"), classesTableBody = getEl("classesTableBody");
@@ -49,14 +53,13 @@ function renderClassesAsSheet(classes) { const tableBody = getEl("classesTableBo
 function addRowToClassesTable(cls = {}) { const row = getEl("classesTableBody").insertRow(); row.dataset.classId = cls.id || ""; row.insertCell().textContent = cls.name || ""; row.cells[0].addEventListener("dblclick", () => openEditorModal(row.cells[0])); row.insertCell().textContent = Array.isArray(cls.students) ? cls.students.join("\n") : ""; row.cells[1].addEventListener("dblclick", () => openEditorModal(row.cells[1])); for(let i=0; i<2; i++) { row.cells[i].contentEditable = true; } row.insertCell().innerHTML = `<button class="delete-row-btn" onclick="deleteRow(this, 'class')" title="Xóa"><i class="fas fa-trash-alt"></i></button>`; }
 
 function deleteRow(button, type) { const row = button.parentElement.parentElement; const id = type === "exam" ? row.dataset.examId : row.dataset.classId; const name = row.cells[0].textContent; if (id) { Swal.fire({ title: 'Xác nhận xóa', text: `Bạn có chắc muốn xóa "${name}"?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Xóa!' }).then(async (result) => { if (result.isConfirmed) { const functionName = type === 'exam' ? "deleteExam" : "deleteClass"; const data = type === 'exam' ? { examId: id } : { classId: id }; try { await functions.httpsCallable(functionName)(data); Swal.fire("Đã xóa!", "Dữ liệu đã được xóa.", "success"); row.remove(); } catch (error) { Swal.fire("Lỗi", `Lỗi khi xóa: ${error.message||error.details}`, "error"); } } }); } else { row.remove(); } }
-
 async function saveAllData() { const examsToSave = Array.from(getEl("examsTableBody").rows).map(row => ({ id: row.dataset.examId||null, examCode: row.cells[0].textContent.trim(), timeLimit: parseInt(row.cells[1].textContent.trim(),10)||90, keys: row.cells[2].textContent.trim(), cores: row.cells[3].textContent.trim(), questionTexts: row.cells[4].textContent.trim(), explanations: row.cells[5].textContent.trim() })).filter(e => e.examCode); const classesToSave = Array.from(getEl("classesTableBody").rows).map(row => ({ id: row.dataset.classId||null, name: row.cells[0].textContent.trim(), students: row.cells[1].textContent.trim().split(/\r?\n/).filter(s => s) })).filter(c => c.name); if (examsToSave.length === 0 && classesToSave.length === 0) { Swal.fire("Thông tin", "Không có dữ liệu để lưu.", "info"); return; } Swal.fire({ title: "Đang lưu...", allowOutsideClick: false, didOpen: () => Swal.showLoading() }); try { await functions.httpsCallable("saveAllData")({ exams: examsToSave, classes: classesToSave }); Swal.fire("Thành công!", "Đã lưu tất cả thay đổi.", "success"); loadTeacherDataForDashboard(); } catch (error) { Swal.fire("Lỗi", `Lỗi khi lưu dữ liệu: ${error.message||error.details}`, "error"); } }
 
 function openEditorModal(cell) { currentEditingCell = cell; getEl("editorTitle").textContent = `Chỉnh sửa nội dung`; getEl("editorTextarea").value = cell.textContent; getEl("editorModal").style.display = "flex"; getEl("editorTextarea").focus(); }
 function closeEditorModal() { getEl("editorModal").style.display = "none"; currentEditingCell = null; }
 function saveEditorContent() { if (currentEditingCell) { currentEditingCell.textContent = getEl("editorTextarea").value; } closeEditorModal(); }
 
-function viewSubmissions() { openTab({ currentTarget: document.querySelector(".tab-link") }, "Submissions"); loadSubmissions(); }
+function viewSubmissions() { openTab({ currentTarget: document.querySelector(".tab-link.active") || document.querySelector(".tab-link") }, "Submissions"); loadSubmissions(); }
 async function loadSubmissions() { const tableBody = getEl("submissionsTableBody"); tableBody.innerHTML = `<tr><td colspan="5">Đang tải...</td></tr>`; try { const submissionsSnapshot = await db.collection("submissions").where("teacherId","==",currentTeacherId).orderBy("timestamp","desc").get(); tableBody.innerHTML = ""; if (submissionsSnapshot.empty) { tableBody.innerHTML = `<tr><td colspan="5">Chưa có bài nộp nào.</td></tr>`; return; } submissionsSnapshot.forEach(doc => { const data=doc.data(); const row=tableBody.insertRow(); row.insertCell().textContent=data.timestamp?data.timestamp.toDate().toLocaleString():"N/A"; row.insertCell().textContent=data.examCode; row.insertCell().textContent=data.studentName; row.insertCell().textContent=data.className; row.insertCell().textContent=data.score.toFixed(2); }); } catch(error) { Swal.fire("Lỗi", `Lỗi tải bài nộp: ${error.message||error.details}`,"error"); tableBody.innerHTML=`<tr><td colspan="5">Lỗi khi tải bài nộp.</td></tr>`; } }
 
 // --- HÀM CHO HỌC SINH ---

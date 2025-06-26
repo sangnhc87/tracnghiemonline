@@ -409,3 +409,42 @@ exports.submitExam = functions.https.onCall(async (data, context) => {
   };
 });
 
+// Thêm vào cuối file firebase-functions/index.js
+
+exports.getTeacherFullClass = functions.https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Chỉ giáo viên được phép.");
+  const { classId } = data;
+  if (!classId) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID của lớp.");
+  const doc = await db.collection("classes").doc(classId).get();
+  if (!doc.exists || doc.data().teacherId !== context.auth.uid) throw new functions.https.HttpsError("permission-denied", "Không có quyền xem.");
+  return { id: doc.id, ...doc.data() };
+});
+
+exports.addClass = functions.https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Chỉ giáo viên được phép.");
+  const { classData } = data;
+  if (!classData.name) throw new functions.https.HttpsError("invalid-argument", "Tên lớp không được trống.");
+  const newClassData = {
+    teacherId: context.auth.uid,
+    name: String(classData.name).trim(),
+    students: Array.isArray(classData.students) ? classData.students : [],
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+  await db.collection("classes").add(newClassData);
+  return { success: true, message: "Đã thêm lớp học thành công!" };
+});
+
+exports.updateClass = functions.https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Chỉ giáo viên được phép.");
+  const { classId, classData } = data;
+  if (!classId) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID của lớp.");
+  const classRef = db.collection("classes").doc(classId);
+  const doc = await classRef.get();
+  if (!doc.exists || doc.data().teacherId !== context.auth.uid) throw new functions.https.HttpsError("permission-denied", "Không có quyền sửa.");
+  const updatedClassData = {
+    name: String(classData.name).trim(),
+    students: Array.isArray(classData.students) ? classData.students : [],
+  };
+  await classRef.update(updatedClassData);
+  return { success: true, message: "Đã cập nhật lớp học thành công!" };
+});

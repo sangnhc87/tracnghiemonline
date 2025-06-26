@@ -17,7 +17,7 @@
 </head>
 <body>
 
-    <div id="teacherLogin" class="container" style="display:none;">
+    <div id="teacherLogin" class="container">
       <h2>Chào mừng Giáo viên</h2>
       <button onclick="signInWithGoogle()" class="btn btn-google"><i class="fab fa-google"></i> Đăng nhập với Google</button>
       <div id="teacherInfo"></div>
@@ -50,46 +50,60 @@
 
     <div id="result-container" style="display:none;">
       <h2>Kết quả bài thi</h2>
-      <p>Họ tên: <span id="student-name"></span></p>
-      <p>Lớp: <span id="student-class"></span></p>
-      <p>Mã đề: <span id="exam-code"></span></p>
-      <p>Điểm số: <span id="score" class="score"></span></p>
+      <p>Họ tên: <span id="student-name"></span></p><p>Lớp: <span id="student-class"></span></p>
+      <p>Mã đề: <span id="exam-code"></span></p><p>Điểm số: <span id="score" class="score"></span></p>
     </div>
 
-    <div id="teacherDashboard" class="container" style="display:none; max-width: 95%;">
+    <div id="teacherDashboard" class="container" style="display:none; max-width: 90%;">
       <h2>Bảng điều khiển</h2>
       <p>Chào mừng <span id="teacherDashboardName"></span>. Bạn còn <span id="trialRemainingDays"></span> ngày dùng thử.</p>
       <div class="dashboard-controls">
-        <button onclick="saveAllData()" class="btn btn-primary"><i class="fas fa-save"></i> Lưu tất cả</button>
-        <button onclick="viewSubmissions()" class="btn btn-info"><i class="fas fa-list-check"></i> Xem Bài nộp</button>
         <button onclick="hideTeacherDashboard()" class="btn btn-danger"><i class="fas fa-arrow-left"></i> Quay lại</button>
       </div>
-      <div class="tab-nav">
-        <button class="tab-link active" onclick="openTab(event, 'Exams')">Quản lý Đề thi</button>
-        <button class="tab-link" onclick="openTab(event, 'Classes')">Quản lý Lớp học</button>
-      </div>
-      <div id="Exams" class="tab-content" style="display: block;">
-        <h3>Đề thi (Chỉnh sửa trực tiếp)</h3>
-        <p class="form-hint">Nhấp vào ô để sửa. Nhấp đúp để mở cửa sổ lớn hơn.</p>
-        <div class="table-wrapper"><table id="exams-sheet-table"><thead><tr><th>Mã Đề</th><th>Thời gian (phút)</th><th>Đáp án (|)</th><th>Điểm (|)</th><th>Câu hỏi (mỗi câu 1 dòng)</th><th>Lời giải (mỗi lời giải 1 dòng)</th><th>Hành động</th></tr></thead><tbody id="examsTableBody"></tbody></table></div>
-        <button onclick="addRowToExamsTable()" class="btn btn-secondary"><i class="fas fa-plus"></i> Thêm Đề thi</button>
-      </div>
-      <div id="Classes" class="tab-content">
-        <h3>Lớp học (Chỉnh sửa trực tiếp)</h3>
-        <p class="form-hint">Nhấp vào ô để sửa. Dán danh sách học sinh, mỗi em một dòng.</p>
-        <div class="table-wrapper"><table id="classes-sheet-table"><thead><tr><th>Tên Lớp</th><th>Danh sách Học sinh (mỗi em một dòng)</th><th>Hành động</th></tr></thead><tbody id="classesTableBody"></tbody></table></div>
-        <button onclick="addRowToClassesTable()" class="btn btn-secondary"><i class="fas fa-plus"></i> Thêm Lớp</button>
-      </div>
-      <div id="Submissions" class="tab-content">
-        <h3>Bài nộp của học sinh</h3>
-        <div class="table-wrapper"><table><thead><tr><th>Thời gian</th><th>Mã đề</th><th>Họ tên</th><th>Lớp</th><th>Điểm</th></tr></thead><tbody id="submissionsTableBody"></tbody></table></div>
+      <div class="dashboard-grid">
+        <div class="dashboard-column">
+          <h3><i class="fas fa-file-alt"></i> Đề thi</h3>
+          <div id="exam-list" class="item-list"></div>
+          <button onclick="showExamForm()" class="btn btn-primary"><i class="fas fa-plus"></i> Thêm Đề thi mới</button>
+        </div>
+        <div class="dashboard-column">
+          <h3><i class="fas fa-users"></i> Lớp học</h3>
+          <div id="class-list" class="item-list"></div>
+          <button onclick="showClassForm()" class="btn btn-primary"><i class="fas fa-plus"></i> Thêm Lớp mới</button>
+        </div>
+        <div class="dashboard-column">
+          <h3><i class="fas fa-list-check"></i> Bài nộp gần đây</h3>
+          <div id="submission-list" class="item-list"></div>
+        </div>
       </div>
     </div>
 
-    <div id="editorModal" class="modal-backdrop" style="display: none;">
-      <div class="modal-content"><h2 id="editorTitle">Chỉnh sửa</h2><textarea id="editorTextarea"></textarea><div class="modal-actions"><button onclick="closeEditorModal()" class="btn btn-secondary">Hủy</button><button onclick="saveEditorContent()" class="btn btn-primary">Lưu</button></div></div>
+    <div id="examFormModal" class="modal-backdrop" style="display: none;">
+      <div class="modal-content">
+        <h2 id="examFormTitle">Thêm Đề thi mới</h2>
+        <input type="hidden" id="examId" />
+        <div class="form-grid">
+          <div class="form-group"><label for="examFormCode">Mã Đề</label><input type="text" id="examFormCode" required></div>
+          <div class="form-group"><label for="examFormTime">Thời gian (phút)</label><input type="number" id="examFormTime" value="90" required></div>
+        </div>
+        <div class="form-group"><label for="examFormKeys">Đáp án (phân cách bởi |)</label><textarea id="examFormKeys" rows="3"></textarea></div>
+        <div class="form-group"><label for="examFormCores">Điểm (phân cách bởi |)</label><textarea id="examFormCores" rows="3"></textarea></div>
+        <div class="form-group"><label for="examFormQuestions">Câu hỏi (mỗi câu 1 dòng)</label><textarea id="examFormQuestions" rows="10"></textarea></div>
+        <div class="form-group"><label for="examFormExplanations">Lời giải (mỗi lời giải 1 dòng)</label><textarea id="examFormExplanations" rows="10"></textarea></div>
+        <div class="modal-actions"><button onclick="hideExamForm()" class="btn btn-secondary">Hủy</button><button onclick="handleExamFormSubmit()" class="btn btn-primary">Lưu</button></div>
+      </div>
     </div>
-
+    
+    <div id="classFormModal" class="modal-backdrop" style="display: none;">
+      <div class="modal-content">
+        <h2 id="classFormTitle">Thêm Lớp mới</h2>
+        <input type="hidden" id="classId" />
+        <div class="form-group"><label for="classFormName">Tên Lớp</label><input type="text" id="classFormName" required></div>
+        <div class="form-group"><label for="classFormStudents">Danh sách học sinh (mỗi em một dòng)</label><textarea id="classFormStudents" rows="15"></textarea></div>
+        <div class="modal-actions"><button onclick="hideClassForm()" class="btn btn-secondary">Hủy</button><button onclick="handleClassFormSubmit()" class="btn btn-primary">Lưu</button></div>
+      </div>
+    </div>
+    
     <script src="js/main.js"></script>
 </body>
 </html>
