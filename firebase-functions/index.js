@@ -365,6 +365,7 @@ exports.loadExamForStudent = functions.https.onCall(async (data, context) => {
   
   return {
     questionTexts: examData.questionTexts || [], 
+    explanations: examData.explanations || [], 
     timeLimit: examData.timeLimit || 90,
     questionTypes: questionTypes, // Return identified types to frontend for rendering
     tfCounts: tfCounts, // Return TF sub-answer counts

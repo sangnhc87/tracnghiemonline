@@ -2,44 +2,47 @@
 
 /* --- 1. CSS Custom Properties (Variables) --- */
 :root {
-  /* Colors */
-  --primary-color: #007bff; /* Main brand blue (default for Firebase components) */
+  /* Colors (Firebase defaults) */
+  --primary-color: #007bff; 
   --primary-color-dark: #0056b3;
-  --secondary-color: #6c757d; /* Grey for secondary actions */
+  --secondary-color: #6c757d; 
   --secondary-color-dark: #5a6268;
   --success-color: #28a745;
-  --success-color-light: #d4edda; /* Light green for success backgrounds */
+  --success-color-light: #d4edda; 
   --danger-color: #dc3545;
-  --danger-color-light: #f8d7da; /* Light red for error backgrounds */
+  --danger-color-light: #f8d7da; 
   --warning-color: #ffc107;
   --info-color: #17a2b8;
-  --info-color-light: #d1ecf1; /* Light cyan for info backgrounds */
+  --info-color-light: #d1ecf1; 
 
-  /* New/Overriding colors inspired by GAS style */
-  --gas-blue: #007BFF; /* Primary blue from GAS for buttons etc. */
-  --gas-blue-dark: #0056b3;
-  --gas-gradient-start: #5c6bc0; /* Indigo gradient start for main buttons */
-  --gas-gradient-end: #3949ab;   /* Darker Indigo gradient end */
-  --gas-green-mc-selected: #4CAF50; /* Green for MC selected */
-  --gas-blue-tf-T: #2196F3; /* Blue for TF True */
-  --gas-red-tf-F: #F44336; /* Red for TF False */
-  --gas-result-start: #f0f9ff; /* Light blue for result gradient */
-  --gas-result-end: #e0f7fa;   /* Lighter blue for result gradient */
-  --gas-result-score-color: #00796b; /* Teal for result score */
-  --gas-result-text-color: #004d40;  /* Dark teal for result text */
-  --gas-highlight-magenta: magenta; /* Magenta for correct answer highlights */
-  --gas-question-number-color: #e44d26; /* Orange-red for question number */
-  --gas-question-statement-bg: #eef; /* Light blue for question statement background */
-
-  --text-color-dark: #212529; /* Main text color */
-  --text-color-medium: #495057; /* Sub-headings, labels */
-  --text-color-light: #6c757d; /* Helper text, less important details */
+  /* Text & Backgrounds */
+  --text-color-dark: #212529; 
+  --text-color-medium: #495057; 
+  --text-color-light: #6c757d; 
   --white: #ffffff;
-  --off-white: #f8f9fa; /* Very light grey */
-  --background-light: #fafafa; /* Page background, lighter based on GAS's #fafafa */
+  --off-white: #f8f9fa; 
+  --background-light: #fafafa; /* Page background, inspired by GAS's #fafafa */
   --surface-color: var(--white); /* Card/container background */
   --border-color: #e9ecef; /* Light border */
-  --focus-ring-color: rgba(92, 107, 192, 0.3); /* Soft Indigo outline for focus, inspired by GAS */
+
+  /* New/Overriding colors inspired by GAS style */
+  --gas-primary-blue: #007BFF; /* Main action blue from GAS */
+  --gas-primary-blue-dark: #0056b3;
+  --gas-main-button-gradient-start: #5c6bc0; /* Indigo gradient start for main buttons */
+  --gas-main-button-gradient-end: #3949ab;   /* Darker Indigo gradient end */
+  --gas-mc-selected-green: #4CAF50; /* Green for MC selected option */
+  --gas-tf-true-blue: #2196F3; /* Blue for TF True */
+  --gas-tf-false-red: #F44336; /* Red for TF False */
+  --gas-question-number-color: #e44d26; /* Orange-red for question number */
+  --gas-question-statement-bg: #eef; /* Light blue for question statement background */
+  --gas-correct-highlight-magenta: magenta; /* Magenta for correct answer highlights */
+
+  /* Result screen specific colors (from GAS) */
+  --gas-result-bg-gradient-start: #f0f9ff; 
+  --gas-result-bg-gradient-end: #e0f7fa;   
+  --gas-result-score-color: #00796b; /* Teal for score display */
+  --gas-result-text-color: #004d40;  /* Dark teal for result text */
+
 
   /* Spacing */
   --spacing-xs: 4px;
@@ -64,16 +67,19 @@
   --border-radius-sm: 4px;
   --border-radius-md: 8px;
   --border-radius-lg: 12px;
-  --border-radius-xl: 16px; /* New: for login container */
-  --border-radius-xxl: 20px; /* New: for options, result */
+  --border-radius-xl: 16px; /* New: for some containers */
+  --border-radius-xxl: 20px; /* New: for login/main containers, options */
 
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15);
   --shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.12);
-  --shadow-gas-light: 0 4px 6px rgba(0, 0, 0, 0.1); /* For buttons */
-  --shadow-gas-medium: 0 8px 16px rgba(0,0,0,0.2); /* For containers */
-  --shadow-gas-strong: 0 12px 25px rgba(0, 0, 0, 0.15); /* For login container */
+  
+  /* Shadows inspired by GAS */
+  --shadow-gas-light: 0 4px 6px rgba(0, 0, 0, 0.1); 
+  --shadow-gas-medium: 0 8px 16px rgba(0,0,0,0.2); 
+  --shadow-gas-strong: 0 12px 25px rgba(0, 0, 0, 0.15); 
+  --shadow-gas-inner: inset 0 0 8px rgba(0, 0, 0, 0.1); /* For focused inputs */
 
 
   /* Transitions */
@@ -206,7 +212,7 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: var(--gas-gradient-start); 
+  border-color: var(--gas-main-button-gradient-start); 
   box-shadow: 0 0 10px var(--focus-ring-color); /* Stronger focus shadow from GAS */
   outline: none; 
 }
@@ -284,11 +290,11 @@ textarea {
 
 /* Special styling for the main "Start Exam" and "Grade & Submit" buttons (inspired by GAS) */
 #loginScreen .btn-primary, #gradeBtn.btn-success.btn-full {
-  background: linear-gradient(45deg, var(--gas-gradient-start), var(--gas-gradient-end));
+  background: linear-gradient(45deg, var(--gas-main-button-gradient-start), var(--gas-main-button-gradient-end));
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
 }
 #loginScreen .btn-primary:hover, #gradeBtn.btn-success.btn-full:hover {
-  background: linear-gradient(45deg, var(--gas-gradient-end), var(--gas-gradient-start)); /* Invert gradient on hover */
+  background: linear-gradient(45deg, var(--gas-main-button-gradient-end), var(--gas-main-button-gradient-start)); /* Invert gradient on hover */
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
 }
 
@@ -456,7 +462,7 @@ textarea {
 
 
 /* Multiple Choice & True/False Options */
-.mc-options, .tf-options {
+.mc-options, .tf-options-container { /* tf-options-container is the new wrapper for TF boxes */
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-md); /* More gap for options */
@@ -490,9 +496,9 @@ textarea {
 }
 
 .mc-option.selected { /* Selected styling from GAS */
-  background-color: var(--gas-green-mc-selected);
+  background-color: var(--gas-mc-selected-green);
   color: var(--white);
-  border-color: var(--gas-green-mc-selected);
+  border-color: var(--gas-mc-selected-green);
   box-shadow: 0 0 10px rgba(76,175,80,0.6);
 }
 
@@ -511,12 +517,12 @@ textarea {
 .tf-btn input { display: none; } /* Hide radio inputs inside tf-btn */
 
 .tf-btn.selected.T { /* Selected True from GAS */
-  background-color: var(--gas-blue-tf-T);
+  background-color: var(--gas-tf-true-blue);
   color: var(--white);
   box-shadow: none; /* Remove duplicate shadow from parent selected */
 }
 .tf-btn.selected.F { /* Selected False from GAS */
-  background-color: var(--gas-red-tf-F);
+  background-color: var(--gas-tf-false-red);
   color: var(--white);
   box-shadow: none; /* Remove duplicate shadow from parent selected */
 }
@@ -552,7 +558,7 @@ textarea {
 /* Correct/Incorrect Answer Feedback (Post-grading) */
 /* Shared highlight for correct answer in options */
 .correct-answer-highlight { 
-  border-color: var(--gas-highlight-magenta) !important;
+  border-color: var(--gas-correct-highlight-magenta) !important;
   box-shadow: 0 0 10px rgba(255, 0, 255, 0.6) !important; /* Magenta glow */
 }
 
@@ -568,7 +574,7 @@ textarea {
 .correct-answer-value { 
   font-size: var(--font-size-sm);
   font-weight: bold;
-  color: var(--gas-highlight-magenta);
+  color: var(--gas-correct-highlight-magenta);
   position: absolute; /* Position relative to parent option */
   bottom: 5px;
   left: 50%;
@@ -589,7 +595,7 @@ textarea {
 .toggle-explanation {
   display: block; 
   margin: var(--spacing-md) auto; 
-  background-color: var(--gas-blue); 
+  background-color: var(--gas-primary-blue); /* Blue button from GAS */
   color: var(--white);
   padding: var(--spacing-sm) var(--spacing-lg);
   font-size: var(--font-size-base);
@@ -597,7 +603,7 @@ textarea {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 .toggle-explanation:hover {
-  background-color: var(--gas-blue-dark);
+  background-color: var(--gas-primary-blue-dark);
   transform: translateY(-2px);
 }
 .explanation {
@@ -643,7 +649,7 @@ textarea {
 #result-container {
   max-width: 600px; 
   margin: var(--spacing-xxl) auto;
-  background: linear-gradient(135deg, var(--gas-result-start), var(--gas-result-end)); 
+  background: linear-gradient(135deg, var(--gas-result-bg-gradient-start), var(--gas-result-bg-gradient-end)); 
   border-radius: var(--border-radius-xl); 
   box-shadow: 0 8px 16px rgba(0,0,0,0.15); 
   padding: var(--spacing-xxl); 
@@ -672,10 +678,10 @@ textarea {
   margin-top: var(--spacing-xl);
   padding: var(--spacing-md) var(--spacing-lg);
   font-size: var(--font-size-base);
-  background: var(--gas-blue); 
+  background: var(--gas-primary-blue); 
 }
 #result-container .btn-primary:hover {
-  background: var(--gas-blue-dark);
+  background: var(--gas-primary-blue-dark);
 }
 
 /* --- 6. Teacher Dashboard Styles --- */
@@ -989,14 +995,19 @@ textarea {
   }
 
   /* Specific mobile adjustments for MC/TF options */
-  .mc-options, .tf-options {
+  .mc-options { /* Keep MC options as flex row initially, let wrap */
+      flex-direction: row; 
+      align-items: center; 
+      gap: var(--spacing-md); 
+  }
+  .tf-options-container { /* Ensure this also stacks */
       flex-direction: column; 
       align-items: center; 
       gap: var(--spacing-md); 
   }
   .mc-option, .tf-box, .numeric-option {
     width: 100%; 
-    max-width: 250px; 
+    max-width: 250px; /* Limit max width for readability */
     margin: 0; 
   }
 
@@ -1013,4 +1024,32 @@ textarea {
   h2 {
     font-size: 1.35rem; 
   }
+}
+
+/* Thêm vào public/css/style.css */
+/* CSS cho phần hiển thị kết quả đúng/sai chi tiết */
+.answer-feedback {
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--border-radius-sm);
+    font-size: var(--font-size-sm);
+    line-height: 1.4;
+    font-weight: 500;
+}
+
+.answer-feedback.correct {
+    background-color: var(--success-color-light);
+    color: #155724; /* Dark green text */
+    border: 1px solid var(--success-color);
+}
+
+.answer-feedback.incorrect {
+    background-color: var(--danger-color-light);
+    color: #721c24; /* Dark red text */
+    border: 1px solid var(--danger-color);
+}
+
+.answer-feedback .score-earned {
+    font-weight: 600;
+    color: #0e722a; /* Slightly darker green for score */
 }
