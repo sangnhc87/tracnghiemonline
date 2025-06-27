@@ -1,9 +1,9 @@
-/* public/css/style.css - Phiên bản nâng cấp chuyên gia (Hoàn chỉnh 100%) */
+/* public/css/style.css - Phiên bản Nâng cấp Hoàn Chỉnh Tuyệt đối */
 
 /* --- 1. CSS Custom Properties (Variables) --- */
 :root {
   /* Colors */
-  --primary-color: #007bff; /* Main brand blue */
+  --primary-color: #007bff; /* Main brand blue (default for Firebase components) */
   --primary-color-dark: #0056b3;
   --secondary-color: #6c757d; /* Grey for secondary actions */
   --secondary-color-dark: #5a6268;
@@ -15,15 +15,31 @@
   --info-color: #17a2b8;
   --info-color-light: #d1ecf1; /* Light cyan for info backgrounds */
 
+  /* New/Overriding colors inspired by GAS style */
+  --gas-blue: #007BFF; /* Primary blue from GAS for buttons etc. */
+  --gas-blue-dark: #0056b3;
+  --gas-gradient-start: #5c6bc0; /* Indigo gradient start for main buttons */
+  --gas-gradient-end: #3949ab;   /* Darker Indigo gradient end */
+  --gas-green-mc-selected: #4CAF50; /* Green for MC selected */
+  --gas-blue-tf-T: #2196F3; /* Blue for TF True */
+  --gas-red-tf-F: #F44336; /* Red for TF False */
+  --gas-result-start: #f0f9ff; /* Light blue for result gradient */
+  --gas-result-end: #e0f7fa;   /* Lighter blue for result gradient */
+  --gas-result-score-color: #00796b; /* Teal for result score */
+  --gas-result-text-color: #004d40;  /* Dark teal for result text */
+  --gas-highlight-magenta: magenta; /* Magenta for correct answer highlights */
+  --gas-question-number-color: #e44d26; /* Orange-red for question number */
+  --gas-question-statement-bg: #eef; /* Light blue for question statement background */
+
   --text-color-dark: #212529; /* Main text color */
   --text-color-medium: #495057; /* Sub-headings, labels */
   --text-color-light: #6c757d; /* Helper text, less important details */
   --white: #ffffff;
   --off-white: #f8f9fa; /* Very light grey */
-  --background-light: #f0f2f5; /* Page background */
+  --background-light: #fafafa; /* Page background, lighter based on GAS's #fafafa */
   --surface-color: var(--white); /* Card/container background */
   --border-color: #e9ecef; /* Light border */
-  --focus-ring-color: rgba(0, 123, 255, 0.3); /* Soft blue outline for focus */
+  --focus-ring-color: rgba(92, 107, 192, 0.3); /* Soft Indigo outline for focus, inspired by GAS */
 
   /* Spacing */
   --spacing-xs: 4px;
@@ -40,17 +56,25 @@
   --font-size-lg: 1.125rem;  /* 18px */
   --font-size-xl: 1.5rem;    /* 24px */
   --font-size-xxl: 2rem;     /* 32px */
+  --font-size-xxxl: 2.5rem;  /* New for large titles/scores */
+
   --line-height-base: 1.6;
 
   /* Borders & Shadows */
   --border-radius-sm: 4px;
   --border-radius-md: 8px;
   --border-radius-lg: 12px;
+  --border-radius-xl: 16px; /* New: for login container */
+  --border-radius-xxl: 20px; /* New: for options, result */
 
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15);
   --shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.12);
+  --shadow-gas-light: 0 4px 6px rgba(0, 0, 0, 0.1); /* For buttons */
+  --shadow-gas-medium: 0 8px 16px rgba(0,0,0,0.2); /* For containers */
+  --shadow-gas-strong: 0 12px 25px rgba(0, 0, 0, 0.15); /* For login container */
+
 
   /* Transitions */
   --transition-speed-fast: 0.15s;
@@ -71,7 +95,7 @@ html {
 
 body {
   font-family: var(--font-family);
-  background-color: var(--background-light);
+  background-color: var(--background-light); /* Lighter background based on GAS style */
   color: var(--text-color-dark);
   line-height: var(--line-height-base);
   font-size: var(--font-size-base);
@@ -85,8 +109,8 @@ body {
 }
 
 #app {
-  width: 100%;
-  max-width: 1200px; /* Wider max-width for overall application content */
+  width: 95%; /* Giao diện rộng 95% màn hình */
+  max-width: 1400px; /* Max width cho toàn bộ ứng dụng, cho phép to, rõ */
   display: flex;
   flex-direction: column;
   align-items: center; /* Center content horizontally within max-width */
@@ -94,33 +118,43 @@ body {
 }
 
 /* --- 3. General Components --- */
-.container {
-  max-width: 500px; /* Default max width for smaller screens like login/result */
+/* CONTAINER / CARD: Blending Firebase & GAS login container styles */
+.container.card { /* Target loginScreen, teacherLogin, result-container */
+  max-width: 500px; /* Adjusted width, inspired by GAS */
   width: 100%;
-  padding: var(--spacing-xxl) var(--spacing-xl);
+  padding: var(--spacing-xxl) var(--spacing-xl); /* Generous padding */
   text-align: center;
-  /* Applying card styles directly */
   background-color: var(--surface-color);
-  border-radius: var(--border-radius-md);
-  box-shadow: var(--shadow-md);
-  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-xxl); /* More rounded corners: 20px */
+  box-shadow: var(--shadow-gas-strong); /* Stronger shadow */
+  border: none; /* No border for a cleaner look */
+  transition: transform var(--transition-speed-normal) var(--transition-ease), 
+              box-shadow var(--transition-speed-normal) var(--transition-ease);
 }
 
-.card {
+.container.card:hover { /* Added hover effect from GAS */
+  transform: translateY(-5px);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+}
+
+.card { /* General card style, used for dashboard sections and modals */
   background-color: var(--surface-color);
   border-radius: var(--border-radius-md);
-  box-shadow: var(--shadow-sm); /* Lighter shadow for nested cards/sections */
+  box-shadow: var(--shadow-sm); 
   border: 1px solid var(--border-color);
-  padding: var(--spacing-lg); /* Default padding for card components */
+  padding: var(--spacing-lg); 
 }
 
 h2 {
-  font-size: var(--font-size-xxl);
+  font-size: var(--font-size-xxl); 
   font-weight: 700;
-  color: var(--primary-color);
+  color: var(--text-color-dark); /* Darker heading for contrast */
   margin-top: 0;
   margin-bottom: var(--spacing-xl);
   text-align: center;
+  /* GAS inspired h2 styling for login/modal */
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
 }
 
 h3 {
@@ -141,15 +175,15 @@ h4 {
 
 /* --- Form Elements --- */
 .form-group {
-  margin-bottom: var(--spacing-md);
-  text-align: left; /* Align labels and inputs to the left */
+  margin-bottom: var(--spacing-lg); /* More space between form groups */
+  text-align: left; 
 }
 
 label {
   display: block;
   margin-bottom: var(--spacing-sm);
   font-weight: 600;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-base); /* Slightly larger labels */
   color: var(--text-color-medium);
 }
 
@@ -158,11 +192,11 @@ input[type="number"],
 select,
 textarea {
   width: 100%;
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-md); /* More padding for inputs */
   font-size: var(--font-size-base);
   font-family: inherit;
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-sm);
+  border: 1px solid #ddd; /* Lighter border inspired by GAS */
+  border-radius: var(--border-radius-md); /* Slightly more rounded */
   background-color: var(--white);
   color: var(--text-color-dark);
   transition: border-color var(--transition-speed-fast) var(--transition-ease),
@@ -172,13 +206,13 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px var(--focus-ring-color);
-  outline: none; /* Remove default browser outline */
+  border-color: var(--gas-gradient-start); 
+  box-shadow: 0 0 10px var(--focus-ring-color); /* Stronger focus shadow from GAS */
+  outline: none; 
 }
 
 textarea {
-  resize: vertical; /* Allow vertical resizing */
+  resize: vertical; 
   min-height: 100px;
 }
 
@@ -215,36 +249,48 @@ textarea {
   align-items: center;
   justify-content: center;
   gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-lg);
+  padding: var(--spacing-md) var(--spacing-lg); /* More padding */
   font-size: var(--font-size-base);
   font-weight: 600;
   border: none;
-  border-radius: var(--border-radius-sm);
+  border-radius: var(--border-radius-md); /* Consistent rounding */
   cursor: pointer;
   text-decoration: none;
   line-height: 1.5;
-  transition: all var(--transition-speed-fast) var(--transition-ease);
-  box-shadow: var(--shadow-sm); /* Subtle shadow for buttons */
+  transition: all var(--transition-speed-normal) var(--transition-ease); /* Slower transition for smoothness */
+  box-shadow: var(--shadow-gas-light); /* Subtle shadow from GAS */
 }
 
 .btn:hover {
   transform: translateY(-2px); /* Slight lift effect */
-  box-shadow: var(--shadow-hover); /* More pronounced shadow on hover */
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2); /* Stronger shadow on hover */
 }
 
 .btn:active {
   transform: translateY(0); /* Press down effect */
-  box-shadow: var(--shadow-sm); /* Return to base shadow */
+  box-shadow: var(--shadow-gas-light); /* Return to base shadow */
 }
 
 .btn-full {
   width: 100%;
-  margin-top: var(--spacing-md); /* Common margin for full-width buttons */
+  margin-top: var(--spacing-xl); /* More space for full-width buttons like Start/Grade */
+  padding: var(--spacing-lg); /* Larger padding for main buttons */
+  font-size: var(--font-size-lg); /* Larger font for main buttons */
 }
 
 /* Button variants */
 .btn-primary { background-color: var(--primary-color); color: var(--white); }
 .btn-primary:hover { background-color: var(--primary-color-dark); }
+
+/* Special styling for the main "Start Exam" and "Grade & Submit" buttons (inspired by GAS) */
+#loginScreen .btn-primary, #gradeBtn.btn-success.btn-full {
+  background: linear-gradient(45deg, var(--gas-gradient-start), var(--gas-gradient-end));
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
+#loginScreen .btn-primary:hover, #gradeBtn.btn-success.btn-full:hover {
+  background: linear-gradient(45deg, var(--gas-gradient-end), var(--gas-gradient-start)); /* Invert gradient on hover */
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
 
 .btn-secondary { background-color: var(--secondary-color); color: var(--white); }
 .btn-secondary:hover { background-color: var(--secondary-color-dark); }
@@ -252,7 +298,10 @@ textarea {
 .btn-danger { background-color: var(--danger-color); color: var(--white); }
 .btn-danger:hover { background-color: #c82333; } /* Slightly darker red */
 
-.btn-success { background-color: var(--success-color); color: var(--white); }
+.btn-success { /* For Grade & Submit button, default style before specific override */
+  background-color: var(--success-color);
+  color: var(--white);
+}
 .btn-success:hover { background-color: #218838; } /* Slightly darker green */
 
 .btn-google { background-color: #4285F4; color: var(--white); } /* Specific Google Blue */
@@ -317,7 +366,7 @@ textarea {
   position: sticky; /* Sticky, so it scrolls with the content but stays in view */
   top: 0; /* Stays at the very top of the viewport */
   width: 100%;
-  max-width: 800px; /* Max width to align with quiz container */
+  max-width: 100%; /* Fill 100% of parent width (#app's 95% width) */
   background-color: rgba(255, 255, 255, 0.98); /* Near opaque for readability */
   padding: var(--spacing-md) var(--spacing-xl);
   text-align: center;
@@ -325,8 +374,9 @@ textarea {
   box-shadow: var(--shadow-sm); /* Subtle shadow to lift it */
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
-  border-bottom-left-radius: var(--border-radius-md); /* Rounded bottom corners */
-  border-bottom-right-radius: var(--border-radius-md);
+  /* Removed border-bottom-left/right-radius for full width sticky bar */
+  border-bottom-left-radius: 0; 
+  border-bottom-right-radius: 0;
   margin-bottom: var(--spacing-lg); /* Space between timer and quiz */
 }
 
@@ -338,8 +388,8 @@ textarea {
 }
 
 .quiz-container {
-  max-width: 800px;
-  width: 100%;
+  width: 100%; /* Fill 100% of parent width (#app's 95% width) */
+  max-width: 100%; /* Max width controlled by #app */
   margin: 0 auto; /* Center the quiz container */
   padding: var(--spacing-xl);
   background-color: var(--surface-color);
@@ -349,13 +399,26 @@ textarea {
 
 .question {
   margin-bottom: var(--spacing-xxl); /* More space between questions */
-  padding-bottom: var(--spacing-lg);
-  border-bottom: 1px dashed var(--border-color); /* Subtle dashed line */
+  padding: var(--spacing-lg); /* Added padding inside question box */
+  border: 1px solid #ddd; /* Border from GAS */
+  border-radius: var(--border-radius-lg); /* More rounded corners */
+  background-color: var(--white); /* White background from GAS */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Subtle shadow from GAS */
+  position: relative;
 }
 
 .question:last-child {
-  border-bottom: none;
+  border-bottom: none; /* No need if border is on box */
   margin-bottom: 0;
+}
+
+.question-number { /* Specific styling for "Câu X" number */
+    color: var(--gas-question-number-color);
+    font-size: 22px; 
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    text-align: center;
+    margin-bottom: var(--spacing-md);
 }
 
 .question-statement {
@@ -363,10 +426,23 @@ textarea {
   line-height: 1.7;
   margin-bottom: var(--spacing-md);
   color: var(--text-color-dark);
-  background-color: var(--off-white); /* Light background for statement */
+  background-color: var(--gas-question-statement-bg); /* Specific light blue from GAS */
   padding: var(--spacing-md);
-  border-radius: var(--border-radius-sm);
+  border-radius: var(--border-radius-md); /* More rounded */
+  border: 1px dashed #999; /* Dashed border from GAS */
   box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); /* Inner shadow for depth */
+}
+
+/* Image sizing within question/explanation to be contained and clear */
+.question-statement img,
+.explanation img {
+  max-width: 100%; /* Ensures image fits within its container */
+  height: auto; /* Maintains aspect ratio */
+  display: block; /* Centers block images */
+  margin: var(--spacing-md) auto; /* Center images */
+  border-radius: var(--border-radius-sm);
+  box-shadow: var(--shadow-sm);
+  object-fit: contain; /* Ensures the whole image is visible within its bounds */
 }
 
 /* KaTeX rendering adjustments */
@@ -383,127 +459,229 @@ textarea {
 .mc-options, .tf-options {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--spacing-sm); /* Consistent gap between options */
+  gap: var(--spacing-md); /* More gap for options */
   margin-top: var(--spacing-md);
+  justify-content: center; /* Center options */
 }
 
-.mc-option, .tf-btn {
-  flex-grow: 1; /* Allow options to grow and fill space */
-  padding: var(--spacing-md) var(--spacing-lg);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-sm);
-  cursor: pointer;
-  background-color: var(--off-white);
-  color: var(--text-color-dark);
-  font-weight: 500;
-  transition: background-color var(--transition-speed-fast) var(--transition-ease),
-              border-color var(--transition-speed-fast) var(--transition-ease),
-              box-shadow var(--transition-speed-fast) var(--transition-ease);
-  text-align: center;
-  min-width: 45px; /* Ensures 'A', 'B' etc. are readable */
-  user-select: none; /* Prevent text selection on click */
-}
-
-.mc-option:hover, .tf-btn:hover {
-  background-color: #e9f0f7; /* Light blue on hover */
-  border-color: var(--primary-color);
-  box-shadow: var(--shadow-sm);
-}
-
-.mc-option.selected {
-  background-color: #e0f0ff; /* Light blue for selected */
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px var(--focus-ring-color);
-  font-weight: 600; /* Bold text for selected */
-}
-.tf-btn.selected {
-  background-color: #e0f0ff;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px var(--focus-ring-color);
-  font-weight: 600;
-}
-
-/* Specific TF button colors for clarity */
-.tf-btn.selected.T {
-  background-color: var(--success-color-light);
-  border-color: var(--success-color);
-  color: #155724; /* Darker text for readability on light green */
-}
-.tf-btn.selected.F {
-  background-color: var(--danger-color-light);
-  border-color: var(--danger-color);
-  color: #721c24; /* Darker text for readability on light red */
-}
-
-.tf-box {
+.mc-option, .tf-box { /* tf-box is the container for T/F buttons */
+  width: 150px; /* Fixed width from GAS */
+  height: 60px; /* Fixed height from GAS */
+  border: 2px solid #ccc; /* Border from GAS */
+  border-radius: var(--border-radius-lg); /* More rounded for options */
+  background-color: #f5f5f5; /* Background from GAS */
   display: flex;
-  gap: var(--spacing-sm); /* Gap between T/F buttons within a sub-question */
-  margin-bottom: var(--spacing-sm); /* Space between sub-questions */
-  width: 100%; /* Ensure each TF-box takes full width for its buttons */
+  justify-content: center;
+  align-items: center;
+  font-size: 20px; /* Larger font from GAS */
+  font-weight: bold;
+  color: #555;
+  cursor: pointer;
+  transition: transform var(--transition-speed-normal) var(--transition-ease), 
+              border-color var(--transition-speed-normal) var(--transition-ease),
+              background-color var(--transition-speed-normal) var(--transition-ease); /* Added background-color transition */
+  user-select: none;
+  position: relative; /* For correct-answer-value positioning */
 }
-.tf-box:last-child { margin-bottom: 0; }
 
-.numeric-option input {
-  margin-top: var(--spacing-md);
+.mc-option:hover, .tf-box:hover, .numeric-option:hover { /* Hover effects from GAS */
+  transform: scale(1.05);
+  border-color: #999;
 }
+
+.mc-option.selected { /* Selected styling from GAS */
+  background-color: var(--gas-green-mc-selected);
+  color: var(--white);
+  border-color: var(--gas-green-mc-selected);
+  box-shadow: 0 0 10px rgba(76,175,80,0.6);
+}
+
+/* True/False specific button styling (inside tf-box) */
+.tf-btn { /* Styles applied to T or F button part */
+  flex: 1; /* Each T/F button takes half width */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform var(--transition-speed-normal) var(--transition-ease), 
+              background-color var(--transition-speed-normal) var(--transition-ease);
+}
+.tf-btn input { display: none; } /* Hide radio inputs inside tf-btn */
+
+.tf-btn.selected.T { /* Selected True from GAS */
+  background-color: var(--gas-blue-tf-T);
+  color: var(--white);
+  box-shadow: none; /* Remove duplicate shadow from parent selected */
+}
+.tf-btn.selected.F { /* Selected False from GAS */
+  background-color: var(--gas-red-tf-F);
+  color: var(--white);
+  box-shadow: none; /* Remove duplicate shadow from parent selected */
+}
+
+
+/* Numeric option */
+.numeric-option {
+  width: 200px; /* Wider for input, adjusted from GAS 150px */
+  height: 60px;
+  border: 2px solid #ccc;
+  border-radius: var(--border-radius-lg);
+  background-color: #f5f5f5;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: var(--spacing-md) auto 0; /* Center and margin top */
+  position: relative; /* For correct-answer-value positioning */
+}
+.numeric-option input[type="text"] { /* Styling for the actual text input */
+  width: 90%;
+  height: 80%;
+  text-align: center;
+  font-size: 20px;
+  border: none;
+  background: transparent;
+  outline: none;
+  color: var(--text-color-dark);
+  font-family: inherit;
+  font-weight: bold; /* Make input text bold */
+}
+
+
+/* Correct/Incorrect Answer Feedback (Post-grading) */
+/* Shared highlight for correct answer in options */
+.correct-answer-highlight { 
+  border-color: var(--gas-highlight-magenta) !important;
+  box-shadow: 0 0 10px rgba(255, 0, 255, 0.6) !important; /* Magenta glow */
+}
+
+/* Highlight for user's selected but incorrect answer */
+.incorrect-answer-highlight {
+    background-color: var(--danger-color-light) !important;
+    border-color: var(--danger-color) !important;
+    box-shadow: 0 0 5px rgba(220, 53, 69, 0.4) !important;
+    color: var(--text-color-dark) !important; /* Keep text readable */
+}
+
+/* Display for correct answer value (for numeric/TF) */
+.correct-answer-value { 
+  font-size: var(--font-size-sm);
+  font-weight: bold;
+  color: var(--gas-highlight-magenta);
+  position: absolute; /* Position relative to parent option */
+  bottom: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap; /* Prevent text wrapping */
+}
+
+.tf-grade { /* For TF score display below options */
+  margin-top: var(--spacing-sm);
+  text-align: center;
+  font-size: var(--font-size-base);
+  font-weight: bold;
+  color: var(--text-color-dark);
+}
+
 
 /* Explanation Toggle & Content */
 .toggle-explanation {
-  margin-top: var(--spacing-md);
-  margin-bottom: var(--spacing-sm);
-  background-color: var(--off-white);
-  color: var(--text-color-medium);
-  font-size: var(--font-size-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
-  box-shadow: none; /* No shadow by default */
-  border: 1px solid var(--border-color); /* Subtle border */
+  display: block; 
+  margin: var(--spacing-md) auto; 
+  background-color: var(--gas-blue); 
+  color: var(--white);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-size: var(--font-size-base);
+  border-radius: var(--border-radius-md);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 .toggle-explanation:hover {
-  background-color: #eef1f4;
-  color: var(--primary-color-dark);
-  box-shadow: var(--shadow-sm); /* Add shadow on hover */
+  background-color: var(--gas-blue-dark);
+  transform: translateY(-2px);
 }
-
 .explanation {
-  background-color: #fcfdff; /* Very light background for explanation */
-  border-left: 5px solid var(--primary-color); /* Prominent left border */
-  padding: var(--spacing-md);
-  margin-top: var(--spacing-sm);
-  border-radius: var(--border-radius-sm);
-  font-size: var(--font-size-sm);
-  color: var(--text-color-medium);
-  line-height: 1.5;
-  box-shadow: inset 0 0 5px rgba(0,0,0,0.05); /* Inner shadow for depth */
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-lg); 
+  border: 1px solid #ccc; 
+  border-radius: var(--border-radius-lg); 
+  background-color: #f9f9f9; 
+  font-size: var(--font-size-base);
+  color: #555;
+  line-height: 1.6;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: background-color var(--transition-speed-normal) var(--transition-ease);
 }
+.explanation:hover { background-color: #f0f0f0; } 
+.explanation.hidden { display: none; } 
 
-.explanation.hidden {
-  display: none;
+
+/* Grade & Submit Button (#gradeBtn) */
+#gradeBtn {
+  display: block; 
+  margin: var(--spacing-xxl) auto; 
+  padding: var(--spacing-lg) var(--spacing-xl); 
+  font-size: var(--font-size-lg); 
+  font-weight: bold;
+  color: var(--white);
+  /* Background set by #loginScreen .btn-primary override for full-width buttons */
+  border: none;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  transition: all var(--transition-speed-normal) var(--transition-ease);
+  box-shadow: var(--shadow-gas-light);
 }
+/* Specific hover for #gradeBtn to match login screen */
+#gradeBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+#gradeBtn i { margin-right: var(--spacing-sm); }
 
-/* Result Container */
+
+/* Result Container (#result-container) */
 #result-container {
-  display: flex; /* Overridden by JS, but good default */
-  flex-direction: column;
-  gap: var(--spacing-md);
-  padding: var(--spacing-xxl) var(--spacing-xl);
+  max-width: 600px; 
+  margin: var(--spacing-xxl) auto;
+  background: linear-gradient(135deg, var(--gas-result-start), var(--gas-result-end)); 
+  border-radius: var(--border-radius-xl); 
+  box-shadow: 0 8px 16px rgba(0,0,0,0.15); 
+  padding: var(--spacing-xxl); 
+  text-align: center;
 }
-#result-container h2 { color: var(--success-color); margin-bottom: var(--spacing-lg); }
-#result-container h3 { font-size: var(--font-size-xl); color: var(--primary-color); }
-#result-container h3 #score {
-  font-size: var(--font-size-xxl);
-  font-weight: 700;
-  color: var(--success-color);
-  margin-left: var(--spacing-sm);
+#result-container h2 {
+  color: var(--gas-result-score-color); 
+  margin-bottom: var(--spacing-lg);
+  font-size: var(--font-size-xxxl); 
+  text-transform: none; 
+  letter-spacing: normal;
 }
-#result-container p { font-size: var(--font-size-lg); color: var(--text-color-medium); }
-#result-container p strong { font-weight: 600; color: var(--text-color-dark); }
-#result-container .btn-full { margin-top: var(--spacing-xl); }
-
+#result-container p {
+  font-size: var(--font-size-lg);
+  color: var(--gas-result-text-color); 
+  margin: var(--spacing-sm) 0;
+}
+#result-container p strong { color: var(--text-color-dark); } 
+#result-container .score { /* Score text styling */
+  font-size: var(--font-size-xxxl); 
+  font-weight: bold;
+  color: var(--gas-result-score-color);
+  margin-top: var(--spacing-md);
+}
+#result-container .btn-primary { 
+  margin-top: var(--spacing-xl);
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: var(--font-size-base);
+  background: var(--gas-blue); 
+}
+#result-container .btn-primary:hover {
+  background: var(--gas-blue-dark);
+}
 
 /* --- 6. Teacher Dashboard Styles --- */
 .dashboard-container {
   width: 100%;
-  max-width: 1200px; /* Wider for dashboard content */
+  max-width: 1200px; 
   padding: var(--spacing-xl);
   background-color: var(--surface-color);
   border-radius: var(--border-radius-md);
@@ -513,6 +691,8 @@ textarea {
 .dashboard-container h2 {
   margin-bottom: var(--spacing-lg);
   color: var(--primary-color);
+  text-transform: none; 
+  letter-spacing: normal;
 }
 
 .dashboard-container p {
@@ -523,21 +703,20 @@ textarea {
 
 .dashboard-sections {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* Flexible columns */
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
   gap: var(--spacing-xl);
   margin-top: var(--spacing-xxl);
 }
 
 .dashboard-section {
-  /* Applying card styles manually, as @extend is not native CSS */
   background-color: var(--surface-color);
   border-radius: var(--border-radius-md);
-  box-shadow: var(--shadow-sm); /* Lighter shadow for nested cards/sections */
+  box-shadow: var(--shadow-sm); 
   border: 1px solid var(--border-color);
   padding: var(--spacing-lg);
   
   display: flex;
-  flex-direction: column; /* Ensure content stacks vertically */
+  flex-direction: column; 
 }
 
 .dashboard-section h3 {
@@ -556,12 +735,12 @@ textarea {
 }
 
 .list-group {
-  max-height: 450px; /* Slightly taller for more items */
+  max-height: 450px; 
   overflow-y: auto;
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius-md);
-  background-color: var(--off-white); /* Light background for list group */
-  flex-grow: 1; /* Allow list to grow and fill space */
+  background-color: var(--off-white); 
+  flex-grow: 1; 
 }
 
 .list-item {
@@ -579,23 +758,23 @@ textarea {
 }
 
 .list-item:hover {
-  background-color: #e9f5ff; /* Light blue on hover */
-  box-shadow: var(--shadow-sm); /* Subtle lift on hover */
+  background-color: #e9f5ff; 
+  box-shadow: var(--shadow-sm); 
 }
 
 .list-item-content {
   flex-grow: 1;
   margin-right: var(--spacing-md);
-  overflow: hidden; /* For text truncation */
+  overflow: hidden; 
 }
 
 .list-item-title {
   font-weight: 600;
   color: var(--text-color-dark);
   font-size: var(--font-size-base);
-  white-space: nowrap; /* Prevent title wrapping */
+  white-space: nowrap; 
   overflow: hidden;
-  text-overflow: ellipsis; /* Add ellipsis for overflow */
+  text-overflow: ellipsis; 
 }
 
 .list-item-details {
@@ -613,13 +792,13 @@ textarea {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: var(--font-size-lg); /* Larger icons */
-  color: var(--text-color-light); /* Default icon color */
+  font-size: var(--font-size-lg); 
+  color: var(--text-color-light); 
   transition: color var(--transition-speed-fast) var(--transition-ease),
               background-color var(--transition-speed-fast) var(--transition-ease),
               transform var(--transition-speed-fast) var(--transition-ease);
   padding: var(--spacing-sm);
-  border-radius: 50%; /* Make them circular */
+  border-radius: 50%; 
 }
 
 .list-item-actions button:hover {
@@ -629,17 +808,17 @@ textarea {
 
 .list-item-actions .edit-btn:hover {
   color: var(--primary-color);
-  background-color: rgba(0, 123, 255, 0.1); /* Light blue background for edit */
+  background-color: rgba(0, 123, 255, 0.1); 
 }
 
-.list-item-actions button:last-child:hover { /* Delete button */
+.list-item-actions button:last-child:hover { 
   color: var(--danger-color);
-  background-color: rgba(220, 53, 69, 0.1); /* Light red background for delete */
+  background-color: rgba(220, 53, 69, 0.1); 
 }
 
 .dashboard-actions {
   display: flex;
-  justify-content: flex-end; /* Align action buttons to the right */
+  justify-content: flex-end; 
   gap: var(--spacing-md);
   margin-top: var(--spacing-xl);
   padding-top: var(--spacing-lg);
@@ -650,30 +829,29 @@ textarea {
 .modal-backdrop {
   position: fixed;
   top: 0; left: 0; width: 100%; height: 100%;
-  background-color: rgba(0,0,0,0.6); /* Darker overlay */
-  z-index: 1500; /* High z-index */
+  background-color: rgba(0,0,0,0.6); 
+  z-index: 1500; 
   display: flex; justify-content: center; align-items: center;
   padding: var(--spacing-md);
-  backdrop-filter: blur(10px); /* Stronger blur */
+  backdrop-filter: blur(10px); 
   -webkit-backdrop-filter: blur(10px);
   animation: fadeIn var(--transition-speed-normal) var(--transition-ease);
 }
 
 .modal-content {
-  /* Áp dụng lại các style card cơ bản (vì CSS thuần không có @extend) */
   background-color: var(--surface-color);
   border-radius: var(--border-radius-md);
   box-shadow: var(--shadow-md);
   border: 1px solid var(--border-color);
   
   width: 100%;
-  max-width: 800px; /* Chiều rộng tối đa cho modal */
-  max-height: 95vh; /* Chiều cao tối đa của modal, để lại không gian cho thanh cuộn của trình duyệt */
+  max-width: 800px; 
+  max-height: 95vh; 
   
   display: flex; 
-  flex-direction: column; /* RẤT QUAN TRỌNG: Sắp xếp nội dung theo cột */
+  flex-direction: column; 
   
-  padding: var(--spacing-xl); /* Padding bên trong modal */
+  padding: var(--spacing-xl); 
   animation: slideIn var(--transition-speed-normal) var(--transition-ease);
 }
 
@@ -681,14 +859,16 @@ textarea {
   margin-bottom: var(--spacing-lg);
   font-size: var(--font-size-xl);
   color: var(--primary-color-dark);
+  text-transform: uppercase; 
+  letter-spacing: 1.2px;
 }
 
 /* Phần nội dung form có thể cuộn được */
 .modal-form-scrollable-area {
-  flex-grow: 1; /* RẤT QUAN TRỌNG: Cho phép phần này giãn nở để chiếm hết không gian trống */
-  overflow-y: auto; /* RẤT QUAN TRỌNG: Kích hoạt thanh cuộn dọc khi nội dung tràn */
-  padding-right: var(--spacing-sm); /* Tạo khoảng trống cho thanh cuộn để nó không đè lên nội dung */
-  padding-bottom: var(--spacing-md); /* Thêm một ít padding ở cuối vùng cuộn */
+  flex-grow: 1; 
+  overflow-y: auto; 
+  padding-right: var(--spacing-sm); 
+  padding-bottom: var(--spacing-md); 
 }
 
 /* Tùy chỉnh thanh cuộn (chỉ hoạt động trên trình duyệt Webkit như Chrome, Safari) */
@@ -702,7 +882,7 @@ textarea {
 .modal-form-scrollable-area::-webkit-scrollbar-thumb {
   background: var(--border-color);
   border-radius: 10px;
-  border: 2px solid var(--off-white); /* Tạo khoảng đệm quanh thumb */
+  border: 2px solid var(--off-white); 
 }
 .modal-form-scrollable-area::-webkit-scrollbar-thumb:hover {
   background: var(--secondary-color);
@@ -711,21 +891,21 @@ textarea {
 
 .modal-actions {
   display: flex;
-  justify-content: flex-end; /* Căn nút sang phải */
-  gap: var(--spacing-md); /* Khoảng cách giữa các nút */
-  margin-top: var(--spacing-xl); /* Khoảng cách từ nội dung form phía trên */
-  border-top: 1px solid var(--border-color); /* Đường kẻ phân cách */
-  padding-top: var(--spacing-lg); /* Padding phía trên đường kẻ */
-  flex-shrink: 0; /* RẤT QUAN TRỌNG: Ngăn không cho phần này bị co lại khi nội dung cuộn được giãn nở */
+  justify-content: flex-end; 
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-xl);
+  border-top: 1px solid var(--border-color);
+  padding-top: var(--spacing-lg); 
+  flex-shrink: 0; 
 }
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Responsive grid for form fields */
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
   gap: var(--spacing-md) var(--spacing-lg);
 }
 .form-grid .full-width {
-  grid-column: 1 / -1; /* Make element span all columns */
+  grid-column: 1 / -1; 
 }
 
 /* --- 8. Animations --- */
@@ -735,12 +915,12 @@ textarea {
 }
 
 @keyframes slideIn {
-  from { transform: translateY(-30px); opacity: 0; } /* Slide from top slightly */
+  from { transform: translateY(-30px); opacity: 0; } 
   to { transform: translateY(0); opacity: 1; }
 }
 
 /* --- 9. Responsive Adjustments --- */
-@media (max-width: 992px) { /* Medium screens (e.g., tablets) */
+@media (max-width: 992px) { 
   #app {
     padding: var(--spacing-lg);
   }
@@ -748,7 +928,7 @@ textarea {
     padding: var(--spacing-lg);
   }
   .dashboard-sections {
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Adjust columns for tablets */
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
   }
   .quiz-container {
     padding: var(--spacing-xl);
@@ -758,12 +938,12 @@ textarea {
   }
 }
 
-@media (max-width: 768px) { /* Small screens (e.g., phones) */
+@media (max-width: 768px) { 
   body {
     padding: var(--spacing-md);
-    align-items: flex-start; /* Ensure scrolling works vertically */
+    align-items: flex-start; 
   }
-  .container {
+  .container.card {
     padding: var(--spacing-lg) var(--spacing-md);
   }
   h2 {
@@ -777,70 +957,60 @@ textarea {
     font-size: var(--font-size-sm);
   }
   .dashboard-sections {
-    grid-template-columns: 1fr; /* Stack dashboard sections vertically */
+    grid-template-columns: 1fr; 
   }
   .form-grid {
-    grid-template-columns: 1fr; /* Stack form fields vertically */
+    grid-template-columns: 1fr; 
     gap: var(--spacing-md);
   }
   .dashboard-actions, .modal-actions {
-    flex-direction: column; /* Stack buttons vertically in actions */
+    flex-direction: column; 
     gap: var(--spacing-sm);
   }
   .dashboard-actions .btn, .modal-actions .btn {
-    width: 100%; /* Full width for stacked buttons */
+    width: 100%; 
   }
   .list-item {
-    flex-direction: column; /* Stack content and actions in list items */
+    flex-direction: column; 
     align-items: flex-start;
     gap: var(--spacing-sm);
   }
   .list-item-actions {
     width: 100%;
-    justify-content: flex-end; /* Align actions to the right */
+    justify-content: flex-end; 
   }
   .timer-container {
     padding: var(--spacing-sm) var(--spacing-md);
+    max-width: 100%; 
+    border-radius: 0; 
   }
   #timer {
     font-size: var(--font-size-base);
   }
+
+  /* Specific mobile adjustments for MC/TF options */
+  .mc-options, .tf-options {
+      flex-direction: column; 
+      align-items: center; 
+      gap: var(--spacing-md); 
+  }
+  .mc-option, .tf-box, .numeric-option {
+    width: 100%; 
+    max-width: 250px; 
+    margin: 0; 
+  }
+
+  /* Specific styling for the actual T/F buttons within tf-box */
+  .tf-btn {
+      min-width: 50px; 
+  }
 }
 
-@media (max-width: 480px) { /* Extra small screens */
-  .container, .dashboard-container, .quiz-container, .modal-content {
+@media (max-width: 480px) { 
+  .container.card, .dashboard-container, .quiz-container, .modal-content {
     padding: var(--spacing-md);
   }
   h2 {
-    font-size: 1.35rem; /* Smaller heading for tiny screens */
+    font-size: 1.35rem; 
   }
-}
-
-/* Trong public/css/style.css */
-
-/* Thêm vào gần cuối file hoặc phần Quiz & Timer Display */
-.answer-feedback {
-    margin-top: var(--spacing-md);
-    padding: var(--spacing-sm) var(--spacing-md);
-    border-radius: var(--border-radius-sm);
-    font-size: var(--font-size-sm);
-    line-height: 1.4;
-    font-weight: 500;
-}
-
-.answer-feedback.correct {
-    background-color: var(--success-color-light);
-    color: #155724; /* Dark green text */
-    border: 1px solid var(--success-color);
-}
-
-.answer-feedback.incorrect {
-    background-color: var(--danger-color-light);
-    color: #721c24; /* Dark red text */
-    border: 1px solid var(--danger-color);
-}
-
-.answer-feedback .score-earned {
-    font-weight: 600;
-    color: #0e722a; /* Slightly darker green for score */
 }
