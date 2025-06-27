@@ -1,4 +1,5 @@
-// firebase-functions/index.js
+// firebase-functions/index.js (Phiên bản Nâng cấp Hoàn chỉnh - Hỗ trợ KaTeX & Tự động nhận dạng câu)
+
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 
@@ -6,445 +7,330 @@ admin.initializeApp();
 const db = admin.firestore();
 
 /**
- * Hàm tiện ích để xử lý placeholder hình ảnh.
- * @param {Array<string>} textArray Mảng các chuỗi văn bản.
- * @return {Array<string>} Mảng các chuỗi đã được xử lý.
+ * @param {string} rawText Chuỗi văn bản thô từ textarea.
+ * @return {{questions: string[], explanations: string[]}} Một object chứa mảng câu hỏi và mảng lời giải.
  */
-const processImagePlaceholders = (textArray) => {
-  if (!Array.isArray(textArray)) {
-    return [];
-  }
-  return textArray.map((text) => {
-    text = String(text);
-    text = text.replace(/sangnhc1/g, "https://gitlab.com/nguyensangnhc/pic4web/-/raw/main/Hinh");
-    text = text.replace(/sangnhc2/g, "https://gitlab.com/nguyensangnhc/tikz4web/-/raw/main/Hinh");
-    text = text.replace(/sangnhc3/g, "https://gitlab.com/nguyensangnhc/tikz2png/-/raw/main/Hinh");
-    text = text.replace(/sangnhc4/g, "https://gitlab.com/nguyensangnhc/png2link/-/raw/main/Hinh");
-    return text;
-  });
-};
+function parseExamContent(rawText) {
+    if (!rawText || typeof rawText !== 'string') {
+        return { questions: [], explanations: [] };
+    }
 
-// --- CÁC HÀM DÀNH CHO GIÁO VIÊN ---
+    const questions = [];
+    const explanations = [];
+    rawText = rawText.replace(/\r\n/g, '\n');
 
-/**
- * Tạo/cập nhật hồ sơ giáo viên khi đăng nhập.
- * @param {Object} data Dữ liệu không sử dụng.
- * @param {Object} context Ngữ cảnh xác thực của người dùng.
- * @return {Promise<Object>} Thông tin hồ sơ giáo viên.
- */
+    const questionStartPattern = /(?:^|\n\s*)([Cc][âĂaA][uUu]|[Bb][àÀaA][iI]|[Qq][uUu][eE][sS][tT][iI][oO][nN])\s*\d+[:.]?/g;
+
+    // Use matchAll to get all occurrences of question starts and their indices.
+    const matches = [...rawText.matchAll(questionStartPattern)];
+
+    // 3. If no explicit question patterns are found, treat the entire content as one single question.
+    if (matches.length === 0) {
+        questions.push(rawText.trim());
+        explanations.push('');
+        return { questions, explanations };
+    }
+
+    // 4. Iterate through the matches to extract each question block.
+    for (let i = 0; i < matches.length; i++) {
+        const currentMatch = matches[i];
+        const startIndex = currentMatch.index;
+
+        // The end index for the current block is the start of the next match,
+        // or the end of the entire rawText if it's the last question.
+        const endIndex = (i + 1 < matches.length) ? matches[i + 1].index : rawText.length;
+
+        // Extract the raw block of text for the current question.
+        let block = rawText.substring(startIndex, endIndex).trim();
+
+        // Skip if the block is empty after trimming (e.g., just whitespace between patterns)
+        if (!block) continue;
+
+        let questionText = block;
+        let explanationText = '';
+
+        // 5. Extract the explanation part from the current question block.
+        //    \\begin\{loigiai\}([\s\S]*?)\\end\{loigiai\} : Matches the exact tags and captures content.
+        //    [\s\S]*? : Matches any character (including newlines) non-greedily.
+        const loigiaiRegex = /\\begin\{loigiai\}([\s\S]*?)\\end\{loigiai\}/i;
+        const matchExplanation = questionText.match(loigiaiRegex);
+
+        if (matchExplanation && matchExplanation[1]) {
+            explanationText = matchExplanation[1].trim();
+            // Remove the explanation part from the question text to get pure question content.
+            questionText = questionText.replace(loigiaiRegex, '').trim();
+        }
+
+        // Add the parsed question and its explanation to the respective arrays.
+        questions.push(questionText);
+        explanations.push(explanationText);
+    }
+
+    return { questions, explanations };
+}
+
+
+// --- CÁC HÀM XÁC THỰC & QUẢN LÝ TÀI KHOẢN GIÁO VIÊN ---
 exports.onTeacherSignIn = functions.https.onCall(async (data, context) => {
-  functions.logger.info("onTeacherSignIn: Hàm đã được gọi.");
-  if (!context.auth) {
-    functions.logger.error("onTeacherSignIn: Lỗi xác thực, không có context.auth.");
-    throw new functions.https.HttpsError("unauthenticated", "Chỉ giáo viên đã đăng nhập mới có thể thực hiện thao tác này.");
-  }
-
-  const userId = context.auth.uid;
-  const email = context.auth.token.email;
-  const userName = context.auth.token.name || email;
-  functions.logger.info(`onTeacherSignIn: Người dùng UID=${userId}, Email=${email} đang thử đăng nhập.`);
-
-  const userRef = db.collection("users").doc(userId);
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+  const { uid, email, name } = context.auth.token;
+  const userRef = db.collection("users").doc(uid);
   const userDoc = await userRef.get();
-
   if (!userDoc.exists) {
     const trialEndDate = admin.firestore.Timestamp.fromMillis(Date.now() + 180 * 24 * 60 * 60 * 1000);
-    const newUserProfile = {
-      email: email,
-      name: userName,
-      role: "teacher",
-      trialEndDate: trialEndDate,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      teacherAlias: null,
-    };
-    await userRef.set(newUserProfile);
-    functions.logger.info(`onTeacherSignIn: Đã tạo hồ sơ mới thành công cho ${userId}.`);
-    return {
-      message: "Đăng ký thành công, bạn có 180 ngày dùng thử.",
-      trialEndDate: trialEndDate.toDate().toISOString(),
-      teacherAlias: null,
-    };
+    await userRef.set({ email, name: name || email, role: "teacher", trialEndDate, createdAt: admin.firestore.FieldValue.serverTimestamp(), teacherAlias: null });
+    return { trialEndDate: trialEndDate.toDate().toISOString(), teacherAlias: null };
   } else {
     const existingData = userDoc.data();
-    let needsUpdate = false;
-
-    if (!existingData.role || existingData.role !== "teacher") {
-      existingData.role = "teacher";
-      needsUpdate = true;
-    }
-    if (!existingData.trialEndDate || !(existingData.trialEndDate instanceof admin.firestore.Timestamp)) {
-      existingData.trialEndDate = admin.firestore.Timestamp.fromMillis(Date.now() + 180 * 24 * 60 * 60 * 1000);
-      needsUpdate = true;
-    }
-    if (existingData.teacherAlias === undefined) {
-      existingData.teacherAlias = null;
-      needsUpdate = true;
-    }
-
-    if (needsUpdate) {
-      await userRef.update(existingData);
-      functions.logger.info(`onTeacherSignIn: Đã cập nhật hồ sơ giáo viên ${userId} để sửa chữa thiếu sót.`);
+    if (existingData.trialEndDate && !(existingData.trialEndDate instanceof admin.firestore.Timestamp)) {
+        existingData.trialEndDate = admin.firestore.Timestamp.fromDate(new Date(existingData.trialEndDate));
     }
     return existingData;
   }
 });
 
-/**
- * Kiểm tra trạng thái dùng thử của giáo viên.
- * @param {Object} data Dữ liệu không sử dụng.
- * @param {Object} context Ngữ cảnh xác thực của người dùng.
- * @return {Promise<Object>} Trạng thái dùng thử.
- */
-exports.checkTrialStatus = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "Chỉ giáo viên đã đăng nhập mới có thể kiểm tra.");
-  }
-  const userId = context.auth.uid;
-  const userDoc = await db.collection("users").doc(userId).get();
-
-  if (!userDoc.exists || !userDoc.data() || userDoc.data().role !== "teacher") {
-    throw new functions.https.HttpsError("permission-denied", "Bạn không phải giáo viên hoặc tài khoản không hợp lệ.");
-  }
-  const trialEndDate = userDoc.data().trialEndDate;
-  if (!trialEndDate || !(trialEndDate instanceof admin.firestore.Timestamp)) {
-    return { isActive: false, remainingDays: 0, message: "Lỗi dữ liệu thời gian dùng thử." };
-  }
-  const remainingDays = Math.ceil((trialEndDate.toMillis() - Date.now()) / (1000 * 60 * 60 * 24));
-  return { isActive: remainingDays > 0, remainingDays: Math.max(0, remainingDays) };
-});
-
-/**
- * Cập nhật mã Alias của giáo viên.
- * @param {Object} data Chứa trường 'alias' mới.
- * @param {Object} context Ngữ cảnh xác thực của người dùng.
- * @return {Promise<Object>} Trạng thái cập nhật.
- */
 exports.updateTeacherAlias = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "Chỉ giáo viên đã đăng nhập mới có thể cập nhật Alias.");
-  }
-  const userId = context.auth.uid;
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+  const { uid } = context.auth;
   const newAlias = String(data.alias).trim().toLowerCase();
   if (!newAlias || newAlias.length < 3 || newAlias.length > 20 || !/^[a-z0-9]+$/.test(newAlias)) {
     throw new functions.https.HttpsError("invalid-argument", "Alias phải từ 3-20 ký tự, chỉ chứa chữ và số.");
   }
   const aliasCheck = await db.collection("users").where("teacherAlias", "==", newAlias).limit(1).get();
-  if (!aliasCheck.empty && aliasCheck.docs[0].id !== userId) {
+  if (!aliasCheck.empty && aliasCheck.docs[0].id !== uid) {
     throw new functions.https.HttpsError("already-exists", "Alias này đã có người dùng khác sử dụng.");
   }
-  await db.collection("users").doc(userId).update({ teacherAlias: newAlias });
+  await db.collection("users").doc(uid).update({ teacherAlias: newAlias });
   return { success: true, message: "Cập nhật Alias thành công!" };
 });
 
-/**
- * Lấy toàn bộ dữ liệu (đề thi và lớp học) của một giáo viên.
- * @param {Object} data Dữ liệu không sử dụng.
- * @param {Object} context Ngữ cảnh xác thực.
- * @return {Promise<Object>} Object chứa mảng 'exams' và 'classes'.
- */
+// --- CÁC HÀM QUẢN LÝ DỮ LIỆU (CRUD) ---
 exports.getTeacherFullData = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "Chỉ giáo viên được phép.");
-  }
-  const userId = context.auth.uid;
-  const examsSnapshot = await db.collection("exams").where("teacherId", "==", userId).get();
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+  const { uid } = context.auth;
+  const examsPromise = db.collection("exams").where("teacherId", "==", uid).get();
+  const classesPromise = db.collection("classes").where("teacherId", "==", uid).get();
+  const [examsSnapshot, classesSnapshot] = await Promise.all([examsPromise, classesPromise]);
   const exams = examsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-  const classesSnapshot = await db.collection("classes").where("teacherId", "==", userId).get();
   const classes = classesSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   return { exams, classes };
 });
 
-/**
- * Xóa một lớp học.
- * @param {Object} data Chứa 'classId'.
- * @param {Object} context Ngữ cảnh xác thực.
- * @return {Promise<Object>} Trạng thái xóa.
- */
-exports.deleteClass = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "Chỉ giáo viên được phép.");
-  }
-  const userId = context.auth.uid;
-  const { classId } = data;
-  if (!classId) {
-    throw new functions.https.HttpsError("invalid-argument", "Thiếu ID của lớp.");
-  }
-  const classRef = db.collection("classes").doc(classId);
-  const doc = await classRef.get();
-  if (!doc.exists || doc.data().teacherId !== userId) {
-    throw new functions.https.HttpsError("permission-denied", "Không có quyền xóa.");
-  }
-  await classRef.delete();
-  return { success: true, message: "Đã xóa lớp học." };
+// --- Quản lý Đề thi (ĐÃ NÂNG CẤP) ---
+exports.addExam = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+    const { examData } = data;
+    if (!examData) throw new functions.https.HttpsError("invalid-argument", "Thiếu dữ liệu đề thi.");
+    
+    const { questions, explanations } = parseExamContent(examData.content);
+    
+    if (questions.length === 0) {
+        throw new functions.https.HttpsError("invalid-argument", "Không tìm thấy câu hỏi nào. Hãy chắc chắn bạn đã dùng định dạng 'Câu 1:', 'Bài 2:', v.v...");
+    }
+
+    const newExamData = {
+        teacherId: context.auth.uid,
+        examCode: String(examData.examCode).trim(),
+        timeLimit: parseInt(examData.timeLimit, 10) || 90,
+        keys: String(examData.keys || "").split("|").map(k => k.trim()),
+        cores: String(examData.cores || "").split("|").map(c => c.trim()),
+        questionTexts: questions,
+        explanations: explanations,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+    await db.collection("exams").add(newExamData);
+    return { success: true, message: `Đã thêm thành công ${questions.length} câu hỏi!` };
 });
 
-/**
- * Xóa một đề thi.
- * @param {Object} data Chứa 'examId'.
- * @param {Object} context Ngữ cảnh xác thực.
- * @return {Promise<Object>} Trạng thái xóa.
- */
+exports.updateExam = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+    const { examId, examData } = data;
+    if (!examId || !examData) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID hoặc dữ liệu đề thi.");
+    
+    const examRef = db.collection("exams").doc(examId);
+    const doc = await examRef.get();
+    if (!doc.exists || doc.data().teacherId !== context.auth.uid) {
+        throw new functions.https.HttpsError("permission-denied", "Bạn không có quyền sửa đề thi này.");
+    }
+
+    const { questions, explanations } = parseExamContent(examData.content);
+
+    if (questions.length === 0) {
+        throw new functions.https.HttpsError("invalid-argument", "Không tìm thấy câu hỏi nào trong nội dung bạn cung cấp.");
+    }
+
+    const updatedExamData = {
+        examCode: String(examData.examCode).trim(),
+        timeLimit: parseInt(examData.timeLimit, 10) || 90,
+        keys: String(examData.keys || "").split("|").map(k => k.trim()),
+        cores: String(examData.cores || "").split("|").map(c => c.trim()),
+        questionTexts: questions,
+        explanations: explanations,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+    await examRef.update(updatedExamData);
+    return { success: true, message: `Đã cập nhật thành công ${questions.length} câu hỏi!` };
+});
+
 exports.deleteExam = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "Chỉ giáo viên được phép.");
-  }
-  const userId = context.auth.uid;
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
   const { examId } = data;
-  if (!examId) {
-    throw new functions.https.HttpsError("invalid-argument", "Thiếu ID của đề thi.");
-  }
+  if (!examId) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID đề thi.");
   const examRef = db.collection("exams").doc(examId);
   const doc = await examRef.get();
-  if (!doc.exists || doc.data().teacherId !== userId) {
-    throw new functions.https.HttpsError("permission-denied", "Không có quyền xóa.");
-  }
+  if (!doc.exists || doc.data().teacherId !== context.auth.uid) throw new functions.https.HttpsError("permission-denied", "Không có quyền xóa đề thi này.");
   await examRef.delete();
   return { success: true, message: "Đã xóa đề thi." };
 });
 
-/**
- * Lưu tất cả dữ liệu (đề thi và lớp học) từ dashboard của giáo viên.
- * @param {Object} data Chứa mảng 'exams' và 'classes'.
- * @param {Object} context Ngữ cảnh xác thực.
- * @return {Promise<Object>} Trạng thái lưu.
- */
-exports.saveAllData = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "Chỉ giáo viên được phép.");
-  }
-  const userId = context.auth.uid;
-  const { exams, classes } = data;
-  const batch = db.batch();
-
-  if (Array.isArray(exams)) {
-    for (const exam of exams) {
-      const keysStrArray = String(exam.keys || "").split("|");
-      const examData = {
-        teacherId: userId,
-        examCode: String(exam.examCode).trim(),
-        keys: keysStrArray,
-        cores: String(exam.cores || "").split("|"),
-        questionTexts: String(exam.questionTexts || "").split(/\r?\n/),
-        explanations: String(exam.explanations || "").split(/\r?\n/),
-        timeLimit: exam.timeLimit || 90,
-        questionTypes: keysStrArray.map((k) => "ABCD".includes(k) ? "MC" : /^[TF]+$/.test(k) ? "TF" : "Numeric"),
-        tfCounts: keysStrArray.map((k) => /^[TF]+$/.test(k) ? k.length : 0),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      };
-      if (exam.id) {
-        batch.update(db.collection("exams").doc(exam.id), examData);
-      } else {
-        examData.createdAt = admin.firestore.FieldValue.serverTimestamp();
-        batch.set(db.collection("exams").doc(), examData);
-      }
-    }
-  }
-
-  if (Array.isArray(classes)) {
-    for (const cls of classes) {
-      const classData = {
-        teacherId: userId,
-        name: String(cls.name).trim(),
-        students: Array.isArray(cls.students) ? cls.students : [],
-      };
-      if (cls.id) {
-        batch.update(db.collection("classes").doc(cls.id), classData);
-      } else {
-        classData.createdAt = admin.firestore.FieldValue.serverTimestamp();
-        batch.set(db.collection("classes").doc(), classData);
-      }
-    }
-  }
-
-  await batch.commit();
-  return { success: true, message: "Đã lưu tất cả thay đổi!" };
+exports.getTeacherFullExam = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+    const { examId } = data;
+    if (!examId) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID đề thi.");
+    const doc = await db.collection("exams").doc(examId).get();
+    if (!doc.exists || doc.data().teacherId !== context.auth.uid) throw new functions.https.HttpsError("permission-denied", "Không có quyền xem đề thi này.");
+    return { id: doc.id, ...doc.data() };
 });
 
-// --- CÁC HÀM DÀNH CHO HỌC SINH ---
-
-/**
- * Tải danh sách lớp cho học sinh.
- * @param {Object} data Chứa 'teacherAlias'.
- * @param {Object} context Ngữ cảnh xác thực (không bắt buộc).
- * @return {Promise<Object>} Đối tượng chứa danh sách lớp.
- */
-exports.getClassesForStudent = functions.https.onCall(async (data, context) => {
-  const teacherAlias = String(data.teacherAlias).trim().toLowerCase();
-  if (!teacherAlias) {
-    throw new functions.https.HttpsError("invalid-argument", "Mã giáo viên là bắt buộc.");
-  }
-  const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
-  if (teacherSnapshot.empty) {
-    throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên với Alias này.");
-  }
-  const teacherDoc = teacherSnapshot.docs[0];
-  const teacherData = teacherDoc.data();
-  if (!teacherData.trialEndDate || teacherData.trialEndDate.toMillis() < Date.now()) {
-    throw new functions.https.HttpsError("permission-denied", "Giáo viên này đã hết hạn dùng thử.");
-  }
-  const classesSnapshot = await db.collection("classes").where("teacherId", "==", teacherDoc.id).get();
-  const classData = {};
-  classesSnapshot.forEach((doc) => {
-    classData[doc.data().name] = doc.data().students || [];
-  });
-  return classData;
-});
-
-/**
- * Tải đề thi cho học sinh (chỉ phần không nhạy cảm).
- * @param {Object} data Chứa 'teacherAlias' và 'examCode'.
- * @param {Object} context Ngữ cảnh xác thực (không bắt buộc).
- * @return {Promise<Object>} Đối tượng đề thi.
- */
-exports.loadExamForStudent = functions.https.onCall(async (data, context) => {
-  const { teacherAlias, examCode } = data;
-  if (!teacherAlias || !examCode) {
-    throw new functions.https.HttpsError("invalid-argument", "Mã giáo viên và Mã đề là bắt buộc.");
-  }
-  const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
-  if (teacherSnapshot.empty) {
-    throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên.");
-  }
-  const teacherDoc = teacherSnapshot.docs[0];
-  const teacherData = teacherDoc.data();
-  if (!teacherData.trialEndDate || teacherData.trialEndDate.toMillis() < Date.now()) {
-    throw new functions.https.HttpsError("permission-denied", "Giáo viên đã hết hạn dùng thử.");
-  }
-  const examSnapshot = await db.collection("exams")
-    .where("teacherId", "==", teacherDoc.id)
-    .where("examCode", "==", examCode)
-    .limit(1)
-    .get();
-  if (examSnapshot.empty) {
-    throw new functions.https.HttpsError("not-found", `Không tìm thấy đề thi ${examCode}.`);
-  }
-  const examData = examSnapshot.docs[0].data();
-  return {
-    questionTexts: processImagePlaceholders(examData.questionTexts),
-    explanations: processImagePlaceholders(examData.explanations),
-    timeLimit: examData.timeLimit || 90,
-    questionTypes: examData.questionTypes || [],
-    tfCounts: examData.tfCounts || [],
-  };
-});
-
-/**
- * Chấm điểm và nộp bài.
- * @param {Object} data Chứa 'teacherAlias', 'examCode', 'studentName', 'className', và 'answers'.
- * @param {Object} context Ngữ cảnh xác thực (không bắt buộc).
- * @return {Promise<Object>} Điểm số và chi tiết kết quả.
- */
-exports.submitExam = functions.https.onCall(async (data, context) => {
-  const { teacherAlias, examCode, studentName, className, answers } = data;
-  if (!teacherAlias || !examCode || !studentName || !className || !answers) {
-    throw new functions.https.HttpsError("invalid-argument", "Thiếu dữ liệu nộp bài.");
-  }
-  const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
-  if (teacherSnapshot.empty) {
-    throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên.");
-  }
-  const teacherDoc = teacherSnapshot.docs[0];
-  const teacherData = teacherDoc.data();
-  if (!teacherData.trialEndDate || teacherData.trialEndDate.toMillis() < Date.now()) {
-    throw new functions.https.HttpsError("permission-denied", "Giáo viên đã hết hạn dùng thử.");
-  }
-  const examSnapshot = await db.collection("exams")
-    .where("teacherId", "==", teacherDoc.id)
-    .where("examCode", "==", examCode)
-    .limit(1)
-    .get();
-  if (examSnapshot.empty) {
-    throw new functions.https.HttpsError("not-found", `Không tìm thấy đề thi ${examCode} để chấm điểm.`);
-  }
-  const examData = examSnapshot.docs[0].data();
-  const { keys, cores, questionTypes = [] } = examData;
-  let score = 0;
-  const detailedResults = {};
-
-  keys.forEach((key, i) => {
-    let questionScore = 0;
-    const userAnswer = answers[`q${i}`];
-    const type = questionTypes[i] || "Unknown";
-    if (type === "MC") {
-      if (userAnswer === key) questionScore = parseFloat(cores[0] || 0);
-      detailedResults[`q${i}`] = { userAnswer, correctAnswer: key, scoreEarned: questionScore, type: "MC" };
-    } else if (type === "TF") {
-      let countCorrect = 0;
-      const userSubAnswers = [];
-      for (let j = 0; j < key.length; j++) {
-        const subAnswer = answers[`q${i}_sub${j}`];
-        userSubAnswers.push(subAnswer);
-        if (subAnswer === key[j]) countCorrect++;
-      }
-      const tfScores = (cores[1] || "").split(",").map((x) => parseFloat(x));
-      if (countCorrect >= 1 && countCorrect <= tfScores.length) questionScore = tfScores[countCorrect - 1];
-      detailedResults[`q${i}`] = { userAnswer: userSubAnswers, correctAnswer: key, scoreEarned: questionScore, type: "TF" };
-    } else if (type === "Numeric") {
-      if (parseFloat(userAnswer) === parseFloat(key)) questionScore = parseFloat(cores[2] || 0);
-      detailedResults[`q${i}`] = { userAnswer, correctAnswer: key, scoreEarned: questionScore, type: "Numeric" };
-    }
-    score += questionScore;
-  });
-
-  await db.collection("submissions").add({
-    teacherId: teacherDoc.id,
-    timestamp: admin.firestore.FieldValue.serverTimestamp(),
-    examCode,
-    studentName,
-    className,
-    answers,
-    score: parseFloat(score.toFixed(2)),
-  });
-
-  return {
-    score: parseFloat(score.toFixed(2)),
-    examData: {
-      keysStr: keys,
-      coreStr: cores,
-      questionTexts: processImagePlaceholders(examData.questionTexts),
-      explanations: processImagePlaceholders(examData.explanations),
-      timeLimit: examData.timeLimit,
-    },
-    detailedResults: detailedResults,
-  };
-});
-
-// Thêm vào cuối file firebase-functions/index.js
-
-exports.getTeacherFullClass = functions.https.onCall(async (data, context) => {
-  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Chỉ giáo viên được phép.");
-  const { classId } = data;
-  if (!classId) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID của lớp.");
-  const doc = await db.collection("classes").doc(classId).get();
-  if (!doc.exists || doc.data().teacherId !== context.auth.uid) throw new functions.https.HttpsError("permission-denied", "Không có quyền xem.");
-  return { id: doc.id, ...doc.data() };
-});
-
+// --- Quản lý Lớp học ---
 exports.addClass = functions.https.onCall(async (data, context) => {
-  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Chỉ giáo viên được phép.");
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
   const { classData } = data;
-  if (!classData.name) throw new functions.https.HttpsError("invalid-argument", "Tên lớp không được trống.");
-  const newClassData = {
-    teacherId: context.auth.uid,
-    name: String(classData.name).trim(),
-    students: Array.isArray(classData.students) ? classData.students : [],
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-  };
-  await db.collection("classes").add(newClassData);
+  if (!classData || !classData.name) throw new functions.https.HttpsError("invalid-argument", "Tên lớp không được trống.");
+  await db.collection("classes").add({ teacherId: context.auth.uid, name: String(classData.name).trim(), students: Array.isArray(classData.students) ? classData.students.filter(s => s.trim() !== "") : [], createdAt: admin.firestore.FieldValue.serverTimestamp() });
   return { success: true, message: "Đã thêm lớp học thành công!" };
 });
 
 exports.updateClass = functions.https.onCall(async (data, context) => {
-  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Chỉ giáo viên được phép.");
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
   const { classId, classData } = data;
-  if (!classId) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID của lớp.");
+  if (!classId || !classData) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID hoặc dữ liệu lớp học.");
   const classRef = db.collection("classes").doc(classId);
   const doc = await classRef.get();
-  if (!doc.exists || doc.data().teacherId !== context.auth.uid) throw new functions.https.HttpsError("permission-denied", "Không có quyền sửa.");
-  const updatedClassData = {
-    name: String(classData.name).trim(),
-    students: Array.isArray(classData.students) ? classData.students : [],
-  };
-  await classRef.update(updatedClassData);
+  if (!doc.exists || doc.data().teacherId !== context.auth.uid) throw new functions.https.HttpsError("permission-denied", "Không có quyền sửa lớp học này.");
+  await classRef.update({ name: String(classData.name).trim(), students: Array.isArray(classData.students) ? classData.students.filter(s => s.trim() !== "") : [] });
   return { success: true, message: "Đã cập nhật lớp học thành công!" };
+});
+
+exports.deleteClass = functions.https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+  const { classId } = data;
+  if (!classId) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID lớp học.");
+  const classRef = db.collection("classes").doc(classId);
+  const doc = await classRef.get();
+  if (!doc.exists || doc.data().teacherId !== context.auth.uid) throw new functions.https.HttpsError("permission-denied", "Không có quyền xóa lớp học này.");
+  await classRef.delete();
+  return { success: true, message: "Đã xóa lớp học." };
+});
+
+exports.getTeacherFullClass = functions.https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+  const { classId } = data;
+  if (!classId) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID lớp học.");
+  const doc = await db.collection("classes").doc(classId).get();
+  if (!doc.exists || doc.data().teacherId !== context.auth.uid) throw new functions.https.HttpsError("permission-denied", "Không có quyền xem lớp học này.");
+  return { id: doc.id, ...doc.data() };
+});
+
+// --- CÁC HÀM DÀNH CHO HỌC SINH ---
+exports.getClassesForStudent = functions.https.onCall(async (data, context) => {
+  const teacherAlias = String(data.teacherAlias).trim().toLowerCase();
+  if (!teacherAlias) throw new functions.https.HttpsError("invalid-argument", "Mã giáo viên là bắt buộc.");
+  const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
+  if (teacherSnapshot.empty) throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên với Alias này.");
+  const teacherDoc = teacherSnapshot.docs[0];
+  const teacherData = teacherDoc.data();
+  if (!teacherData.trialEndDate || teacherData.trialEndDate.toMillis() < Date.now()) throw new functions.https.HttpsError("permission-denied", "Tài khoản của giáo viên này đã hết hạn dùng thử.");
+  const classesSnapshot = await db.collection("classes").where("teacherId", "==", teacherDoc.id).get();
+  const classData = {};
+  classesSnapshot.forEach((doc) => { classData[doc.data().name] = doc.data().students || []; });
+  return classData;
+});
+
+exports.loadExamForStudent = functions.https.onCall(async (data, context) => {
+  const { teacherAlias, examCode } = data;
+  if (!teacherAlias || !examCode) throw new functions.https.HttpsError("invalid-argument", "Mã giáo viên và Mã đề là bắt buộc.");
+  const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
+  if (teacherSnapshot.empty) throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên.");
+  const teacherDoc = teacherSnapshot.docs[0];
+  const teacherData = teacherDoc.data();
+  if (!teacherData.trialEndDate || teacherData.trialEndDate.toMillis() < Date.now()) throw new functions.https.HttpsError("permission-denied", "Tài khoản của giáo viên này đã hết hạn dùng thử.");
+  const examSnapshot = await db.collection("exams").where("teacherId", "==", teacherDoc.id).where("examCode", "==", examCode).limit(1).get();
+  if (examSnapshot.empty) throw new functions.https.HttpsError("not-found", `Không tìm thấy đề thi ${examCode} của giáo viên này.`);
+  const examData = examSnapshot.docs[0].data();
+  const keysArray = Array.isArray(examData.keys) ? examData.keys : [];
+  const questionTypes = keysArray.map(k => "ABCD".includes(k) ? "MC" : /^[TF]+$/.test(k) ? "TF" : "Numeric");
+  const tfCounts = keysArray.map(k => /^[TF]+$/.test(k) ? k.length : 0);
+  return {
+    questionTexts: processImagePlaceholders(examData.questionTexts || []),
+    timeLimit: examData.timeLimit || 90,
+    questionTypes: questionTypes,
+    tfCounts: tfCounts,
+  };
+});
+
+exports.submitExam = functions.https.onCall(async (data, context) => {
+  const { teacherAlias, examCode, studentName, className, answers, isCheating } = data;
+  if (!teacherAlias || !examCode || !studentName || !className) throw new functions.https.HttpsError("invalid-argument", "Thiếu thông tin định danh (học sinh, đề thi...).");
+  if (!isCheating && !answers) throw new functions.https.HttpsError("invalid-argument", "Thiếu dữ liệu câu trả lời của bài làm.");
+
+  const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
+  if (teacherSnapshot.empty) throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên.");
+  const teacherDoc = teacherSnapshot.docs[0];
+
+  if (isCheating === true) {
+    await db.collection("submissions").add({ teacherId: teacherDoc.id, timestamp: admin.firestore.FieldValue.serverTimestamp(), examCode, studentName, className, score: 0, isCheating: true });
+    return { score: 0, examData: {}, detailedResults: {} };
+  }
+
+  const examSnapshot = await db.collection("exams").where("teacherId", "==", teacherDoc.id).where("examCode", "==", examCode).limit(1).get();
+  if (examSnapshot.empty) throw new functions.https.HttpsError("not-found", `Không tìm thấy đề thi ${examCode} để chấm điểm.`);
+
+  const examData = examSnapshot.docs[0].data();
+  const { keys, cores, questionTexts, explanations } = examData;
+  const questionTypes = keys.map(k => "ABCD".includes(k) ? "MC" : /^[TF]+$/.test(k) ? "TF" : "Numeric");
+  
+  let totalScore = 0;
+  const detailedResults = {};
+
+  keys.forEach((key, i) => {
+    let questionScore = 0;
+    const type = questionTypes[i];
+    
+    if (type === "MC") {
+        const userAnswer = answers.answers[`q${i}`];
+        if (userAnswer === key) questionScore = parseFloat(cores[i] || 0);
+        detailedResults[`q${i}`] = { userAnswer, correctAnswer: key, scoreEarned: questionScore, type };
+    } else if (type === "TF") {
+        let countCorrect = 0;
+        const userSubAnswers = [];
+        for (let j = 0; j < key.length; j++) {
+            const subAnswer = answers.answers[`q${i}_sub${j}`];
+            userSubAnswers.push(subAnswer);
+            if (subAnswer === key[j]) countCorrect++;
+        }
+        const tfScores = (cores[i] || "").split(",").map(x => parseFloat(x));
+        if (countCorrect > 0 && countCorrect <= tfScores.length) questionScore = tfScores[countCorrect - 1] || 0;
+        detailedResults[`q${i}`] = { userAnswer: userSubAnswers, correctAnswer: key, scoreEarned: questionScore, type };
+    } else if (type === "Numeric") {
+        const userAnswer = answers.answers[`q${i}`];
+        if (Math.abs(parseFloat(userAnswer) - parseFloat(key)) < 1e-9) questionScore = parseFloat(cores[i] || 0);
+        detailedResults[`q${i}`] = { userAnswer, correctAnswer: key, scoreEarned: questionScore, type };
+    }
+    totalScore += questionScore;
+  });
+
+  await db.collection("submissions").add({ teacherId: teacherDoc.id, timestamp: admin.firestore.FieldValue.serverTimestamp(), examCode, studentName, className, answers: answers.answers, score: parseFloat(totalScore.toFixed(2)), isCheating: false });
+
+  return {
+    score: parseFloat(totalScore.toFixed(2)),
+    examData: {
+      keysStr: keys,
+      coreStr: cores,
+      questionTexts: processImagePlaceholders(questionTexts || []),
+      explanations: processImagePlaceholders(explanations || []),
+      timeLimit: examData.timeLimit,
+    },
+    detailedResults: detailedResults,
+  };
 });
