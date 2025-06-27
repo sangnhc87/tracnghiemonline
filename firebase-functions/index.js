@@ -1,4 +1,4 @@
-// firebase-functions/index.js (Phiên bản Nâng cấp Hoàn chỉnh - Hỗ trợ KaTeX & Tự động nhận dạng câu)
+// firebase-functions/index.js (Phiên bản Nâng cấp Hoàn chỉnh - Sửa lỗi INTERNAL và Nộp bài)
 
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
@@ -7,6 +7,7 @@ admin.initializeApp();
 const db = admin.firestore();
 
 /**
+ * Phân tích một chuỗi văn bản lớn thành các câu hỏi và lời giải riêng biệt.
  * @param {string} rawText Chuỗi văn bản thô từ textarea.
  * @return {{questions: string[], explanations: string[]}} Một object chứa mảng câu hỏi và mảng lời giải.
  */
@@ -17,8 +18,11 @@ function parseExamContent(rawText) {
 
     const questions = [];
     const explanations = [];
+
+    // 1. Normalize newlines
     rawText = rawText.replace(/\r\n/g, '\n');
 
+    // 2. Define the regex to find the start of a question.
     const questionStartPattern = /(?:^|\n\s*)([Cc][âĂaA][uUu]|[Bb][àÀaA][iI]|[Qq][uUu][eE][sS][tT][iI][oO][nN])\s*\d+[:.]?/g;
 
     // Use matchAll to get all occurrences of question starts and their indices.
@@ -36,36 +40,27 @@ function parseExamContent(rawText) {
         const currentMatch = matches[i];
         const startIndex = currentMatch.index;
 
-        // The end index for the current block is the start of the next match,
-        // or the end of the entire rawText if it's the last question.
         const endIndex = (i + 1 < matches.length) ? matches[i + 1].index : rawText.length;
 
-        // Extract the raw block of text for the current question.
         let block = rawText.substring(startIndex, endIndex).trim();
-
-        // Skip if the block is empty after trimming (e.g., just whitespace between patterns)
         if (!block) continue;
 
         let questionText = block;
         let explanationText = '';
 
         // 5. Extract the explanation part from the current question block.
-        //    \\begin\{loigiai\}([\s\S]*?)\\end\{loigiai\} : Matches the exact tags and captures content.
-        //    [\s\S]*? : Matches any character (including newlines) non-greedily.
         const loigiaiRegex = /\\begin\{loigiai\}([\s\S]*?)\\end\{loigiai\}/i;
         const matchExplanation = questionText.match(loigiaiRegex);
 
         if (matchExplanation && matchExplanation[1]) {
             explanationText = matchExplanation[1].trim();
-            // Remove the explanation part from the question text to get pure question content.
             questionText = questionText.replace(loigiaiRegex, '').trim();
         }
 
-        // Add the parsed question and its explanation to the respective arrays.
         questions.push(questionText);
         explanations.push(explanationText);
     }
-
+    
     return { questions, explanations };
 }
 
@@ -240,7 +235,14 @@ exports.getClassesForStudent = functions.https.onCall(async (data, context) => {
   if (teacherSnapshot.empty) throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên với Alias này.");
   const teacherDoc = teacherSnapshot.docs[0];
   const teacherData = teacherDoc.data();
-  if (!teacherData.trialEndDate || teacherData.trialEndDate.toMillis() < Date.now()) throw new functions.https.HttpsError("permission-denied", "Tài khoản của giáo viên này đã hết hạn dùng thử.");
+  // Kiểm tra thời gian dùng thử (trialEndDate)
+  // trialEndDate có thể là Timestamp hoặc Date string (nếu là legacy data)
+  const trialEndDateMillis = teacherData.trialEndDate?.toMillis ? teacherData.trialEndDate.toMillis() : new Date(teacherData.trialEndDate).getTime();
+
+  if (!teacherData.trialEndDate || trialEndDateMillis < Date.now()) {
+    throw new functions.https.HttpsError("permission-denied", "Tài khoản của giáo viên này đã hết hạn dùng thử.");
+  }
+
   const classesSnapshot = await db.collection("classes").where("teacherId", "==", teacherDoc.id).get();
   const classData = {};
   classesSnapshot.forEach((doc) => { classData[doc.data().name] = doc.data().students || []; });
@@ -254,15 +256,28 @@ exports.loadExamForStudent = functions.https.onCall(async (data, context) => {
   if (teacherSnapshot.empty) throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên.");
   const teacherDoc = teacherSnapshot.docs[0];
   const teacherData = teacherDoc.data();
-  if (!teacherData.trialEndDate || teacherData.trialEndDate.toMillis() < Date.now()) throw new functions.https.HttpsError("permission-denied", "Tài khoản của giáo viên này đã hết hạn dùng thử.");
+
+  const trialEndDateMillis = teacherData.trialEndDate?.toMillis ? teacherData.trialEndDate.toMillis() : new Date(teacherData.trialEndDate).getTime();
+  if (!teacherData.trialEndDate || trialEndDateMillis < Date.now()) {
+    throw new functions.https.HttpsError("permission-denied", "Tài khoản của giáo viên này đã hết hạn dùng thử.");
+  }
+
   const examSnapshot = await db.collection("exams").where("teacherId", "==", teacherDoc.id).where("examCode", "==", examCode).limit(1).get();
   if (examSnapshot.empty) throw new functions.https.HttpsError("not-found", `Không tìm thấy đề thi ${examCode} của giáo viên này.`);
   const examData = examSnapshot.docs[0].data();
   const keysArray = Array.isArray(examData.keys) ? examData.keys : [];
-  const questionTypes = keysArray.map(k => "ABCD".includes(k) ? "MC" : /^[TF]+$/.test(k) ? "TF" : "Numeric");
-  const tfCounts = keysArray.map(k => /^[TF]+$/.test(k) ? k.length : 0);
+  // Xác định loại câu hỏi dựa trên đáp án
+  const questionTypes = keysArray.map(k => {
+      if (typeof k !== 'string') return "Invalid"; // Handle non-string keys
+      if (k.length === 1 && "ABCD".includes(k)) return "MC";
+      if (/^[TF]+$/.test(k)) return "TF"; // 'T', 'F', 'TTF', etc.
+      if (!isNaN(parseFloat(k))) return "Numeric"; // Numbers like '3.14', '10'
+      return "Unknown"; // Fallback for unexpected key formats
+  });
+  const tfCounts = keysArray.map(k => (typeof k === 'string' && /^[TF]+$/.test(k)) ? k.length : 0);
+  
   return {
-    questionTexts: processImagePlaceholders(examData.questionTexts || []),
+    questionTexts: examData.questionTexts || [],
     timeLimit: examData.timeLimit || 90,
     questionTypes: questionTypes,
     tfCounts: tfCounts,
@@ -278,9 +293,11 @@ exports.submitExam = functions.https.onCall(async (data, context) => {
   if (teacherSnapshot.empty) throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên.");
   const teacherDoc = teacherSnapshot.docs[0];
 
+  // Logic xử lý khi phát hiện gian lận (isCheating === true)
   if (isCheating === true) {
     await db.collection("submissions").add({ teacherId: teacherDoc.id, timestamp: admin.firestore.FieldValue.serverTimestamp(), examCode, studentName, className, score: 0, isCheating: true });
-    return { score: 0, examData: {}, detailedResults: {} };
+    // Trả về cấu trúc examData rỗng nhưng hợp lệ để frontend không bị lỗi
+    return { score: 0, examData: { questionTexts: [], explanations: [] }, detailedResults: {} };
   }
 
   const examSnapshot = await db.collection("exams").where("teacherId", "==", teacherDoc.id).where("examCode", "==", examCode).limit(1).get();
@@ -288,7 +305,20 @@ exports.submitExam = functions.https.onCall(async (data, context) => {
 
   const examData = examSnapshot.docs[0].data();
   const { keys, cores, questionTexts, explanations } = examData;
-  const questionTypes = keys.map(k => "ABCD".includes(k) ? "MC" : /^[TF]+$/.test(k) ? "TF" : "Numeric");
+  
+  // Đảm bảo keys và cores là mảng và có độ dài hợp lệ
+  if (!Array.isArray(keys) || !Array.isArray(cores) || keys.length !== questionTexts.length) {
+      throw new functions.https.HttpsError("internal", "Dữ liệu đề thi bị lỗi: Keys hoặc Cores không hợp lệ.");
+  }
+
+  // Xác định lại questionTypes để đảm bảo đồng bộ với keys
+  const questionTypes = keys.map(k => {
+      if (typeof k !== 'string') return "Invalid";
+      if (k.length === 1 && "ABCD".includes(k)) return "MC";
+      if (/^[TF]+$/.test(k)) return "TF";
+      if (!isNaN(parseFloat(k))) return "Numeric";
+      return "Unknown";
+  });
   
   let totalScore = 0;
   const detailedResults = {};
@@ -296,39 +326,71 @@ exports.submitExam = functions.https.onCall(async (data, context) => {
   keys.forEach((key, i) => {
     let questionScore = 0;
     const type = questionTypes[i];
+    const coreValue = parseFloat(cores[i]) || 0; // Giá trị điểm mặc định cho câu hỏi (nếu có)
     
+    // Đảm bảo câu trả lời của học sinh được lấy đúng từ object 'answers'
+    // và không phải 'answers.answers'
     if (type === "MC") {
-        const userAnswer = answers.answers[`q${i}`];
-        if (userAnswer === key) questionScore = parseFloat(cores[i] || 0);
-        detailedResults[`q${i}`] = { userAnswer, correctAnswer: key, scoreEarned: questionScore, type };
+        const userAnswer = answers[`q${i}`];
+        if (userAnswer === key) questionScore = coreValue;
+        detailedResults[`q${i}`] = { userAnswer: userAnswer || "", correctAnswer: key, scoreEarned: questionScore, type };
     } else if (type === "TF") {
         let countCorrect = 0;
         const userSubAnswers = [];
+        const tfCoreValues = (cores[i] || "").split(",").map(x => parseFloat(x)).filter(n => !isNaN(n)); // Lọc bỏ NaN
+        
         for (let j = 0; j < key.length; j++) {
-            const subAnswer = answers.answers[`q${i}_sub${j}`];
+            const subAnswer = answers[`q${i}_sub${j}`];
             userSubAnswers.push(subAnswer);
-            if (subAnswer === key[j]) countCorrect++;
+            if (subAnswer === key[j]) {
+                countCorrect++;
+            }
         }
-        const tfScores = (cores[i] || "").split(",").map(x => parseFloat(x));
-        if (countCorrect > 0 && countCorrect <= tfScores.length) questionScore = tfScores[countCorrect - 1] || 0;
+        
+        // Logic tính điểm cho câu Đúng/Sai: Lấy điểm tương ứng với số câu con đúng.
+        if (countCorrect > 0 && countCorrect <= tfCoreValues.length) {
+            questionScore = tfCoreValues[countCorrect - 1]; 
+        } else if (countCorrect > tfCoreValues.length && tfCoreValues.length > 0) {
+            // Trường hợp có nhiều câu con đúng hơn số điểm định nghĩa, lấy điểm tối đa
+            questionScore = tfCoreValues[tfCoreValues.length - 1];
+        } else {
+            questionScore = 0; // Mặc định 0 điểm nếu không có câu con nào đúng hoặc không định nghĩa điểm
+        }
+
         detailedResults[`q${i}`] = { userAnswer: userSubAnswers, correctAnswer: key, scoreEarned: questionScore, type };
     } else if (type === "Numeric") {
-        const userAnswer = answers.answers[`q${i}`];
-        if (Math.abs(parseFloat(userAnswer) - parseFloat(key)) < 1e-9) questionScore = parseFloat(cores[i] || 0);
-        detailedResults[`q${i}`] = { userAnswer, correctAnswer: key, scoreEarned: questionScore, type };
+        const userAnswer = answers[`q${i}`];
+        // Đảm bảo userAnswer là một số hợp lệ trước khi so sánh
+        const parsedUserAnswer = parseFloat(userAnswer);
+        const parsedCorrectAnswer = parseFloat(key);
+
+        if (!isNaN(parsedUserAnswer) && !isNaN(parsedCorrectAnswer) && Math.abs(parsedUserAnswer - parsedCorrectAnswer) < 1e-9) {
+            questionScore = coreValue;
+        }
+        detailedResults[`q${i}`] = { userAnswer: userAnswer || "", correctAnswer: key, scoreEarned: questionScore, type };
     }
     totalScore += questionScore;
   });
 
-  await db.collection("submissions").add({ teacherId: teacherDoc.id, timestamp: admin.firestore.FieldValue.serverTimestamp(), examCode, studentName, className, answers: answers.answers, score: parseFloat(totalScore.toFixed(2)), isCheating: false });
+  // Lưu bài nộp vào Firestore. Đảm bảo 'answers' được lưu đúng là object chứa câu trả lời.
+  await db.collection("submissions").add({ 
+      teacherId: teacherDoc.id, 
+      timestamp: admin.firestore.FieldValue.serverTimestamp(), 
+      examCode, 
+      studentName, 
+      className, 
+      answers: answers, // SỬA LỖI: Chỉ dùng 'answers'
+      score: parseFloat(totalScore.toFixed(2)), 
+      isCheating: false 
+  });
 
   return {
     score: parseFloat(totalScore.toFixed(2)),
     examData: {
-      keysStr: keys,
-      coreStr: cores,
-      questionTexts: processImagePlaceholders(questionTexts || []),
-      explanations: processImagePlaceholders(explanations || []),
+      keysStr: keys, // Frontend có thể mong đợi keysStr
+      coreStr: cores, // Frontend có thể mong đợi coreStr
+      questionTexts: questionTexts || [],
+      explanations: explanations || [],
       timeLimit: examData.timeLimit,
     },
     detailedResults: detailedResults,

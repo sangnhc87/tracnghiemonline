@@ -53,7 +53,7 @@ function showScreen(screenId) {
 }
 const showLoading = () => getEl("loading").style.display = "flex";
 const hideLoading = () => getEl("loading").style.display = "none";
-const showStudentLoginScreen = () => showScreen("loginScreen"); // Hàm này đã được định nghĩa đúng
+const showStudentLoginScreen = () => showScreen("loginScreen");
 const showTeacherLoginScreen = () => showScreen("teacherLogin");
 
 // --- XÁC THỰC & QUẢN LÝ GIÁO VIÊN ---
@@ -66,7 +66,7 @@ auth.onAuthStateChanged(user => {
         currentTeacherId = null;
         getEl("teacherInfo").style.display = "none";
         getEl("teacherActions").style.display = "none";
-        showStudentLoginScreen(); // Sử dụng hàm đúng
+        showStudentLoginScreen();
     }
 });
 
@@ -86,8 +86,6 @@ async function updateTeacherUI(user) {
         getEl("teacherInfo").style.display = "block";
         getEl("teacherActions").style.display = "flex";
         getEl("teacherAliasInput").value = data.teacherAlias || "";
-        // Đảm bảo các phần tử này tồn tại trong HTML của Teacher Dashboard
-        // (đã được bổ sung trong các câu trả lời trước)
         const teacherDashboardNameEl = getEl("teacherDashboardName");
         if (teacherDashboardNameEl) {
             teacherDashboardNameEl.textContent = user.displayName || user.email;
@@ -342,7 +340,8 @@ async function handleClassFormSubmit() {
         Swal.fire("Thành công!", result.data.message, "success");
         hideClassForm();
         loadTeacherDataForDashboard();
-    } catch (error) {
+    }
+    catch (error) {
         Swal.fire("Lỗi", `Lỗi khi lưu lớp học: ${error.message}`, "error");
     } finally {
         hideLoading();
@@ -422,7 +421,7 @@ async function startExam() {
         hideLoading();
         if (!result.data || !result.data.questionTexts || result.data.questionTexts.length === 0) {
             Swal.fire("Lỗi", `Không tìm thấy đề thi ${examCode} của giáo viên này.`, "error");
-            showStudentLoginScreen(); // SỬA LỖI: Gọi hàm đúng là showStudentLoginScreen()
+            showStudentLoginScreen();
             return;
         }
         examData = { ...result.data, studentName, className, examCode, teacherAlias };
@@ -435,7 +434,7 @@ async function startExam() {
     } catch (error) {
         hideLoading();
         Swal.fire("Lỗi", `Lỗi tải đề thi: ${error.message}`, "error");
-        showStudentLoginScreen(); // SỬA LỖI: Gọi hàm đúng là showStudentLoginScreen()
+        showStudentLoginScreen();
     }
 }
 
@@ -466,7 +465,7 @@ function gradeQuiz(isCheating = false){
     if (!examData) {
         const storedData = sessionStorage.getItem('currentExamData');
         if (storedData) { examData = JSON.parse(storedData); }
-        else { Swal.fire("Lỗi nghiêm trọng", "Mất dữ liệu bài thi. Vui lòng thử lại từ đầu.", "error").then(() => showStudentLoginScreen()); return; } // SỬA LỖI: Gọi hàm đúng
+        else { Swal.fire("Lỗi nghiêm trọng", "Mất dữ liệu bài thi. Vui lòng thử lại từ đầu.", "error").then(() => showStudentLoginScreen()); return; }
     }
     let unanswered=[];
     if(!isCheating){
@@ -509,7 +508,7 @@ function gradeQuiz(isCheating = false){
                 
                 // Format user answer based on type
                 if (resultForQ.type === "TF") {
-                    feedbackHtml += resultForQ.userAnswer.join(", ") || "Chưa trả lời";
+                    feedbackHtml += (resultForQ.userAnswer && resultForQ.userAnswer.join(", ")) || "Chưa trả lời";
                 } else if (resultForQ.type === "Numeric") {
                     feedbackHtml += resultForQ.userAnswer || "Chưa trả lời";
                 } else { // MC
@@ -552,7 +551,7 @@ function gradeQuiz(isCheating = false){
     }).catch(error => {
         Swal.close();
         Swal.fire("Lỗi", `Lỗi nộp bài: ${error.message}`, "error");
-        showStudentLoginScreen(); // SỬA LỖI: Gọi hàm đúng
+        showStudentLoginScreen();
     });
 }
 
@@ -583,8 +582,6 @@ window.showStudentLogin = showStudentLoginScreen;
 
 // --- EVENT LISTENERS ---
 document.addEventListener('DOMContentLoaded', () => {
-    // Chỉ thêm listener này nếu phần tử #teacherAlias tồn tại,
-    // đảm bảo không gây lỗi nếu trang được tải ở màn hình khác.
     const teacherAliasInput = getEl("teacherAlias");
     if (teacherAliasInput) {
         teacherAliasInput.addEventListener("change", initializeClassDataForStudent);
@@ -593,7 +590,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 let tabSwitchCount=0;
 document.addEventListener("visibilitychange", function() {
-    // Chỉ kích hoạt cảnh báo nếu đang ở màn hình làm bài (quiz)
     if (getEl("quiz").style.display !== 'block' || !document.hidden) return;
     
     tabSwitchCount++;
@@ -602,16 +598,16 @@ document.addEventListener("visibilitychange", function() {
             icon:"warning",
             title:"Chuyển tab quá nhiều!",
             text:"Bài thi của bạn sẽ tự động bị nộp với 0 điểm.",
-            timer:3000, // Display for 3 seconds
+            timer:3000,
             timerProgressBar:true,
             showConfirmButton:false
-        }).then(()=>gradeQuiz(true)); // Nộp bài với cờ isCheating = true
+        }).then(()=>gradeQuiz(true));
     } else {
         Swal.fire({
             icon:"warning",
             title:"Cảnh báo chuyển tab",
             text:`Bạn đã chuyển tab ${tabSwitchCount} lần. Chuyển 3 lần, bài thi sẽ tự động bị nộp.`,
-            timer:2000, // Display for 2 seconds
+            timer:2000,
             timerProgressBar:true,
             showConfirmButton:false
         });
