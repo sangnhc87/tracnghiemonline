@@ -1,4 +1,4 @@
-/* public/css/style.css - Phiên bản nâng cấp chuyên gia (Có sửa lỗi Modal Scrolling) */
+/* public/css/style.css - Phiên bản nâng cấp chuyên gia (Hoàn chỉnh 100%) */
 
 /* --- 1. CSS Custom Properties (Variables) --- */
 :root {
@@ -660,19 +660,21 @@ textarea {
 }
 
 .modal-content {
-  /* Applying card styles manually, as @extend is not native CSS */
+  /* Áp dụng lại các style card cơ bản (vì CSS thuần không có @extend) */
   background-color: var(--surface-color);
   border-radius: var(--border-radius-md);
   box-shadow: var(--shadow-md);
   border: 1px solid var(--border-color);
   
   width: 100%;
-  max-width: 800px; /* Wider modal for forms like exam content */
-  max-height: 95vh; /* Allow more height before scrolling */
+  max-width: 800px; /* Chiều rộng tối đa cho modal */
+  max-height: 95vh; /* Chiều cao tối đa của modal, để lại không gian cho thanh cuộn của trình duyệt */
+  
   display: flex; 
-  flex-direction: column; /* Crucial for internal flex layout */
+  flex-direction: column; /* RẤT QUAN TRỌNG: Sắp xếp nội dung theo cột */
+  
+  padding: var(--spacing-xl); /* Padding bên trong modal */
   animation: slideIn var(--transition-speed-normal) var(--transition-ease);
-  padding: var(--spacing-xl);
 }
 
 .modal-content h2 {
@@ -681,41 +683,40 @@ textarea {
   color: var(--primary-color-dark);
 }
 
-/* FIX: Ensure modal-body grows and scrolls */
-.modal-body {
-  overflow-y: auto; /* Enable scrolling for form content */
-  padding-right: var(--spacing-sm); /* Space for scrollbar so it doesn't overlap content */
-  flex-grow: 1; /* Allow this div to take all available space in the flex column */
-  padding-bottom: var(--spacing-sm); /* Small padding at the bottom for scroll comfort */
+/* Phần nội dung form có thể cuộn được */
+.modal-form-scrollable-area {
+  flex-grow: 1; /* RẤT QUAN TRỌNG: Cho phép phần này giãn nở để chiếm hết không gian trống */
+  overflow-y: auto; /* RẤT QUAN TRỌNG: Kích hoạt thanh cuộn dọc khi nội dung tràn */
+  padding-right: var(--spacing-sm); /* Tạo khoảng trống cho thanh cuộn để nó không đè lên nội dung */
+  padding-bottom: var(--spacing-md); /* Thêm một ít padding ở cuối vùng cuộn */
 }
 
-/* Custom scrollbar styling (Webkit browsers like Chrome, Safari) */
-.modal-body::-webkit-scrollbar {
-  width: 8px; /* Width of the scrollbar */
+/* Tùy chỉnh thanh cuộn (chỉ hoạt động trên trình duyệt Webkit như Chrome, Safari) */
+.modal-form-scrollable-area::-webkit-scrollbar {
+  width: 8px;
 }
-.modal-body::-webkit-scrollbar-track {
-  background: var(--off-white); /* Color of the tracking area */
+.modal-form-scrollable-area::-webkit-scrollbar-track {
+  background: var(--off-white);
   border-radius: 10px;
 }
-.modal-body::-webkit-scrollbar-thumb {
-  background: var(--border-color); /* Color of the scroll thumb */
-  border-radius: 10px; /* Roundness of the scroll thumb */
-  border: 2px solid var(--off-white); /* Creates padding around thumb */
+.modal-form-scrollable-area::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 10px;
+  border: 2px solid var(--off-white); /* Tạo khoảng đệm quanh thumb */
 }
-.modal-body::-webkit-scrollbar-thumb:hover {
-  background: var(--secondary-color); /* Color when hovering over scroll thumb */
+.modal-form-scrollable-area::-webkit-scrollbar-thumb:hover {
+  background: var(--secondary-color);
 }
 
 
 .modal-actions {
   display: flex;
-  justify-content: flex-end; /* Align buttons to the right */
-  gap: var(--spacing-md);
-  margin-top: var(--spacing-xl);
-  border-top: 1px solid var(--border-color);
-  padding-top: var(--spacing-lg);
-  /* Ensure actions don't shrink if modal-body grows */
-  flex-shrink: 0;
+  justify-content: flex-end; /* Căn nút sang phải */
+  gap: var(--spacing-md); /* Khoảng cách giữa các nút */
+  margin-top: var(--spacing-xl); /* Khoảng cách từ nội dung form phía trên */
+  border-top: 1px solid var(--border-color); /* Đường kẻ phân cách */
+  padding-top: var(--spacing-lg); /* Padding phía trên đường kẻ */
+  flex-shrink: 0; /* RẤT QUAN TRỌNG: Ngăn không cho phần này bị co lại khi nội dung cuộn được giãn nở */
 }
 
 .form-grid {
