@@ -310,7 +310,7 @@ textarea { resize: vertical; min-height: 100px; }
 }
 .question {
   margin-bottom: var(--spacing-xxl);
-  padding: var(--spacing-lg);
+  padding: var(--spacing-sm);
   border: 1px solid #ddd;
   border-radius: var(--border-radius-lg);
   background-color: var(--white);
@@ -728,4 +728,94 @@ textarea { resize: vertical; min-height: 100px; }
   .tf-btn {
     font-size: 14px;
   }
+}
+/* =================================================================== */
+/* ==      CSS TỐI GIẢN & ỔN ĐỊNH CHO BẢNG ĐIỂM                 == */
+/* =================================================================== */
+
+#result-container {
+    max-width: 500px;
+    background-color: var(--white);
+    box-shadow: var(--shadow-md);
+    padding: var(--spacing-xl);
+    text-align: center;
+    display: flex;
+    flex-direction: column; /* Quan trọng: Mọi thứ xếp dọc */
+    gap: var(--spacing-lg); /* Tạo khoảng cách đều giữa các phần tử */
+}
+
+#result-container h2 {
+    color: var(--text-color-dark);
+    font-size: var(--font-size-xl);
+    margin: 0;
+}
+
+/* Hộp chứa điểm, nền màu nhẹ để nổi bật */
+.score-box {
+    background-color: var(--off-white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-lg);
+    margin: var(--spacing-sm) 0;
+}
+
+.score-label {
+    display: block;
+    font-size: var(--font-size-base);
+    color: var(--text-color-medium);
+    font-weight: 500;
+    margin-bottom: var(--spacing-sm);
+}
+
+#result-container #score {
+    font-size: 4rem; /* 64px */
+    font-weight: 700;
+    color: var(--success-color); /* Màu xanh lá cây cho điểm */
+    line-height: 1;
+}
+
+/* Nhóm thông tin Họ tên, Lớp... */
+.info-group {
+    width: 100%;
+    text-align: left;
+    border-top: 1px solid var(--border-color);
+    padding-top: var(--spacing-lg);
+}
+
+.info-group p {
+    display: flex;
+    justify-content: space-between; /* Căn lề 2 bên */
+    align-items: center;
+    font-size: var(--font-size-base);
+    padding: var(--spacing-sm) 0;
+    margin: 0;
+}
+/* Thêm đường kẻ mờ ngăn cách các dòng */
+.info-group p + p {
+    border-top: 1px dashed var(--border-color);
+}
+
+.info-group p span { /* Phần nhãn: Họ tên, Lớp... */
+    color: var(--text-color-medium);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.info-group p strong { /* Phần giá trị: Tên, Lớp... */
+    color: var(--text-color-dark);
+    font-weight: 600;
+}
+
+/* Nút bấm */
+#result-container .btn-primary {
+    margin-top: var(--spacing-sm); /* Thêm chút khoảng cách */
+}
+
+/* Tiêu đề "Xem chi tiết" */
+.details-title {
+    color: var(--text-color-light);
+    font-weight: 500;
+    font-size: var(--font-size-sm);
+    margin-top: var(--spacing-md);
 }

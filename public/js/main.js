@@ -636,241 +636,241 @@ function loadQuiz(data){
     document.getElementById("quiz").style.display = "block"; // Hiển thị khung quiz
     document.getElementById("gradeBtn").style.display = "inline-flex"; // Hiển thị nút nộp bài
 }
-
 // Hàm chấm điểm và gửi bài
-function gradeQuiz(isCheating = false){
-    if(timerInterval) clearInterval(timerInterval); // Dừng đồng hồ đếm ngược
+function gradeQuiz(isCheating = false) {
+    if (timerInterval) clearInterval(timerInterval); // Dừng đồng hồ đếm ngược
 
     if (!examData) {
         const storedData = sessionStorage.getItem('currentExamData');
-        if (storedData) { examData = JSON.parse(storedData); }
-        else { 
-            Swal.fire("Lỗi nghiêm trọng", "Mất dữ liệu bài thi. Vui lòng thử lại từ đầu.", "error").then(() => showStudentLoginScreen()); 
-            return; 
+        if (storedData) {
+            examData = JSON.parse(storedData);
+        } else {
+            Swal.fire("Lỗi nghiêm trọng", "Mất dữ liệu bài thi. Vui lòng thử lại từ đầu.", "error").then(() => showStudentLoginScreen());
+            return;
         }
     }
-    
+
     let unanswered = [];
-    if(!isCheating){
-        for(let i=0; i < (examData.questionTexts ? examData.questionTexts.length : 0); i++){ 
-            // Lấy loại câu hỏi từ dữ liệu đã load (kiểm tra an toàn)
+    if (!isCheating) {
+        for (let i = 0; i < (examData.questionTexts ? examData.questionTexts.length : 0); i++) {
             const type = examData.questionTypes && examData.questionTypes[i] ? examData.questionTypes[i] : 'Unknown';
 
-            // Lấy phần đầu của câu hỏi để hiển thị trong thông báo chưa trả lời
-            // FIX LỖI: Kiểm tra examData.questionTexts[i] có tồn tại và là string không trước khi gọi split
-            const currentQuestionText = examData.questionTexts && examData.questionTexts[i];
-            const questionTitle = (currentQuestionText && typeof currentQuestionText === 'string') 
-                                  ? currentQuestionText.split(':')[0] 
-                                  : `Câu ${i + 1}`;
+            // =========================================================
+            // ===               ĐÂY LÀ PHẦN SỬA LỖI                 ===
+            // Luôn sử dụng bộ đếm "Câu X" để báo lỗi, vì nó luôn chính xác 
+            // và độc lập với nội dung câu hỏi đã được xử lý.
+            const questionTitle = `Câu ${i + 1}`;
+            // =========================================================
 
-            if(type === "MC"){ 
-                if(!document.querySelector(`input[name='q${i}']:checked`)) {
-                    unanswered.push(questionTitle); 
+            if (type === "MC") {
+                if (!document.querySelector(`input[name='q${i}']:checked`)) {
+                    unanswered.push(questionTitle);
                 }
-            }
-            else if(type === "TF"){ 
+            } else if (type === "TF") {
                 const numSubs = examData.tfCounts && examData.tfCounts[i] ? examData.tfCounts[i] : 0;
-                for(let j=0; j < numSubs; j++){ 
-                    if(!document.querySelector(`input[name='q${i}_sub${j}']:checked`)) {
-                        unanswered.push(`${questionTitle} (Ý ${j + 1})`); 
+                for (let j = 0; j < numSubs; j++) {
+                    if (!document.querySelector(`input[name='q${i}_sub${j}']:checked`)) {
+                        // Báo lỗi chi tiết hơn cho câu TF, ví dụ: "Câu 5 (Ý 2)"
+                        unanswered.push(`${questionTitle} (Ý ${j + 1})`);
                     }
                 }
-            }
-            else if(type === "Numeric"){ 
-                const input = document.querySelector(`input[name='q${i}']`); 
-                if(!input || input.value.trim() === "") {
-                    unanswered.push(questionTitle); 
+            } else if (type === "Numeric") {
+                const input = document.querySelector(`input[name='q${i}']`);
+                if (!input || input.value.trim() === "") {
+                    unanswered.push(questionTitle);
                 }
             }
         }
     }
-    
-    if(unanswered.length > 0 && !isCheating){ 
-        showUnansweredDialog(unanswered); 
-        return; 
+
+    if (unanswered.length > 0 && !isCheating) {
+        showUnansweredDialog(unanswered);
+        return;
     }
-    
-    let payload = { 
-        teacherAlias: examData.teacherAlias, 
-        examCode: examData.examCode, 
-        studentName: examData.studentName, 
-        className: examData.className, 
-        isCheating: isCheating, 
-        answers: {} 
+
+    let payload = {
+        teacherAlias: examData.teacherAlias,
+        examCode: examData.examCode,
+        studentName: examData.studentName,
+        className: examData.className,
+        isCheating: isCheating,
+        answers: {}
     };
-    if (!isCheating) { 
-        document.querySelectorAll("input[type='radio']:checked, input[type='text'][name^='q']").forEach(input => { 
-            if (input.type !== "text" || input.value.trim() !== "") { 
-                payload.answers[input.name] = input.value.trim(); 
-            } 
-        }); 
+    if (!isCheating) {
+        document.querySelectorAll("input[type='radio']:checked, input[type='text'][name^='q']").forEach(input => {
+            if (input.type !== "text" || input.value.trim() !== "") {
+                payload.answers[input.name] = input.value.trim();
+            }
+        });
     }
-    
-    Swal.fire({ 
-        title:"Đang nộp bài...", 
-        html: "Vui lòng chờ trong giây lát...", 
-        allowOutsideClick:false, 
-        didOpen:() => Swal.showLoading() 
+
+    Swal.fire({
+        title: "Đang nộp bài...",
+        html: "Vui lòng chờ trong giây lát...",
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
     });
 
     functions.httpsCallable("submitExam")(payload).then(result => {
-        Swal.close(); 
-        sessionStorage.removeItem('currentExamData'); 
+        Swal.close();
+        sessionStorage.removeItem('currentExamData');
 
-        const { score, examData: serverExamData, detailedResults } = result.data;
-        
+        const {
+            score,
+            examData: serverExamData,
+            detailedResults
+        } = result.data;
+
         getEl("score").textContent = score.toFixed(2);
         getEl("student-name").textContent = examData.studentName;
         getEl("student-class").textContent = examData.className;
         getEl("exam-code").textContent = examData.examCode;
-        showScreen("result-container"); 
-        
-        const quizContainerForResults = getEl("quiz");
-        quizContainerForResults.innerHTML = ''; 
+        showScreen("result-container");
 
-        serverExamData.questionTexts.forEach((rawQuestionText, i) => { 
-            // Kiểm tra an toàn cho rawQuestionText và explanationText
+        const quizContainerForResults = getEl("quiz");
+        quizContainerForResults.innerHTML = '';
+
+        serverExamData.questionTexts.forEach((rawQuestionText, i) => {
             const safeRawQuestionText = rawQuestionText || '';
-            const questionText = processImagePlaceholders(safeRawQuestionText); 
-            const explanationText = processImagePlaceholders(serverExamData.explanations[i] || ''); 
+            const questionText = processImagePlaceholders(safeRawQuestionText);
+            const explanationText = processImagePlaceholders(serverExamData.explanations[i] || '');
 
             const questionDiv = document.createElement("div");
             questionDiv.className = "question";
-            questionDiv.innerHTML = `<p class="question-number">Câu ${i + 1}</p>`; 
+            questionDiv.innerHTML = `<p class="question-number">Câu ${i + 1}</p>`;
 
             const statementDiv = document.createElement("div");
             statementDiv.className = "question-statement";
             statementDiv.innerHTML = questionText;
             questionDiv.appendChild(statementDiv);
-            
+
             const resultForQ = detailedResults[`q${i}`];
-            const type = resultForQ ? resultForQ.type : (examData.questionTypes && examData.questionTypes[i] ? examData.questionTypes[i] : 'Unknown'); 
-            
-            // Re-render options to show selected and correct answers
+            const type = resultForQ ? resultForQ.type : (examData.questionTypes && examData.questionTypes[i] ? examData.questionTypes[i] : 'Unknown');
+
             if (type === "MC") {
                 let mcOptions = document.createElement("div");
                 mcOptions.className = "mc-options";
-                ["A","B","C","D"].forEach(o => {
+                ["A", "B", "C", "D"].forEach(o => {
                     let optDiv = document.createElement("div");
                     optDiv.className = "mc-option";
                     optDiv.textContent = o;
-                    // Apply selected class if user picked this option
                     if (resultForQ && resultForQ.userAnswer === o) {
                         optDiv.classList.add("selected");
                     }
-                    // Highlight correct answer
                     if (resultForQ && resultForQ.correctAnswer === o) {
                         optDiv.classList.add("correct-answer-highlight");
                     }
-                    // Highlight incorrect selected answer
-                    if (optDiv.classList.contains("selected") && optDiv.textContent.trim() !== (resultForQ ? resultForQ.correctAnswer : '')) { // Kiểm tra an toàn
+                    if (optDiv.classList.contains("selected") && optDiv.textContent.trim() !== (resultForQ ? resultForQ.correctAnswer : '')) {
                         optDiv.classList.add("incorrect-answer-highlight");
                     }
                     mcOptions.appendChild(optDiv);
                 });
                 questionDiv.appendChild(mcOptions);
-            } 
-            else if (type === "TF") {
-                let tfOptionsContainer=document.createElement("div"); 
-                tfOptionsContainer.className="tf-options-container";
-                const numSubs = serverExamData.keysStr && serverExamData.keysStr[i] ? serverExamData.keysStr[i].length : 0; 
-                
-                for(let j=0; j < numSubs; j++) {
+            } else if (type === "TF") {
+                let tfOptionsContainer = document.createElement("div");
+                tfOptionsContainer.className = "tf-options-container";
+                const numSubs = serverExamData.keysStr && serverExamData.keysStr[i] ? serverExamData.keysStr[i].length : 0;
+
+                for (let j = 0; j < numSubs; j++) {
                     let tfBox = document.createElement("div");
                     tfBox.className = "tf-box";
-                    
+
                     let tBtn = document.createElement("div");
                     tBtn.className = "tf-btn";
                     tBtn.textContent = "T";
                     tBtn.setAttribute('data-value', 'T');
-                    
+
                     let fBtn = document.createElement("div");
                     fBtn.className = "tf-btn";
                     fBtn.textContent = "F";
                     fBtn.setAttribute('data-value', 'F');
-                    
-                    // Apply selected class for user's answer
-                    if (resultForQ && resultForQ.userAnswer && resultForQ.userAnswer[j] === 'T') { tBtn.classList.add("selected", "T"); } // Kiểm tra resultForQ.userAnswer
-                    if (resultForQ && resultForQ.userAnswer && resultForQ.userAnswer[j] === 'F') { fBtn.classList.add("selected", "F"); }
 
-                    // Apply correct/incorrect highlight
+                    if (resultForQ && resultForQ.userAnswer && resultForQ.userAnswer[j] === 'T') {
+                        tBtn.classList.add("selected", "T");
+                    }
+                    if (resultForQ && resultForQ.userAnswer && resultForQ.userAnswer[j] === 'F') {
+                        fBtn.classList.add("selected", "F");
+                    }
+
                     const correctAnswerSub = resultForQ && resultForQ.correctAnswer ? resultForQ.correctAnswer[j] : null;
-                    if (tBtn.getAttribute('data-value') === correctAnswerSub) { tBtn.classList.add("correct-answer-highlight"); }
-                    if (fBtn.getAttribute('data-value') === correctAnswerSub) { fBtn.classList.add("correct-answer-highlight"); }
+                    if (tBtn.getAttribute('data-value') === correctAnswerSub) {
+                        tBtn.classList.add("correct-answer-highlight");
+                    }
+                    if (fBtn.getAttribute('data-value') === correctAnswerSub) {
+                        fBtn.classList.add("correct-answer-highlight");
+                    }
 
-                    if (tBtn.classList.contains("selected") && tBtn.getAttribute('data-value') !== correctAnswerSub) { tBtn.classList.add("incorrect-answer-highlight"); }
-                    if (fBtn.classList.contains("selected") && fBtn.getAttribute('data-value') !== correctAnswerSub) { fBtn.classList.add("incorrect-answer-highlight"); }
+                    if (tBtn.classList.contains("selected") && tBtn.getAttribute('data-value') !== correctAnswerSub) {
+                        tBtn.classList.add("incorrect-answer-highlight");
+                    }
+                    if (fBtn.classList.contains("selected") && fBtn.getAttribute('data-value') !== correctAnswerSub) {
+                        fBtn.classList.add("incorrect-answer-highlight");
+                    }
 
                     tfBox.appendChild(tBtn);
                     tfBox.appendChild(fBtn);
                     tfOptionsContainer.appendChild(tfBox);
                 }
                 questionDiv.appendChild(tfOptionsContainer);
-                
-                // Div hiển thị điểm TF
+
                 let tfGradeDisplay = document.createElement("div");
                 tfGradeDisplay.className = "tf-grade";
                 tfGradeDisplay.textContent = `Điểm ý nhỏ: ${resultForQ ? resultForQ.scoreEarned.toFixed(2) : '0.00'}`;
                 questionDiv.appendChild(tfGradeDisplay);
 
-            } 
-            else if (type === "Numeric") {
-                 let numDiv=document.createElement("div"); 
-                 numDiv.className="numeric-option"; 
-                 let input=document.createElement("input"); 
-                 input.type="text"; 
-                 input.name=`q${i}`; 
-                 input.value = resultForQ ? resultForQ.userAnswer || '' : ''; 
-                 input.readOnly = true; 
-                 numDiv.appendChild(input); 
-                 questionDiv.appendChild(numDiv);
+            } else if (type === "Numeric") {
+                let numDiv = document.createElement("div");
+                numDiv.className = "numeric-option";
+                let input = document.createElement("input");
+                input.type = "text";
+                input.name = `q${i}`;
+                input.value = resultForQ ? resultForQ.userAnswer || '' : '';
+                input.readOnly = true;
+                numDiv.appendChild(input);
+                questionDiv.appendChild(numDiv);
 
-                 // Highlight đúng/sai
-                 if (resultForQ) {
+                if (resultForQ) {
                     if (resultForQ.scoreEarned > 0) {
                         numDiv.classList.add("correct-answer-highlight");
-                    } else if (resultForQ.userAnswer && resultForQ.userAnswer.trim() !== '') { // Chỉ highlight sai nếu có trả lời
+                    } else if (resultForQ.userAnswer && resultForQ.userAnswer.trim() !== '') {
                         numDiv.classList.add("incorrect-answer-highlight");
                     }
-                    // Hiển thị đáp án đúng
-                    let answerSpan = document.createElement("span"); 
-                    answerSpan.className = "correct-answer-value"; 
-                    answerSpan.textContent = `Đáp án đúng: ${resultForQ.correctAnswer || 'N/A'}`; // Kiểm tra an toàn
+                    let answerSpan = document.createElement("span");
+                    answerSpan.className = "correct-answer-value";
+                    answerSpan.textContent = `Đáp án đúng: ${resultForQ.correctAnswer || 'N/A'}`;
                     numDiv.appendChild(answerSpan);
-                 }
+                }
             }
 
-            // Hiển thị nút lời giải (nếu có lời giải)
             if (explanationText.trim() !== '') {
                 let toggleBtn = document.createElement("button");
                 toggleBtn.className = "toggle-explanation btn";
                 toggleBtn.textContent = "Xem lời giải";
-                toggleBtn.style.display = 'block'; 
+                toggleBtn.style.display = 'block';
 
                 let expDiv = document.createElement("div");
                 expDiv.className = "explanation hidden";
-                expDiv.innerHTML = explanationText; 
-                
-                toggleBtn.onclick = function(){ 
-                    expDiv.classList.toggle("hidden"); 
-                    this.textContent = expDiv.classList.contains("hidden") ? "Xem lời giải" : "Ẩn lời giải"; 
+                expDiv.innerHTML = explanationText;
+
+                toggleBtn.onclick = function() {
+                    expDiv.classList.toggle("hidden");
+                    this.textContent = expDiv.classList.contains("hidden") ? "Xem lời giải" : "Ẩn lời giải";
                 };
                 questionDiv.appendChild(toggleBtn);
                 questionDiv.appendChild(expDiv);
             }
-            
+
             quizContainerForResults.appendChild(questionDiv);
-            renderKatexInElement(questionDiv); 
+            renderKatexInElement(questionDiv);
         });
-        getEl("quiz").style.display = 'block'; 
-        getEl("gradeBtn").style.display = 'none'; 
+        getEl("quiz").style.display = 'block';
+        getEl("gradeBtn").style.display = 'none';
     }).catch(error => {
         Swal.close();
         Swal.fire("Lỗi", `Lỗi nộp bài: ${error.message || "Lỗi không xác định."}`, "error");
         showStudentLoginScreen();
     });
 }
-
 function showUnansweredDialog(unanswered){
     Swal.fire({ 
         icon:"info", 

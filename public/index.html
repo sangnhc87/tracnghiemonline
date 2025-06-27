@@ -75,17 +75,38 @@
         <div id="quiz" class="quiz-container" style="display:none;"></div>
         <button id="gradeBtn" style="display:none;" class="btn btn-success btn-full" onclick="gradeQuiz()"><i class="fas fa-check-circle"></i> Chấm điểm & Nộp bài</button>
         
-        <!-- HOÀN THIỆN NỘI DUNG KẾT QUẢ BÀI THI -->
-        <div id="result-container" class="container card" style="display:none;">
-            <h2>Kết quả bài thi</h2>
-            <p><strong>Họ tên:</strong> <span id="student-name"></span></p>
-            <p><strong>Lớp:</strong> <span id="student-class"></span></p>
-            <p><strong>Mã đề:</strong> <span id="exam-code"></span></p>
-            <h3>Điểm của bạn: <span id="score">0.00</span></h3>
-            <button onclick="showStudentLogin()" class="btn btn-primary btn-full"><i class="fas fa-home"></i> Quay lại trang chủ</button>
-            <h4>Chi tiết bài làm:</h4>
-            <!-- Phần chi tiết từng câu hỏi (kèm lời giải) sẽ được hiển thị trong #quiz div sau khi chấm điểm -->
-        </div>
+        <!-- XÓA BỎ div#result-container CŨ và DÁN ĐOẠN NÀY VÀO THAY THẾ -->
+<div id="result-container" class="container card" style="display:none;">
+    
+    <h2>Kết quả bài thi</h2>
+
+    <!-- Hộp điểm nổi bật, đơn giản -->
+    <div class="score-box">
+        <span class="score-label">Điểm của bạn</span>
+        <span id="score">0.00</span>
+    </div>
+
+    <!-- Nhóm thông tin học sinh -->
+    <div class="info-group">
+        <p>
+            <span><i class="fas fa-user"></i> Họ tên</span>
+            <strong id="student-name"></strong>
+        </p>
+        <p>
+            <span><i class="fas fa-chalkboard-user"></i> Lớp</span>
+            <strong id="student-class"></strong>
+        </p>
+        <p>
+            <span><i class="fas fa-file-alt"></i> Mã đề</span>
+            <strong id="exam-code"></strong>
+        </p>
+    </div>
+
+    <button onclick="showStudentLogin()" class="btn btn-primary btn-full"><i class="fas fa-home"></i> Quay lại trang chủ</button>
+    
+    <h4 class="details-title">Xem chi tiết bài làm</h4>
+    <!-- Phần chi tiết sẽ hiển thị trong #quiz div -->
+</div>
 
         <!-- HOÀN THIỆN NỘI DUNG DASHBOARD GIÁO VIÊN -->
         <div id="teacherDashboard" class="dashboard-container" style="display:none;">
