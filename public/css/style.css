@@ -815,3 +815,32 @@ textarea {
     font-size: 1.35rem; /* Smaller heading for tiny screens */
   }
 }
+
+/* Trong public/css/style.css */
+
+/* Thêm vào gần cuối file hoặc phần Quiz & Timer Display */
+.answer-feedback {
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--border-radius-sm);
+    font-size: var(--font-size-sm);
+    line-height: 1.4;
+    font-weight: 500;
+}
+
+.answer-feedback.correct {
+    background-color: var(--success-color-light);
+    color: #155724; /* Dark green text */
+    border: 1px solid var(--success-color);
+}
+
+.answer-feedback.incorrect {
+    background-color: var(--danger-color-light);
+    color: #721c24; /* Dark red text */
+    border: 1px solid var(--danger-color);
+}
+
+.answer-feedback .score-earned {
+    font-weight: 600;
+    color: #0e722a; /* Slightly darker green for score */
+}
