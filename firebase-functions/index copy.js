@@ -13,7 +13,7 @@ const db = admin.firestore();
  * @param {string} rawText Chuỗi văn bản thô từ textarea.
  * @return {{questions: string[], explanations: string[]}} Một object chứa mảng câu hỏi và mảng lời giải.
  */
-function parseExamContentGGG(rawText) {
+function parseExamContent(rawText) {
     if (!rawText || typeof rawText !== 'string') {
         return { questions: [], explanations: [] };
     }
@@ -75,72 +75,9 @@ function parseExamContentGGG(rawText) {
     
     return { questions, explanations };
 }
-/**
- * Phân tích một chuỗi văn bản lớn thành các câu hỏi và lời giải riêng biệt.
- * Hàm này sẽ tách câu hỏi dựa trên "Câu X", "Bài Y"... và
- * quan trọng là sẽ **loại bỏ chính tiền tố đó** ra khỏi nội dung câu hỏi.
- * @param {string} rawText Chuỗi văn bản thô từ textarea.
- * @return {{questions: string[], explanations: string[]}} Một object chứa mảng câu hỏi và mảng lời giải.
- */
-function parseExamContent(rawText) {
-    if (!rawText || typeof rawText !== 'string') {
-        return { questions: [], explanations: [] };
-    }
 
-    const questions = [];
-    const explanations = [];
 
-    // 1. Chuẩn hóa các loại xuống dòng để xử lý nhất quán.
-    rawText = rawText.replace(/\r\n/g, '\n');
-
-    // 2. Biểu thức chính quy (regex) để tìm điểm bắt đầu của một câu hỏi.
-    const questionStartPattern = /(?:^|\n\s*)([Cc][âĂaA][uUu]|[Bb][àÀaA][iI]|[Qq][uUu][eE][sS][tT][iI][oO][nN])\s*\d+[:.]?/g;
-
-    // Sử dụng matchAll để lấy tất cả các vị trí bắt đầu câu hỏi.
-    const matches = [...rawText.matchAll(questionStartPattern)];
-
-    // 3. Nếu không tìm thấy mẫu "Câu X" nhưng vẫn có nội dung, xem toàn bộ là một câu hỏi duy nhất.
-    if (matches.length === 0 && rawText.trim() !== '') {
-        questions.push(rawText.trim());
-        explanations.push('');
-        return { questions, explanations };
-    } else if (matches.length === 0) {
-        return { questions: [], explanations: [] };
-    }
-
-    // 4. Lặp qua các "match" để tách từng khối câu hỏi.
-    for (let i = 0; i < matches.length; i++) {
-        const currentMatch = matches[i];
-        const startIndex = currentMatch.index;
-        const endIndex = (i + 1 < matches.length) ? matches[i + 1].index : rawText.length;
-
-        let block = rawText.substring(startIndex, endIndex).trim();
-        if (!block) continue;
-
-        // =================================================================
-        // === ĐÂY LÀ DÒNG CODE QUAN TRỌNG NHẤT ĐỂ SỬA LỖI CỦA BẠN ===
-        // Nó sẽ tìm và xóa "Câu X:", "Bài Y:"... ở đầu mỗi câu hỏi.
-        block = block.replace(/^([Cc]âu|[Bb]ài|[Qq]uestion)\s*\d+[:.]?\s*/i, '').trim();
-        // =================================================================
-
-        let questionText = block;
-        let explanationText = '';
-
-        // 5. Tách phần lời giải (\begin{loigiai}...\end{loigiai}) ra khỏi câu hỏi.
-        const loigiaiRegex = /\\begin\{loigiai\}([\s\S]*?)\\end\{loigiai\}/i;
-        const matchExplanation = questionText.match(loigiaiRegex);
-
-        if (matchExplanation && matchExplanation[1]) {
-            explanationText = matchExplanation[1].trim();
-            questionText = questionText.replace(loigiaiRegex, '').trim();
-        }
-
-        questions.push(questionText);
-        explanations.push(explanationText);
-    }
-    
-    return { questions, explanations };
-}
+// --- CÁC HÀM XÁC THỰC & QUẢN LÝ TÀI KHOẢN GIÁO VIÊN ---
 
 /**
  * Xử lý đăng nhập của giáo viên: tạo tài khoản mới nếu chưa có, hoặc trả về thông tin hiện có.

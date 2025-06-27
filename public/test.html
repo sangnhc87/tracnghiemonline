@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Công cụ tạo Phương án Trắc nghiệm</title>
+    <!-- Liên kết tới file CSS -->
+    <link rel="stylesheet" href="test.css">
+</head>
+<body>
+
+    <div class="app-container">
+        <h1>Công cụ tạo Phương án Trắc nghiệm</h1>
+
+        <div class="input-section">
+            <label for="optionsInput">
+                Nhập các phương án theo cấu trúc sau. Mỗi khối phương án có thể được định dạng riêng:
+                <ul>
+                    <li>Mỗi khối phương án bắt đầu bằng **một dòng trống**, hoặc **ký tự đặc biệt** (`##2x2` hoặc `##4x1`).</li>
+                    <li>Mặc định nếu không có ký tự đặc biệt: Bố cục là **1 hàng 4 cột**.</li>
+                    <li>Mỗi phương án bắt đầu bằng `A.`, `B.`, `C.`, `D.`, `a)`, `b)`, `c)`, `d)`, `A)`, `B)`, `C)`, `D)`, `a.`, `b.`, `c.`, `d.`.</li>
+                    <li>Chỉ 4 phương án đầu tiên trong mỗi khối được xử lý (A-D).</li>
+                </ul>
+            </label>
+            <textarea id="optionsInput" rows="18" placeholder="Ví dụ về input:
+
+A. Phương án mặc định 1
+B. Phương án mặc định 2
+C. Phương án mặc định 3
+D. Phương án mặc định 4
+
+##2x2
+A) Phương án A cho bố cục 2x2, có thể hơi dài một chút.
+B) Phương án B cho bố cục 2x2.
+C) Phương án C cho bố cục 2x2.
+D) Phương án D cho bố cục 2x2.
+
+##4x1
+a. Phương án A rất rất rất dài, ép nó xuống 1 cột.
+b. Phương án B cũng cực kỳ dài, để hiển thị trên 1 cột.
+c. Phương án C này là ví dụ của nội dung rất dài.
+d. Phương án D cũng có nội dung dài.
+
+A. Phương án mặc định thứ hai 1
+B. Phương án mặc định thứ hai 2
+C. Phương án mặc định thứ hai 3
+D. Phương án mặc định thứ hai 4"></textarea>
+            <div class="controls">
+                <button id="generateBtn">Tạo Phương án</button>
+                <div class="layout-controls">
+                    <span>Áp dụng cho TẤT CẢ các khối:</span>
+                    <button data-layout="auto" class="active">Tự động (Theo Input)</button>
+                    <button data-layout="1x4">1 hàng 4 cột</button>
+                    <button data-layout="2x2">2 hàng 2 cột</button>
+                    <button data-layout="4x1">4 hàng 1 cột</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="output-section">
+            <h2>Kết quả hiển thị:</h2>
+            <div id="quizOptionsContainer">
+                <!-- Các khối phương án sẽ được chèn vào đây bởi JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Liên kết tới file JavaScript -->
+    <script src="test.js"></script>
+
+</body>
+</html>

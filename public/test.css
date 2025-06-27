@@ -1,0 +1,226 @@
+/* Global Box-Sizing */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+/* Global Styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f0f2f5;
+    color: #333;
+}
+
+h1, h2 {
+    color: #2c3e50;
+    margin-bottom: 20px;
+}
+
+/* App Container */
+.app-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+}
+
+/* Input Section */
+.input-section {
+    margin-bottom: 30px;
+    padding: 20px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background-color: #fdfdfd;
+}
+
+.input-section label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: bold;
+    color: #555;
+}
+
+ul {
+    list-style-type: disc;
+    margin-left: 20px;
+    padding-left: 0;
+    margin-bottom: 15px;
+}
+
+ul li {
+    margin-bottom: 5px;
+}
+
+textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 1rem;
+    line-height: 1.5;
+    resize: vertical;
+    min-height: 200px; /* Tăng chiều cao mặc định */
+    max-height: 500px;
+    font-family: monospace;
+    margin-bottom: 15px;
+}
+
+/* Controls (Buttons) */
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: center;
+}
+
+.controls button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    flex-shrink: 0;
+}
+
+.controls button:hover {
+    transform: translateY(-1px);
+}
+
+#generateBtn {
+    background-color: #007bff;
+    color: white;
+}
+
+#generateBtn:hover {
+    background-color: #0056b3;
+}
+
+.layout-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-left: 20px;
+}
+
+.layout-controls span {
+    font-weight: 600;
+    color: #555;
+    line-height: 38px;
+}
+
+.layout-controls button {
+    background-color: #6c757d;
+    color: white;
+    border: 1px solid #6c757d;
+}
+
+.layout-controls button:hover {
+    background-color: #5a6268;
+}
+
+.layout-controls button.active {
+    background-color: #28a745;
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.5);
+}
+
+/* Output Section */
+.output-section {
+    margin-top: 30px;
+    padding: 20px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background-color: #fdfdfd;
+    min-height: 150px;
+}
+
+/* Container cho một nhóm 4 phương án */
+.quiz-options-flex-block {
+    margin-bottom: 20px; /* Khoảng cách giữa các khối câu hỏi */
+    padding: 15px;
+    background-color: #f8f8f8; /* Nền nhẹ cho mỗi khối */
+    border-radius: 8px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.05);
+}
+
+.quiz-options-flex {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px; /* Khoảng cách giữa các phương án */
+}
+
+/* Mỗi phương án là một item trong flex container */
+.option-item-flex {
+    display: flex;
+    align-items: baseline;
+    padding: 10px;
+    background-color: #ffffff;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    min-width: 100px; 
+}
+
+/* Box cho chữ A, B, C, D */
+.option-label-box-flex {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-width: 34px;
+    height: 34px;
+    border: 1px solid #007bff;
+    border-radius: 50%;
+    background-color: #e6f2ff;
+    color: #007bff;
+    font-weight: bold;
+    margin-right: 12px;
+    flex-shrink: 0;
+    font-size: 0.95rem;
+}
+
+.option-content-flex {
+    flex-grow: 1;
+    color: #444;
+    line-height: 1.6;
+    word-break: break-word; /* Giúp từ dài tự xuống dòng */
+    overflow: hidden; /* Ngăn chặn overflow nếu có */
+}
+
+/* --- Layout Classes controlled by JS/User Input --- */
+/* 4 dòng 1 cột */
+.flex-layout-4x1 .option-item-flex {
+    flex: 1 1 100%;
+    max-width: 100%;
+}
+
+/* 2 dòng 2 cột */
+.flex-layout-2x2 .option-item-flex {
+    flex: 1 1 calc(50% - 7.5px); /* 7.5px = gap / 2 */
+    max-width: calc(50% - 7.5px);
+}
+
+/* 1 dòng 4 cột (mặc định) */
+.flex-layout-1x4 .option-item-flex {
+    flex: 1 1 calc(25% - 11.25px); /* 11.25px = 3/4 của gap (3 * 15px / 4) */
+    max-width: calc(25% - 11.25px);
+}
+
+/* Responsive fallbacks for fixed layouts (in case of very small screens) */
+@media (max-width: 991px) {
+    .flex-layout-1x4 .option-item-flex {
+        flex: 1 1 calc(50% - 7.5px); /* Fallback 2 cột nếu 4 cột không vừa */
+        max-width: calc(50% - 7.5px);
+    }
+}
+
+@media (max-width: 600px) {
+    .flex-layout-1x4 .option-item-flex,
+    .flex-layout-2x2 .option-item-flex {
+        flex: 1 1 100%; /* Fallback 1 cột nếu 2 cột không vừa */
+        max-width: 100%;
+    }
+}
