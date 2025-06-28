@@ -84,6 +84,8 @@ auth.onAuthStateChanged(user => {
     }
 });
 
+// Thay thế hàm updateTeacherUI cũ trong file public/js/main.js bằng hàm này
+
 async function updateTeacherUI(user) {
     showLoading();
     try {
@@ -91,18 +93,31 @@ async function updateTeacherUI(user) {
         const data = res.data;
         const trialDate = data.trialEndDate?.seconds ? new Date(data.trialEndDate.seconds * 1000) : (data.trialEndDate ? new Date(data.trialEndDate) : null);
         const trialDays = trialDate ? Math.max(0, Math.ceil((trialDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0;
+        
         const userInfoHtml = `
             <p><strong>Tên:</strong> ${user.displayName || user.email}</p>
             <p><strong>Alias:</strong> <span id="currentAliasDisplay">${data.teacherAlias || "Chưa có"}</span></p>
             <p><strong>Trạng thái:</strong> ${trialDays > 0 ? `Còn ${trialDays} ngày dùng thử` : "Đã hết hạn"}</p>`;
         
+        // Gán dữ liệu cho màn hình đăng nhập giáo viên
         getEl("teacherInfo").innerHTML = userInfoHtml;
         getEl("teacherInfo").style.display = "block";
         getEl("teacherActions").style.display = "flex";
         getEl("teacherAliasInput").value = data.teacherAlias || "";
         
-        getEl("teacherDashboardName").textContent = user.displayName || user.email;
-        getEl("trialRemainingDays").textContent = trialDays;
+        // === BẮT ĐẦU PHẦN SỬA LỖI ===
+        // Chỉ gán dữ liệu cho Dashboard KHI các phần tử đó tồn tại
+        const teacherDashboardNameEl = getEl("teacherDashboardName");
+        if (teacherDashboardNameEl) {
+            teacherDashboardNameEl.textContent = user.displayName || user.email;
+        }
+
+        const trialRemainingDaysEl = getEl("trialRemainingDays");
+        if (trialRemainingDaysEl) {
+            trialRemainingDaysEl.textContent = trialDays;
+        }
+        // === KẾT THÚC PHẦN SỬA LỖI ===
+
     } catch (error) {
         Swal.fire("Lỗi", `Lỗi xử lý đăng nhập: ${error.message || "Không thể lấy thông tin người dùng."}`, "error");
         auth.signOut();
@@ -164,7 +179,9 @@ function renderExamsList(exams) {
         return;
     }
     exams.sort((a, b) => (a.examCode > b.examCode) ? 1 : -1).forEach(exam => {
-        const questionCount = exam.content ? exam.content.trim().split(/\n\s*\n/).length : (exam.questionTexts?.length || 0);
+        // const questionCount = exam.content ? exam.content.trim().split(/\n\s*\n/).length : (exam.questionTexts?.length || 0);
+        // Đếm số câu dựa trên mảng 'keys', an toàn cho cả 2 loại đề
+        const questionCount = Array.isArray(exam.keys) ? exam.keys.length : 0;
         const item = document.createElement("div");
         item.className = "list-item";
         item.innerHTML = `
@@ -235,48 +252,11 @@ function handleLoadError(error, ...elements) {
 }
 
 // --- QUẢN LÝ FORM (MODAL) ---
-function showExamForm(exam = null) {
-    const isEdit = !!exam;
-    getEl("examFormTitle").textContent = isEdit ? `Sửa Đề thi: ${exam.examCode}` : "Thêm Đề thi mới";
-    getEl("examId").value = isEdit ? exam.id : "";
-    getEl("examFormCode").value = isEdit ? exam.examCode : "";
-    getEl("examFormTime").value = isEdit ? exam.timeLimit : 90;
-    getEl("examFormKeys").value = isEdit && Array.isArray(exam.keys) ? exam.keys.join("|") : "";
-    getEl("examFormCores").value = isEdit && Array.isArray(exam.cores) ? exam.cores.join("|") : "";
-    getEl("examFormContent").value = isEdit ? (exam.content || '') : '';
-    getEl("examFormModal").style.display = "flex";
-}
+
 
 function hideExamForm() { getEl("examFormModal").style.display = "none"; }
 
-async function handleExamFormSubmit() {
-    const examId = getEl("examId").value;
-    const examData = {
-        examCode: getEl("examFormCode").value.trim(),
-        timeLimit: parseInt(getEl("examFormTime").value, 10),
-        keys: getEl("examFormKeys").value.trim(),
-        cores: getEl("examFormCores").value.trim(),
-        content: getEl("examFormContent").value.trim(),
-    };
-    if (!examData.examCode || !examData.keys || !examData.content) {
-        Swal.fire("Lỗi", "Các trường Mã đề, Đáp án, và Nội dung đề thi không được trống.", "error");
-        return;
-    }
-    const functionName = examId ? "updateExam" : "addExam";
-    const dataToSend = { examData };
-    if (examId) dataToSend.examId = examId;
-    showLoading();
-    try {
-        const result = await functions.httpsCallable(functionName)(dataToSend);
-        Swal.fire("Thành công!", result.data.message, "success");
-        hideExamForm();
-        loadTeacherDataForDashboard();
-    } catch (error) {
-        Swal.fire("Lỗi", `Lỗi khi lưu đề thi: ${error.message}`, "error");
-    } finally {
-        hideLoading();
-    }
-}
+
 
 async function editExam(examId) {
     showLoading();
@@ -750,7 +730,100 @@ function showUnansweredDialog(unanswered){
         confirmButtonText:"OK" 
     });
 }
+// --- QUẢN LÝ FORM (MODAL) ---
 
+function toggleExamFormFields() {
+    // Hàm này phải được định nghĩa ở đây
+    const type = getEl("examFormType").value;
+    const textFields = getEl("textExamFields");
+    const pdfFields = getEl("pdfExamFields");
+
+    if (type === 'PDF') {
+        if(textFields) textFields.style.display = 'none';
+        if(pdfFields) pdfFields.style.display = 'block';
+    } else { // TEXT
+        if(textFields) textFields.style.display = 'block';
+        if(pdfFields) pdfFields.style.display = 'none';
+    }
+}
+
+function showExamForm(exam = null) {
+    const isEdit = !!exam;
+    getEl("examFormTitle").textContent = isEdit ? `Sửa Đề thi: ${exam.examCode}` : "Thêm Đề thi mới";
+    
+    getEl("examForm").reset();
+    
+    getEl("examId").value = isEdit ? exam.id : "";
+    getEl("examFormCode").value = isEdit ? exam.examCode : "";
+    getEl("examFormTime").value = isEdit ? exam.timeLimit || 90 : 90;
+    
+    // Gán giá trị có điều kiện, nếu không có thì là chuỗi rỗng
+    getEl("examFormKeys").value = (isEdit && exam.keys) ? exam.keys.join("|") : "";
+    getEl("examFormCores").value = (isEdit && exam.cores) ? exam.cores.join("|") : "";
+    
+    const examType = isEdit ? (exam.examType || 'TEXT') : 'TEXT';
+    getEl("examFormType").value = examType;
+    
+    getEl("examFormContent").value = (examType === 'TEXT' && isEdit) ? (exam.content || '') : '';
+    getEl("examFormPdfUrl").value = (examType === 'PDF' && isEdit) ? (exam.examPdfUrl || '') : '';
+    getEl("examFormSolutionUrl").value = (examType === 'PDF' && isEdit) ? (exam.solutionPdfUrl || '') : '';
+    
+    toggleExamFormFields();
+    getEl("examFormModal").style.display = "flex";
+}
+
+function hideExamForm() {
+    getEl("examFormModal").style.display = "none";
+}
+
+async function handleExamFormSubmit() {
+    const examId = getEl("examId").value;
+    const examType = getEl("examFormType").value;
+
+    const examData = {
+        examType: examType,
+        examCode: getEl("examFormCode").value.trim(),
+        timeLimit: parseInt(getEl("examFormTime").value, 10),
+        keys: getEl("examFormKeys").value.trim(),
+        cores: getEl("examFormCores").value.trim(),
+        content: getEl("examFormContent").value.trim(),
+        examPdfUrl: getEl("examFormPdfUrl").value.trim(),
+        solutionPdfUrl: getEl("examFormSolutionUrl").value.trim()
+    };
+
+    if (!examData.examCode || !examData.keys) {
+        Swal.fire("Lỗi", "Mã đề và Đáp án là các trường bắt buộc.", "error");
+        return;
+    }
+    if (examType === 'TEXT' && !examData.content) {
+        Swal.fire("Lỗi", "Vui lòng nhập nội dung cho đề thi dạng Văn bản.", "error");
+        return;
+    }
+    if (examType === 'PDF' && !examData.examPdfUrl) {
+        Swal.fire("Lỗi", "Vui lòng nhập Link Đề thi PDF.", "error");
+        return;
+    }
+
+    const functionName = examId ? "updateExam" : "addExam";
+    const dataToSend = { examData };
+    if (examId) dataToSend.examId = examId;
+
+    showLoading();
+    try {
+        const result = await functions.httpsCallable(functionName)(dataToSend);
+        Swal.fire("Thành công!", result.data.message, "success");
+        hideExamForm();
+        loadTeacherDataForDashboard();
+    } catch (error) {
+        Swal.fire("Lỗi", `Lỗi khi lưu đề thi: ${error.message}`, "error");
+    } finally {
+        hideLoading();
+    }
+}
+
+
+// --- GÁN CÁC HÀM NÀY VÀO WINDOW ---
+window.toggleExamFormFields = toggleExamFormFields;
 // --- GÁN HÀM VÀO WINDOW ---
 window.signInWithGoogle = signInWithGoogle;
 window.signOut = signOut;

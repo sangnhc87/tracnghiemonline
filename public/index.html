@@ -3,22 +3,29 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>1Hệ thống Thi Online</title>
+    <title>Hệ thống Thi Online</title>
     
-    <!-- Fonts, Icons, và CSS của bạn -->
+    <!-- Fonts, Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css" integrity="sha512-xh6O/CkQoPOWDdYTDqeRdPCVd1SpvCA9XXcUnZS2FmJNp1coAFzvtCN9BmamE+4aHK8yyUHUSCcJHgXloTyT2A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    
+    <!-- CSS -->
     <link rel="stylesheet" href="css/style.css" />
     <link rel="stylesheet" href="css/quiz-parser.css" /> 
-    <!-- Thư viện bên thứ ba (KaTeX, SweetAlert) -->
+    
+    <!-- Thư viện bên thứ ba -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU07EWHeAOgpuTO/lA+K/BIhfEpजगीU0T4goEBCYoWru/gGu4ydfrAN" crossorigin="anonymous">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- THƯ VIỆN PDF.JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 
-    <!-- Nạp và khởi tạo Firebase tự động từ Hosting -->
+    <!-- Firebase -->
     <script defer src="/__/firebase/9.10.0/firebase-app-compat.js"></script>
     <script defer src="/__/firebase/9.10.0/firebase-auth-compat.js"></script>
     <script defer src="/__/firebase/9.10.0/firebase-firestore-compat.js"></script>
@@ -28,7 +35,7 @@
 <body>
 
     <div id="app">
-        <!-- SỬA LỖI UX: Đặt teacherLogin mặc định là display: none -->
+        <!-- Màn hình Đăng nhập Giáo viên -->
         <div id="teacherLogin" class="container card" style="display: none;">
             <h2>Chào mừng Giáo viên</h2>
             <div id="teacherInfo" style="display: none;"></div>
@@ -43,7 +50,7 @@
             </div>
         </div>
 
-        <!-- Màn hình này sẽ hiển thị đầu tiên -->
+        <!-- Màn hình Đăng nhập Học sinh (Trang chủ) -->
         <div id="loginScreen" class="container card">
             <h2>Vào thi</h2>
             <div class="form-group">
@@ -52,7 +59,7 @@
             </div>
             <div class="form-group">
                 <label for="examCode">Mã đề thi:</label>
-                <input type="text" id="examCode" placeholder="Nhập mã đề" />
+                <input type="text" id="examCode" placeholder="Nhập mã đề (VD: PDF-DE001)" />
             </div>
             <div class="form-group">
                 <label for="classSelect">Chọn Lớp:</label>
@@ -62,98 +69,85 @@
                 <label for="studentSelect">Chọn Họ tên:</label>
                 <select id="studentSelect"><option value="">-- Chọn tên --</option></select>
             </div>
-            <button onclick="startExam()" class="btn btn-primary btn-full"><i class="fas fa-play-circle"></i> Bắt đầu thi</button>
+            <!-- Nút này sẽ gọi hàm chuyển hướng -->
+            <button onclick="handleStartExam()" class="btn btn-primary btn-full"><i class="fas fa-play-circle"></i> Bắt đầu thi</button>
             <p class="form-link">Bạn là giáo viên? <a href="#" onclick="showTeacherLogin()">Đăng nhập tại đây</a></p>
         </div>
 
-        <!-- Các div khác giữ nguyên display: none -->
+        <!-- Các thành phần ẩn/hiện -->
         <div id="loading" class="loading-overlay" style="display:none;">
             <div class="spinner"></div>
             <p>Đang tải...</p>
         </div>
         <div id="timer-container" class="timer-container" style="display:none;"><div id="timer"></div></div>
+        
+        <!-- Vùng làm bài thi dạng TEXT (Cũ) -->
         <div id="quiz" class="quiz-container" style="display:none;"></div>
         <button id="gradeBtn" style="display:none;" class="btn btn-success btn-full" onclick="gradeQuiz()"><i class="fas fa-check-circle"></i> Chấm điểm & Nộp bài</button>
         
-        <!-- XÓA BỎ div#result-container CŨ và DÁN ĐOẠN NÀY VÀO THAY THẾ -->
-<div id="result-container" class="container card" style="display:none;">
-    
-    <h2>Kết quả bài thi</h2>
+        <!-- Màn hình kết quả (Cũ) -->
+        <div id="result-container" class="container card" style="display:none;">
+            <h2>Kết quả bài thi</h2>
+            <div class="score-box">
+                <span class="score-label">Điểm của bạn</span>
+                <span id="score">0.00</span>
+            </div>
+            <div class="info-group">
+                <p><span><i class="fas fa-user"></i> Họ tên</span><strong id="student-name"></strong></p>
+                <p><span><i class="fas fa-chalkboard-user"></i> Lớp</span><strong id="student-class"></strong></p>
+                <p><span><i class="fas fa-file-alt"></i> Mã đề</span><strong id="exam-code"></strong></p>
+            </div>
+            <button onclick="showStudentLogin()" class="btn btn-primary btn-full"><i class="fas fa-home"></i> Quay lại trang chủ</button>
+            <h4 class="details-title">Xem chi tiết bài làm</h4>
+        </div>
 
-    <!-- Hộp điểm nổi bật, đơn giản -->
-    <div class="score-box">
-        <span class="score-label">Điểm của bạn</span>
-        <span id="score">0.00</span>
-    </div>
-
-    <!-- Nhóm thông tin học sinh -->
-    <div class="info-group">
-        <p>
-            <span><i class="fas fa-user"></i> Họ tên</span>
-            <strong id="student-name"></strong>
-        </p>
-        <p>
-            <span><i class="fas fa-chalkboard-user"></i> Lớp</span>
-            <strong id="student-class"></strong>
-        </p>
-        <p>
-            <span><i class="fas fa-file-alt"></i> Mã đề</span>
-            <strong id="exam-code"></strong>
-        </p>
-    </div>
-
-    <button onclick="showStudentLogin()" class="btn btn-primary btn-full"><i class="fas fa-home"></i> Quay lại trang chủ</button>
-    
-    <h4 class="details-title">Xem chi tiết bài làm</h4>
-    <!-- Phần chi tiết sẽ hiển thị trong #quiz div -->
-</div>
-
-        <!-- HOÀN THIỆN NỘI DUNG DASHBOARD GIÁO VIÊN -->
+        <!-- Dashboard Giáo viên -->
         <div id="teacherDashboard" class="dashboard-container" style="display:none;">
             <h2>Bảng điều khiển Giáo viên</h2>
             <p>Chào mừng, <span id="teacherDashboardName"></span>!</p>
-            <p>Tài khoản dùng thử còn lại: <span id="trialRemainingDays"></span> ngày.</p>
+            <!-- Thêm link để qua trang quản lý PDF -->
+            <p><a href="/pdf-teacher.html" target="_blank" class="btn btn-info"><i class="fas fa-file-pdf"></i> Quản lý Đề thi PDF</a></p>
             
             <div class="dashboard-sections">
                 <div class="dashboard-section">
-                    <h3>Quản lý Đề thi</h3>
+                    <h3>Quản lý Đề thi (Văn bản)</h3>
                     <button class="btn btn-primary" onclick="showExamForm()"><i class="fas fa-plus-circle"></i> Thêm đề thi</button>
-                    <div id="exam-list" class="list-group">
-                        <!-- Danh sách đề thi sẽ được tải vào đây -->
-                    </div>
+                    <div id="exam-list" class="list-group"></div>
                 </div>
                 <div class="dashboard-section">
                     <h3>Quản lý Lớp học</h3>
                     <button class="btn btn-primary" onclick="showClassForm()"><i class="fas fa-plus-circle"></i> Thêm lớp học</button>
-                    <div id="class-list" class="list-group">
-                        <!-- Danh sách lớp học sẽ được tải vào đây -->
-                    </div>
+                    <div id="class-list" class="list-group"></div>
                 </div>
                 <div class="dashboard-section">
                     <h3>Bài nộp gần đây</h3>
-                    <div id="submission-list" class="list-group">
-                        <!-- Danh sách bài nộp sẽ được tải vào đây -->
-                    </div>
+                    <div id="submission-list" class="list-group"></div>
                 </div>
             </div>
-            
             <div class="dashboard-actions">
                 <button onclick="signOut()" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i> Đăng xuất</button>
-                <button onclick="hideTeacherDashboard()" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Quay lại</button>
             </div>
         </div>
 
-        <!-- HOÀN THIỆN NỘI DUNG FORM ĐỀ THI (MODAL) -->
+        <!-- Modal Form Đề thi (PHIÊN BẢN ĐẦY ĐỦ) -->
         <div id="examFormModal" class="modal-backdrop" style="display: none;">
             <div class="modal-content card">
                 <h2 id="examFormTitle"></h2>
-                <!-- Vùng này sẽ cuộn nếu nội dung form quá dài -->
                 <div class="modal-form-scrollable-area">
                     <form id="examForm" onsubmit="event.preventDefault(); handleExamFormSubmit();">
                         <input type="hidden" id="examId" />
+                        
+                        <div class="form-group">
+                            <label for="examFormType">Loại đề thi:</label>
+                            <select id="examFormType" onchange="toggleExamFormFields()">
+                                <option value="TEXT" selected>Đề dạng Văn bản (Soạn trực tiếp)</option>
+                                <option value="PDF">Đề dạng PDF (Từ link)</option>
+                            </select>
+                        </div>
+                        
                         <div class="form-group">
                             <label for="examFormCode">Mã đề thi:</label>
-                            <input type="text" id="examFormCode" required placeholder="Ví dụ: T_001_TOAN10" />
+                            <input type="text" id="examFormCode" required placeholder="Đề TEXT: T... | Đề PDF: PDF-..." />
                         </div>
                         <div class="form-group">
                             <label for="examFormTime">Thời gian làm bài (phút):</label>
@@ -161,35 +155,35 @@
                         </div>
                         <div class="form-group">
                             <label for="examFormKeys">Đáp án (phân tách bằng |):</label>
-                            <input type="text" id="examFormKeys" required placeholder="Ví dụ: A|BTF|3.14|C" />
-                            <small>MC: A, B, C, D. Đúng Sai: T, F (ví dụ TF hoặc TFT). Tự luận: số.</small>
+                            <input type="text" id="examFormKeys" required placeholder="A|B|C|D..." />
                         </div>
                         <div class="form-group">
                             <label for="examFormCores">Điểm từng câu (phân tách bằng |):</label>
-                            <input type="text" id="examFormCores" required placeholder="Ví dụ: 1|0.5,0.5|1|0.25" />
-                            <small>MC/Tự luận: điểm câu đó. Đúng Sai: điểm cho từng đáp án đúng (ví dụ 0.25,0.25,0.25 nếu có 3 đáp án con)</small>
+                            <input type="text" id="examFormCores" required placeholder="0.2|0.2|0.2|0.2..." />
                         </div>
-                        <div class="form-group">
-                            <label for="examFormContent">Nội dung đề thi (mỗi câu cách nhau 2 dòng trắng, có thể kèm '\begin{loigiai}...\end{loigiai}'):</label>
-                            <textarea id="examFormContent" rows="15" required placeholder="Ví dụ:
-Câu 1: Hàm số $y=x^2$ có đạo hàm là?
-A. $2x$ B. $x$ C. $x^2$ D. $2$
-\begin{loigiai}
-Đạo hàm của $x^n$ là $nx^{n-1}$ theo công thức.
-\end{loigiai}
+                        
+                        <!-- Vùng cho đề TEXT -->
+                        <div id="textExamFields">
+                            <div class="form-group">
+                                <label for="examFormContent">Nội dung đề thi (Soạn trực tiếp):</label>
+                                <textarea id="examFormContent" rows="15" required placeholder="Soạn nội dung và đáp án chi tiết vào đây..."></textarea>
+                            </div>
+                        </div>
 
-Câu 2: Mệnh đề sau đúng hay sai?
-(a) $2+2=4$
-(b) $3 \times 3 = 10$
-\begin{loigiai}
-(a) là đúng.
-(b) là sai vì $3 \times 3 = 9$.
-\end{loigiai}
-"></textarea>
+                        <!-- Vùng cho đề PDF -->
+                        <div id="pdfExamFields" style="display:none;">
+                            <div class="form-group">
+                                <label for="examFormPdfUrl">Link Đề thi PDF:</label>
+                                <input type="text" id="examFormPdfUrl" placeholder="Dán link đến file PDF của đề thi" />
+                                <small>Link phải cho phép truy cập công khai (CORS). VD: GitLab raw, Firebase Storage.</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="examFormSolutionUrl">Link Lời giải PDF (tùy chọn):</label>
+                                <input type="text" id="examFormSolutionUrl" placeholder="Dán link đến file PDF của lời giải" />
+                            </div>
                         </div>
                     </form>
                 </div>
-                <!-- Các nút hành động CỐ ĐỊNH ở cuối modal, không cuộn -->
                 <div class="modal-actions">
                     <button type="submit" form="examForm" class="btn btn-primary"><i class="fas fa-save"></i> Lưu</button>
                     <button type="button" onclick="hideExamForm()" class="btn btn-secondary"><i class="fas fa-times-circle"></i> Hủy</button>
@@ -197,29 +191,17 @@ Câu 2: Mệnh đề sau đúng hay sai?
             </div>
         </div>
 
-        <!-- HOÀN THIỆN NỘI DUNG FORM LỚP HỌC (MODAL) -->
+        <!-- Modal Form Lớp học -->
         <div id="classFormModal" class="modal-backdrop" style="display: none;">
             <div class="modal-content card">
                 <h2 id="classFormTitle"></h2>
-                <!-- Vùng này sẽ cuộn nếu nội dung form quá dài -->
                 <div class="modal-form-scrollable-area">
                     <form id="classForm" onsubmit="event.preventDefault(); handleClassFormSubmit();">
                         <input type="hidden" id="classId" />
-                        <div class="form-group">
-                            <label for="classFormName">Tên lớp:</label>
-                            <input type="text" id="classFormName" required placeholder="Ví dụ: 10A1" />
-                        </div>
-                        <div class="form-group">
-                            <label for="classFormStudents">Danh sách học sinh (mỗi tên một dòng):</label>
-                            <textarea id="classFormStudents" rows="10" placeholder="Ví dụ:
-Nguyễn Văn A
-Trần Thị B
-Lê Đình C
-"></textarea>
-                        </div>
+                        <div class="form-group"><label for="classFormName">Tên lớp:</label><input type="text" id="classFormName" required placeholder="Ví dụ: 10A1" /></div>
+                        <div class="form-group"><label for="classFormStudents">Danh sách học sinh (mỗi tên một dòng):</label><textarea id="classFormStudents" rows="10" placeholder="Nguyễn Văn A\nTrần Thị B..."></textarea></div>
                     </form>
                 </div>
-                <!-- Các nút hành động CỐ ĐỊNH ở cuối modal, không cuộn -->
                 <div class="modal-actions">
                     <button type="submit" form="classForm" class="btn btn-primary"><i class="fas fa-save"></i> Lưu</button>
                     <button type="button" onclick="hideClassForm()" class="btn btn-secondary"><i class="fas fa-times-circle"></i> Hủy</button>
@@ -228,8 +210,9 @@ Lê Đình C
         </div>
     </div>
     
-    <!-- File JS của bạn luôn nằm ở cuối cùng và có thuộc tính 'defer' -->
+    <!-- Thứ tự nạp Script quan trọng -->
     <script defer src="js/quiz-parser.js"></script>
+    <script defer src="js/redirect.js"></script> 
     <script defer src="js/main.js"></script>
 
 </body>

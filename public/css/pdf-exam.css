@@ -1,0 +1,85 @@
+/* public/css/pdf-exam.css */
+
+/* --- 1. GIAO DIỆN XEM PDF THEO TỪNG TRANG --- */
+#pdf-viewer-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start; /* Căn canvas lên trên */
+    position: relative;
+    padding-bottom: 60px; /* Chừa không gian cho thanh điều khiển */
+}
+
+#pdf-canvas-wrapper {
+    width: 100%;
+    height: calc(100% - 60px); /* Chiều cao trừ đi thanh điều khiển */
+    overflow-y: auto;
+    text-align: center;
+}
+
+#pdf-controls {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 50px;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    padding: 5px;
+    color: white;
+}
+
+#pdf-controls button {
+    background-color: #4a4a4a;
+    color: white;
+    border: 1px solid #666;
+    border-radius: 4px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+#pdf-controls button:disabled {
+    background-color: #333;
+    color: #777;
+    cursor: not-allowed;
+}
+
+#page-info {
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+
+/* --- 2. SỬA LỖI NÚT ĐÚNG/SAI (TRUE/FALSE) --- */
+/* Ghi đè lên style cũ nếu có xung đột */
+
+.pdf-answer-sheet .tf-btn {
+    padding: 6px 14px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border: 2px solid #d9d9d9 !important; /* Ghi đè border cũ */
+    background-color: #fafafa !important; /* Ghi đè background cũ */
+    color: #555 !important; /* Ghi đè màu chữ cũ */
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.pdf-answer-sheet .tf-btn.T { border-radius: 5px 0 0 5px; }
+.pdf-answer-sheet .tf-btn.F { border-radius: 0 5px 5px 0; margin-left: -2px; }
+
+/* Trạng thái được chọn của nút T và F */
+.pdf-answer-sheet .tf-btn.T.selected {
+    background-color: #198754 !important; /* XANH LÁ */
+    color: white !important;
+    border-color: #198754 !important;
+}
+
+.pdf-answer-sheet .tf-btn.F.selected {
+    background-color: #dc3545 !important; /* ĐỎ */
+    color: white !important;
+    border-color: #dc3545 !important;
+}

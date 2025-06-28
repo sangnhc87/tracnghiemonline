@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Làm bài thi PDF</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/pdf-exam.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-app-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-firestore-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-functions-compat.js"></script>
+    <script defer src="/__/firebase/init.js"></script>
+</head>
+<body>
+    <div id="app">
+        <div id="loading" class="loading-overlay" style="display:flex;"><div class="spinner"></div><p>Đang chuẩn bị đề thi...</p></div>
+        <div id="timer-container" class="timer-container" style="display:none;"><div id="timer"></div></div>
+        <div id="examMainContainer" class="exam-main-container" style="display:none;">
+            <div id="pdf-viewer-container"></div>
+            <div id="quiz-container"></div>
+        </div>
+        <div id="navigation-footer" style="display:none;">
+            <div id="nav-scroll-container"></div>
+            <button id="submitBtnFooter" class="btn btn-success" onclick="submitAndGrade()"><i class="fas fa-check-circle"></i> Nộp bài</button>
+        </div>
+        <div id="result-container" class="container card" style="display:none;">
+            <h2>Kết quả bài thi</h2>
+            <div class="score-box"><span class="score-label">Điểm</span><span id="score">0.00</span></div>
+            <div class="info-group">
+                <p><span><i class="fas fa-user"></i> Họ tên</span><strong id="student-name"></strong></p>
+                <p><span><i class="fas fa-chalkboard-user"></i> Lớp</span><strong id="student-class"></strong></p>
+                <p><span><i class="fas fa-file-alt"></i> Mã đề</span><strong id="exam-code"></strong></p>
+            </div>
+            <button id="viewSolutionBtn" class="btn btn-info" style="display:none; margin-top: 15px;">Xem lời giải</button>
+            <button onclick="window.location.href='/'" class="btn btn-primary btn-full"><i class="fas fa-home"></i> Về trang chủ</button>
+        </div>
+    </div>
+    <script defer src="js/pdf-exam.js"></script>
+</body>
+</html>

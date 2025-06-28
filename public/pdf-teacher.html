@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Quản lý Đề thi PDF</title>
+    <!-- Nạp các CSS và thư viện cần thiết tương tự file index.html -->
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Firebase SDKs -->
+</head>
+<body>
+    <div id="app" class="dashboard-container">
+        <h2><i class="fas fa-file-pdf"></i> Quản lý Đề thi PDF</h2>
+        <p>Chào mừng, <span id="teacherName"></span>! | <a href="#" onclick="signOut()">Đăng xuất</a></p>
+        
+        <div class="dashboard-sections">
+            <div class="dashboard-section">
+                <h3>Thêm/Sửa Đề thi PDF</h3>
+                <form id="pdfExamForm" onsubmit="event.preventDefault(); handlePdfExamFormSubmit();">
+                    <input type="hidden" id="examId">
+                    <div class="form-group">
+                        <label for="examCode">Mã đề (Bắt buộc có tiền tố 'PDF-'):</label>
+                        <input type="text" id="examCode" required placeholder="Ví dụ: PDF-TOAN10-01">
+                    </div>
+                    <div class="form-group">
+                        <label for="timeLimit">Thời gian (phút):</label>
+                        <input type="number" id="timeLimit" value="90" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="keys">Đáp án (phân tách bằng |):</label>
+                        <input type="text" id="keys" required placeholder="A|B|C|D...">
+                    </div>
+                    <div class="form-group">
+                        <label for="cores">Điểm (phân tách bằng |):</label>
+                        <input type="text" id="cores" required placeholder="0.2|0.2|0.2|0.2...">
+                    </div>
+                    <div class="form-group">
+                        <label for="examPdfUrl">Link Đề thi PDF:</label>
+                        <input type="text" id="examPdfUrl" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="solutionPdfUrl">Link Lời giải PDF (tùy chọn):</label>
+                        <input type="text" id="solutionPdfUrl">
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Lưu Đề thi</button>
+                    <button type="button" onclick="resetForm()" class="btn btn-secondary">Hủy (Làm mới)</button>
+                </form>
+            </div>
+            <div class="dashboard-section">
+                <h3>Danh sách Đề thi PDF</h3>
+                <div id="pdf-exam-list" class="list-group">Đang tải...</div>
+            </div>
+        </div>
+        <p style="text-align:center; margin-top:20px;"><a href="/">Quay về Dashboard chính</a></p>
+    </div>
+    <script defer src="/__/firebase/9.10.0/firebase-app-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-auth-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-firestore-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-functions-compat.js"></script>
+    <script defer src="/__/firebase/init.js"></script>
+    <script defer src="js/pdf-teacher.js"></script>
+</body>
+</html>
