@@ -141,3 +141,14 @@ tbody tr:hover {
         height: 300px; /* Giảm chiều cao hơn nữa */
     }
 }
+
+/* Sửa quy tắc này trong stats.css */
+.stats-filters {
+    display: grid;
+    /* Tăng số cột để vừa với bộ lọc mới */
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    align-items: flex-end;
+    padding: 24px;
+    margin-bottom: 24px;
+}
