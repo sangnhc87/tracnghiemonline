@@ -1,0 +1,339 @@
+/* public/css/quiz-parser.css (Phiên bản Nâng cấp) */
+/* CSS dành riêng cho việc render các loại phương án trắc nghiệm */
+
+/* --- Import/Sử dụng biến từ :root (trong style.css) để nhất quán --- */
+/* (Các biến này cần được định nghĩa trong :root của style.css để hoạt động đúng) */
+/* Ví dụ các biến cần có trong style.css:
+  --primary-color: #007bff;
+  --success-color: #28a745;
+  --success-color-light: #d4edda;
+  --danger-color: #dc3545;
+  --danger-color-light: #f8d7da;
+  --text-color-dark: #212529;
+  --text-color-medium: #495057;
+  --text-color-light: #6c757d;
+  --white: #ffffff;
+  --off-white: #f8f9fa;
+  --border-color: #e9ecef;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --font-size-base: 1rem;
+  --border-radius-md: 8px;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-gas-light: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --transition-speed-fast: 0.15s;
+  --transition-speed-normal: 0.3s;
+  --gas-correct-highlight-magenta: magenta;
+  --gas-tf-true-blue: #2196F3;
+  --gas-tf-false-red: #F44336;
+*/
+
+/* Định nghĩa biến cục bộ nếu cần cho khoảng cách cụ thể hoặc màu đặc trưng */
+:root {
+  --mc-option-gap: 12px; /* Khoảng cách giữa nhãn và nội dung, và giữa các ô */
+  --mc-layout-gap-half: calc(var(--mc-option-gap) / 2); /* 6px cho bố cục 2 cột */
+  --mc-layout-gap-three-quarters: calc(var(--mc-option-gap) * 0.75); /* 9px cho bố cục 4 cột */
+
+  /* Màu sắc đặc trưng cho bảng Đúng/Sai nếu chưa có trong style.css */
+  --tf-table-header-bg: #e67e22; /* Cam đậm */
+  --tf-table-header-border: #d35400; /* Cam sẫm hơn */
+  --tf-table-row-odd-bg: #fff3e6; /* Cam nhạt cho hàng lẻ */
+  --tf-radio-border-color: #bdc3c7; /* Viền xám nhạt */
+  --tf-radio-bg: #ecf0f1; /* Nền xám nhạt */
+}
+
+
+/* =================================================================== */
+/* 1. CSS CHO PHƯƠNG ÁN A,B,C,D (DẠNG BLOCK)
+/* =================================================================== */
+
+/* Container chung của các phương án */
+.mc-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mc-option-gap); /* Khoảng cách giữa các ô phương án */
+  margin-top: var(--spacing-md);
+}
+
+/* Từng ô phương án (bao gồm nhãn và nội dung) */
+.mc-option {
+  display: flex;
+  align-items: flex-start; /* QUAN TRỌNG: Để vòng tròn và nội dung luôn căn trên cùng của ô */
+  gap: var(--mc-option-gap); /* Khoảng cách giữa vòng tròn và nội dung */
+  padding: var(--spacing-md) var(--spacing-lg); /* Padding bên trong ô phương án */
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  background-color: var(--white);
+  cursor: pointer;
+  transition: all var(--transition-speed-fast) ease;
+  user-select: none;
+  font-size: var(--font-size-base);
+  /* Đảm bảo ô phương án tự động tăng chiều cao và không bị tràn */
+  overflow: visible; /* Đảm bảo nội dung không bị ẩn nếu tràn */
+  min-height: 48px; /* Đặt chiều cao tối thiểu để đảm bảo đủ chỗ cho nhãn và 1 dòng text */
+}
+
+/* Hiệu ứng khi rê chuột qua phương án */
+.mc-option:hover {
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-gas-light);
+}
+
+/* Kiểu dáng khi phương án được chọn */
+.mc-option.selected {
+  border-color: var(--success-color);
+  background-color: var(--success-color-light);
+}
+
+/* Vòng tròn A,B,C,D */
+.mc-option-label {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--text-color-light);
+  font-weight: bold;
+  color: var(--text-color-medium);
+  flex-shrink: 0; /* Đảm bảo vòng tròn không bị co lại */
+  transition: all var(--transition-speed-fast) ease;
+  /* margin-top: 2px; <-- ĐÃ BỎ ĐỂ CĂN CHỈNH NGAY NGẮN VỚI NỘI DUNG */
+  /* Nếu nội dung có line-height lớn và bạn muốn vòng tròn căn giữa theo line-height của dòng đầu,
+     có thể dùng margin-top: calc((1.6em - 32px) / 2); Tuy nhiên, flex-start thường là tốt nhất. */
+}
+
+/* Kiểu dáng vòng tròn khi phương án được chọn */
+.mc-option.selected .mc-option-label {
+  border-color: var(--success-color);
+  background-color: var(--success-color);
+  color: var(--white);
+}
+
+/* Nội dung văn bản và công thức của phương án */
+.mc-option-content {
+  line-height: 1.6;
+  color: var(--text-color-dark);
+  /* padding-top: 4px; <-- ĐÃ BỎ ĐỂ CĂN CHỈNH NGAY NGẮN VỚI VÒNG TRÒN */
+  /* Cho phép nội dung tự tăng chiều cao */
+  flex-grow: 1; /* Cho phép nội dung chiếm hết không gian còn lại */
+}
+
+/* === XỬ LÝ CÔNG THỨC TOÁN HỌC (KaTeX) TRONG PHƯƠNG ÁN === */
+/* KaTeX display mode math (VD: $$...$$) thường có margin lớn, gây tràn trong ô nhỏ. */
+/* Chúng ta sẽ giảm margin và cỡ chữ cho chúng khi nằm trong mc-option-content. */
+.mc-option-content .katex-display {
+  margin-top: var(--spacing-sm) !important;    /* Giảm margin trên (8px) */
+  margin-bottom: var(--spacing-sm) !important; /* Giảm margin dưới (8px) */
+  padding: 0 !important;                       /* Đảm bảo không có padding */
+}
+
+/* Điều chỉnh cỡ chữ chung của KaTeX trong phương án nếu cần */
+.mc-option-content .katex {
+  font-size: 1.05em; /* Lớn hơn một chút so với text bình thường nhưng nhỏ hơn mặc định của KaTeX display */
+  /* Hoặc 1em nếu bạn muốn nó bằng cỡ chữ của text thường */
+}
+
+
+/* Các lớp bố cục (Layout) cho phương án */
+.mc-layout-4x1 .mc-option { /* Một cột (100% chiều rộng) */
+  flex-basis: 100%;
+}
+
+.mc-layout-2x2 { /* Hai cột */
+  justify-content: flex-start; /* Căn trái các item */
+}
+.mc-layout-2x2 .mc-option {
+  flex-grow: 1;
+  flex-basis: calc(50% - var(--mc-layout-gap-half)); /* Sử dụng biến */
+  max-width: calc(50% - var(--mc-layout-gap-half)); /* Sử dụng biến */
+}
+
+.mc-layout-1x4 { /* Bốn cột */
+  justify-content: flex-start; /* Căn trái các item */
+}
+.mc-layout-1x4 .mc-option {
+  flex-grow: 1;
+  flex-basis: calc(25% - var(--mc-layout-gap-three-quarters)); /* Sử dụng biến */
+  max-width: calc(25% - var(--mc-layout-gap-three-quarters)); /* Sử dụng biến */
+}
+
+/* Responsive cho bố cục các phương án */
+@media (max-width: 992px) {
+  .mc-layout-1x4 .mc-option { 
+    flex-basis: calc(50% - var(--mc-layout-gap-half)); 
+    max-width: calc(50% - var(--mc-layout-gap-half)); 
+  }
+}
+@media (max-width: 600px) {
+  .mc-layout-1x4 .mc-option, 
+  .mc-layout-2x2 .mc-option { 
+    flex-basis: 100%; 
+    max-width: 100%;
+  }
+}
+
+/* Highlight kết quả cho A,B,C,D */
+.mc-option.correct-answer-highlight {
+    border-color: var(--gas-correct-highlight-magenta) !important;
+    background-color: #fff0ff !important;
+}
+.mc-option.incorrect-answer-highlight {
+    background-color: var(--danger-color-light) !important;
+    border-color: var(--danger-color) !important;
+}
+.mc-option.incorrect-answer-highlight .mc-option-label {
+    background-color: var(--danger-color);
+    border-color: #721c24;
+    color: var(--white);
+}
+
+
+/* =================================================================== */
+/* 2. CSS CHO MỆNH ĐỀ ĐÚNG/SAI a),b),c),d) (DẠNG BẢNG)
+/* =================================================================== */
+
+.table-tf-container {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: var(--spacing-md);
+    border: 1px solid var(--border-color);
+    font-size: var(--font-size-base);
+    background-color: var(--white);
+    box-shadow: var(--shadow-sm);
+}
+
+.table-tf-container th,
+.table-tf-container td {
+    padding: var(--spacing-md) var(--spacing-lg);
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle; /* Giữ nguyên để nội dung trong ô bảng căn giữa */
+}
+
+.table-tf-container thead th {
+    background-color: var(--tf-table-header-bg);
+    color: var(--white);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--tf-table-header-border);
+}
+
+/* Căn giữa và đặt chiều rộng cho cột Đúng/Sai */
+.table-tf-container th:nth-child(2),
+.table-tf-container th:nth-child(3),
+.table-tf-container td:nth-child(2),
+.table-tf-container td:nth-child(3) {
+    text-align: center;
+    width: 80px;
+}
+
+/* Hiệu ứng sọc zebra cho các hàng bảng */
+.table-tf-container tbody tr:nth-child(even) { background-color: var(--off-white); }
+.table-tf-container tbody tr:nth-child(odd) { background-color: var(--tf-table-row-odd-bg); }
+
+/* Các nút radio tròn cho Đúng/Sai */
+.table-tf-radio {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 32px;
+    height: 32px;
+    border: 2px solid var(--tf-radio-border-color);
+    border-radius: 50%;
+    cursor: pointer;
+    position: relative;
+    background-color: var(--tf-radio-bg);
+    transition: all var(--transition-speed-normal) ease-in-out;
+}
+
+/* Hiệu ứng hover cho nút radio */
+.table-tf-radio:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 8px rgba(0,0,0,0.1);
+}
+
+/* Ẩn input radio mặc định */
+.table-tf-radio input {
+    display: none;
+}
+
+/* Hiệu ứng khi nút radio được chọn */
+.table-tf-radio.selected {
+    transform: scale(1.05);
+}
+
+/* Màu sắc khi nút "Đúng" được chọn */
+.table-tf-container td:nth-child(2) .table-tf-radio.selected {
+    background-color: var(--gas-tf-true-blue);
+    border-color: #2980b9;
+}
+/* Màu sắc khi nút "Sai" được chọn */
+.table-tf-container td:nth-child(3) .table-tf-radio.selected {
+    background-color: var(--gas-tf-false-red);
+    border-color: #c0392b;
+}
+
+/* Thêm icon khi nút radio được chọn (sử dụng Font Awesome) */
+.table-tf-radio.selected::after {
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    color: var(--white);
+    font-size: 16px;
+}
+.table-tf-container td:nth-child(2) .table-tf-radio.selected::after { /* Icon cho "Đúng" */
+    content: '\f00c'; /* Icon check */
+}
+.table-tf-container td:nth-child(3) .table-tf-radio.selected::after { /* Icon cho "Sai" */
+    content: '\f00d'; /* Icon X */
+}
+
+/* Highlight kết quả cho bảng Đúng/Sai */
+.table-tf-radio.correct-answer-highlight {
+    background-color: #2ecc71 !important;
+    border-color: #27ae60 !important;
+}
+.table-tf-radio.incorrect-answer-highlight {
+    background-color: var(--gas-tf-false-red) !important;
+    border-color: #c0392b !important;
+}
+/* Bỏ icon X mặc định khi sai, vì đã có màu đỏ */
+.table-tf-radio.incorrect-answer-highlight::after {
+    content: '' !important;
+}
+
+/* public/css/quiz-parser.css (Phiên bản Nâng cấp và Sửa lỗi hiển thị) */
+
+/* ... (các biến và phần CSS đầu tiên giữ nguyên) ... */
+
+.question-statement {
+  font-size: var(--font-size-lg);
+  line-height: 1.7;
+  margin-bottom: var(--spacing-md);
+  color: var(--text-color-dark);
+  background-color: var(--gas-question-statement-bg);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius-md);
+  border: 1px dashed #999;
+  box-shadow: var(--shadow-gas-inner);
+}
+
+
+.question-statement .statement-q-num {
+    display: inline-block; /* Cho phép padding và margin */
+    font-size: 1.15em; /* Lớn hơn một chút so với text xung quanh */
+    font-weight: 700; /* Đậm hơn */
+    color: var(--gas-question-number-color); /* Màu cam nổi bật */
+    padding: var(--spacing-xs) var(--spacing-sm); /* Thêm padding nhẹ */
+    margin-right: var(--spacing-sm); /* Khoảng cách với phần còn lại của câu hỏi */
+    background-color: rgba(228, 77, 38, 0.08); /* Nền cam rất nhạt */
+    border-radius: var(--border-radius-sm); /* Bo góc nhẹ */
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1); /* Đổ bóng chữ nhẹ nhàng */
+    line-height: 1.2; /* Để padding không làm giãn dòng quá nhiều */
+    white-space: nowrap; /* Đảm bảo "Câu X:" không bị xuống dòng */
+}
