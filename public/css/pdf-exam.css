@@ -1,85 +1,259 @@
 /* public/css/pdf-exam.css */
 
-/* --- 1. GIAO DIỆN XEM PDF THEO TỪNG TRANG --- */
-#pdf-viewer-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start; /* Căn canvas lên trên */
-    position: relative;
-    padding-bottom: 60px; /* Chừa không gian cho thanh điều khiển */
+/* --- 0. CSS Reset/Base TỐI THIỂU Cần Thiết cho Flexbox (Chỉ định nếu style.css chưa có) --- */
+/* Đảm bảo html chiếm toàn bộ chiều cao và không có cuộn ngang không mong muốn */
+html {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden; /* NGĂN CUỘN NGANG CỦA TOÀN TRANG */
 }
 
-#pdf-canvas-wrapper {
-    width: 100%;
-    height: calc(100% - 60px); /* Chiều cao trừ đi thanh điều khiển */
-    overflow-y: auto;
-    text-align: center;
+body {
+    height: 100%; /* Giữ height: 100% để body chiếm toàn bộ chiều cao ban đầu của html */
+    margin: 0;
+    padding: 0;
+    display: flex; /* Biến body thành flex container chính */
+    flex-direction: column; /* Xếp các phần tử con (như #app, header, footer) theo chiều dọc */
+    min-height: 100vh; /* Đảm bảo body luôn chiếm ÍT NHẤT 100% chiều cao của màn hình */
+    
+    /* <<< THAY ĐỔI 1: BẬT THANH CUỘN TOÀN TRANG */
+    overflow-y: auto; 
 }
 
-#pdf-controls {
+#app { /* Container bao quanh toàn bộ nội dung chính của ứng dụng */
+    /* flex: 1; */ /* <<< THAY ĐỔI 2: Tạm thời vô hiệu hóa flex:1 để min-height hoạt động */
+    display: flex; /* Biến #app thành flex container */
+    flex-direction: column; /* Xếp các phần tử con (timer, examMainContainer, footer) theo chiều dọc */
+    /* overflow: hidden; */ /* <<< THAY ĐỔI 3: Vô hiệu hóa overflow để không che mất nội dung */
+
+    /* <<< THAY ĐỔI 4 (CỰC KỲ QUAN TRỌNG): Thêm các thuộc tính này */
+    min-height: 100vh; /* Ép #app cao ít nhất bằng màn hình */
+    padding-top: 60px; /* Giữ nguyên khoảng trống cho timer */
+    box-sizing: border-box; /* Đảm bảo padding không làm tăng chiều cao tổng */
+}
+
+/* --- 1. Loading Overlay và Spinner --- */
+.loading-overlay {
     position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 50px;
+    inset: 0; 
     background: rgba(0, 0, 0, 0.7);
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 20px;
-    padding: 5px;
+    flex-direction: column;
+    z-index: 1000;
     color: white;
+    font-size: 1.2rem;
 }
 
-#pdf-controls button {
-    background-color: #4a4a4a;
-    color: white;
-    border: 1px solid #666;
-    border-radius: 4px;
-    padding: 8px 16px;
-    cursor: pointer;
-    font-weight: bold;
+.spinner {
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top: 4px solid #fff;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px;
 }
 
-#pdf-controls button:disabled {
-    background-color: #333;
-    color: #777;
-    cursor: not-allowed;
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
-#page-info {
-    font-weight: bold;
-    font-size: 1rem;
+/* --- 2. Timer Container --- */
+.timer-container {
+    /* <<< THAY ĐỔI 5: Giữ nguyên cấu hình position:fixed cho timer */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1001; /* Phải cao hơn z-index của loading-overlay */
+    background-color: white; /* Bắt buộc để che nội dung bên dưới */
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    
+    /* Bạn cần đảm bảo style cho timer (padding, height) được định nghĩa ở đây hoặc file css khác */
+    /* Ví dụ: */
+    height: 60px; /* Chiều cao này phải tương ứng với padding-top của #app */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 20px;
+    box-sizing: border-box;
 }
 
 
-/* --- 2. SỬA LỖI NÚT ĐÚNG/SAI (TRUE/FALSE) --- */
-/* Ghi đè lên style cũ nếu có xung đột */
-
-.pdf-answer-sheet .tf-btn {
-    padding: 6px 14px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    border: 2px solid #d9d9d9 !important; /* Ghi đè border cũ */
-    background-color: #fafafa !important; /* Ghi đè background cũ */
-    color: #555 !important; /* Ghi đè màu chữ cũ */
-    cursor: pointer;
-    transition: all 0.2s ease;
+/* --- 3. Main Exam Container (Layout chính của bài thi - MẶC ĐỊNH CHO DESKTOP) --- */
+.exam-main-container {
+    display: flex; /* Mặc định là flex container theo chiều ngang (chia cột) */
+    flex-direction: row; /* Rõ ràng xác định chiều ngang */
+    flex: 1; /* RẤT QUAN TRỌNG: Làm cho main container chiếm hết chiều cao còn lại của #app */
+    gap: 20px; /* Khoảng cách giữa 2 cột */
+    overflow: hidden; /* NGĂN container này tự cuộn trên DESKTOP, các con của nó cuộn */
+    padding: 20px; /* Thêm padding tổng thể nếu chưa có trong style.css */
 }
 
-.pdf-answer-sheet .tf-btn.T { border-radius: 5px 0 0 5px; }
-.pdf-answer-sheet .tf-btn.F { border-radius: 0 5px 5px 0; margin-left: -2px; }
-
-/* Trạng thái được chọn của nút T và F */
-.pdf-answer-sheet .tf-btn.T.selected {
-    background-color: #198754 !important; /* XANH LÁ */
-    color: white !important;
-    border-color: #198754 !important;
+/* --- 4. PDF Viewer Container (#pdf-viewer-container và #solution-viewer-container) --- */
+#pdf-viewer-container,
+#solution-viewer-container {
+    flex: 8; 
+    min-width: 500px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; 
+    position: relative;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
-.pdf-answer-sheet .tf-btn.F.selected {
-    background-color: #dc3545 !important; /* ĐỎ */
-    color: white !important;
-    border-color: #dc3545 !important;
+/* Khung chứa các trang PDF thực sự có thanh cuộn */
+.pdf-scroll-frame {
+    flex: 1; 
+    overflow-y: auto; /* THANH CUỘN 1 (PDF) - GIỮ NGUYÊN */
+    background-color: #525659;
+    padding: 15px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+/* Style cho các trang PDF (canvas) bên trong khung cuộn */
+.pdf-scroll-frame canvas {
+    display: block; 
+    margin-bottom: 15px;
+    max-width: 100%;
+    height: auto;
+    box-shadow: 0 0 12px rgba(0,0,0,0.6);
+    border-radius: 5px;
+    background-color: white;
+}
+
+
+/* --- 5. Quiz Container (Phiếu trả lời) --- */
+#quiz-container {
+    flex: 2; 
+    min-width: 250px;
+    overflow-y: auto; /* THANH CUỘN 2 (PHIẾU TRẢ LỜI) - GIỮ NGUYÊN */
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 20px;
+}
+
+/* Styling cho các câu hỏi và lựa chọn bên trong phiếu trả lời (giữ nguyên) */
+.question { padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0; }
+.question:last-child { border-bottom: none; }
+.question p { font-weight: bold; margin-bottom: 12px; color: #0056b3; font-size: 1.1rem; }
+.answer-options { display: flex; flex-wrap: wrap; gap: 12px; }
+.mc-option { padding: 10px 20px; border: 1px solid #ccc; border-radius: 25px; cursor: pointer; transition: all 0.2s ease; user-select: none; background-color: #f8f9fa; color: #333; font-weight: 500; }
+.mc-option:hover { background-color: #e9ecef; border-color: #a0a0a0; }
+.mc-option.selected { background-color: #007bff; color: white; border-color: #007bff; box-shadow: 0 2px 5px rgba(0,123,255,0.3); }
+.tf-item { display: flex; align-items: center; gap: 15px; margin-bottom: 8px; flex-wrap: wrap; }
+.tf-item-label { min-width: 90px; font-weight: 500; color: #555; text-align: right; }
+.tf-btn-group { display: flex; }
+.tf-btn { padding: 8px 18px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; user-select: none; border: 1px solid #d9d9d9 !important; background-color: #fafafa !important; color: #555 !important; border-radius: 0 !important; }
+.tf-btn.T { border-radius: 5px 0 0 5px !important; }
+.tf-btn.F { border-radius: 0 5px 5px 0 !important; margin-left: -1px !important; border-left: none !important; }
+.tf-btn.T.selected { background-color: #198754 !important; color: white !important; border-color: #198754 !important; }
+.tf-btn.F.selected { background-color: #dc3545 !important; color: white !important; border-color: #dc3545 !important; }
+.tf-btn:not(.selected):hover { background-color: #e9ecef !important; }
+.numeric-option input { padding: 10px 15px; border: 1px solid #ccc; border-radius: 8px; width: 100%; max-width: 200px; font-size: 1rem; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+.numeric-option input:focus { border-color: #007bff; box-shadow: 0 0 0 3px rgba(0,123,255,0.25); outline: none; }
+
+
+/* --- 6. Navigation Footer (Điều hướng và Nộp bài) --- */
+#navigation-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+#nav-scroll-container {
+    display: flex;
+    overflow-x: auto; /* THANH CUỘN 3 (ĐIỀU HƯỚNG CÂU HỎI) - GIỮ NGUYÊN */
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 5px;
+    gap: 10px;
+    flex: 1;
+    margin-right: 15px;
+    scroll-behavior: smooth;
+}
+
+/* Điều hướng câu hỏi (giữ nguyên) */
+.nav-item.answered { background-color: #28a745; color: white; border-color: #28a745; }
+.nav-item.current { background-color: #007bff; color: white; border-color: #007bff; box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.3); }
+
+/* Style thanh cuộn Webkit (Chrome, Edge, Safari) (giữ nguyên) */
+.pdf-scroll-frame::-webkit-scrollbar,
+#nav-scroll-container::-webkit-scrollbar,
+#quiz-container::-webkit-scrollbar,
+.exam-main-container::-webkit-scrollbar,
+body::-webkit-scrollbar
+{
+    width: 10px;
+    height: 8px;
+}
+
+.pdf-scroll-frame::-webkit-scrollbar-thumb,
+#nav-scroll-container::-webkit-scrollbar-thumb,
+#quiz-container::-webkit-scrollbar-thumb,
+.exam-main-container::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb
+{
+    background-color: rgba(255, 255, 255, 0.4);
+    border-radius: 5px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+.pdf-scroll-frame::-webkit-scrollbar-track,
+#nav-scroll-container::-webkit-scrollbar-track,
+#quiz-container::-webkit-scrollbar-track,
+.exam-main-container::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track
+{
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+}
+
+
+/* --- Responsive Design CỤ THỂ theo yêu cầu của bạn --- (giữ nguyên) */
+/* Các thay đổi này vẫn hoạt động tốt với đồng hồ cố định */
+@media (max-width: 992px) and (orientation: portrait) {
+    .exam-main-container {
+        flex-direction: column;
+        overflow-y: auto; 
+        padding-bottom: 80px;
+    }
+    #pdf-viewer-container,
+    #solution-viewer-container {
+        flex: none; 
+        width: 100%;
+        min-height: 400px;
+    }
+    #quiz-container {
+        flex: none;
+        width: 100%;
+        min-height: 300px;
+    }
+}
+
+@media (max-width: 992px) and (orientation: landscape) {
+    .exam-main-container {
+        flex-direction: row;
+        overflow: hidden;
+        height: 100%;
+        padding-bottom: 0;
+    }
+    #pdf-viewer-container {
+        min-width: 450px;
+    }
+    #quiz-container {
+        min-width: 200px;
+    }
 }

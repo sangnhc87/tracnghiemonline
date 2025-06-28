@@ -1,4 +1,4 @@
-// public/js/pdf-exam.js (PHIÊN BẢN ĐẠI PHẪU 100% HOÀN CHỈNH)
+// public/js/pdf-exam.js (PHIÊN BẢN SỬA LỖI TỐI GIẢN)
 
 // --- KHỞI TẠO & BIẾN TOÀN CỤC ---
 const db = firebase.firestore();
@@ -31,16 +31,20 @@ async function loadAndStartExam(studentInfo) {
         examData = { ...result.data, ...studentInfo };
         document.getElementById('loading').style.display = 'none';
         document.getElementById('timer-container').style.display = 'block';
+        
+        // Chỉ hiện các container, việc style sẽ do CSS đảm nhiệm
         document.getElementById('examMainContainer').style.display = 'flex';
         document.getElementById('navigation-footer').style.display = 'flex';
 
         startTimer(examData.timeLimit);
         buildAnswerSheetAndNav(examData);
+        
         // Tải PDF sau khi đã hiển thị phiếu trả lời để người dùng không phải chờ
         renderPdf(examData.examPdfUrl, document.getElementById('pdf-viewer-container'));
 
     } catch (error) {
         document.getElementById('loading').innerHTML = `<div class="card" style="max-width: 400px; margin: 50px auto; text-align: center; color: red;"><h2>Lỗi Hệ Thống</h2><p>${error.message}</p><a href="/" class="btn btn-primary">Quay về trang chủ</a></div>`;
+        console.error("Lỗi trong loadAndStartExam:", error);
     }
 }
 
@@ -64,7 +68,7 @@ function buildAnswerSheetAndNav(data) {
     const navContainer = document.getElementById("nav-scroll-container");
     quizContainer.innerHTML = '';
     navContainer.innerHTML = '';
-    quizContainer.className = 'pdf-answer-sheet';
+    quizContainer.className = 'pdf-answer-sheet'; // Giữ class này để CSS tùy chỉnh
 
     data.keysStr.forEach((key, i) => {
         if (!key) return;
@@ -112,8 +116,9 @@ function buildAnswerSheetAndNav(data) {
                 fBtn.dataset.value = "F";
 
                 const commonClickHandler = () => {
-                    const allSelected = questionDiv.querySelectorAll('.tf-btn').length / 2 === questionDiv.querySelectorAll('.tf-btn.selected').length;
-                    updateNavStatus(i, allSelected);
+                    const allTfItems = questionDiv.querySelectorAll('.tf-item').length;
+                    const selectedTfItems = questionDiv.querySelectorAll('.tf-item .tf-btn.selected').length;
+                    updateNavStatus(i, allTfItems === selectedTfItems);
                 };
                 
                 tBtn.onclick = () => { tBtn.classList.add('selected'); fBtn.classList.remove('selected'); commonClickHandler(); };
@@ -125,8 +130,11 @@ function buildAnswerSheetAndNav(data) {
         } else if (questionType === "NUMERIC") {
             const numericContainer = document.createElement("div");
             numericContainer.className = "numeric-option";
-            numericContainer.innerHTML = `<input type="text" placeholder="Nhập đáp số">`;
-            numericContainer.querySelector('input').oninput = (e) => updateNavStatus(i, e.target.value.trim() !== '');
+            numericContainer.innerHTML = `<input type="text" inputmode="numeric" pattern="[0-9]*[.]?[0-9]*" placeholder="Nhập đáp số">`;
+            numericContainer.querySelector('input').oninput = (e) => {
+                const value = e.target.value.trim();
+                updateNavStatus(i, value !== '' && !isNaN(parseFloat(value)));
+            };
             optionsContainer.appendChild(numericContainer);
         }
 
@@ -147,6 +155,7 @@ function updateNavStatus(index, isAnswered) {
     const navBtn = document.getElementById(`nav-${index}`);
     if (navBtn) isAnswered ? navBtn.classList.add('answered') : navBtn.classList.remove('answered');
 }
+
 function scrollToQuestion(index) {
     document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('current'));
     const navBtn = document.getElementById(`nav-${index}`);
@@ -155,11 +164,14 @@ function scrollToQuestion(index) {
         navBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
     }
     const questionEl = document.getElementById(`question-${index}`);
-    if (questionEl) questionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (questionEl) {
+        questionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 }
+
 async function renderPdf(gitlabUrl, containerElement) {
-    // Hiển thị overlay tải trước
-    containerElement.innerHTML = `<div class="loading-overlay" style="position:absolute; display:flex; inset:0; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; flex-direction:column; z-index:100;"><div class="spinner"></div><p style="color:white; margin-top:10px;">Đang tải PDF...</p></div>`;
+    // Overlay tải luôn được thêm vào containerElement
+    containerElement.innerHTML = `<div class="loading-overlay" style="position:absolute; display:flex; inset:0; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; flex-direction:column; z-index:1000;"><div class="spinner"></div><p style="color:white; margin-top:10px;">Đang tải PDF...</p></div>`;
 
     try {
         const getPdfProxy = functions.httpsCallable('getPdfFromGitLab');
@@ -173,39 +185,29 @@ async function renderPdf(gitlabUrl, containerElement) {
         containerElement.innerHTML = '';
 
         // TẠO KHUNG CUỘN (SCROLLABLE FRAME) BÊN TRONG CONTAINER
+        // Chỉ thêm class và để CSS xử lý phần lớn style
         const scrollableFrame = document.createElement('div');
-        scrollableFrame.className = 'pdf-scroll-frame'; // Thêm class để dễ dàng định kiểu bằng CSS
-        // Áp dụng CSS trực tiếp hoặc thông qua class
-        scrollableFrame.style.cssText = `
-            flex: 1; /* Để chiếm hết chiều cao còn lại nếu containerElement là flexbox */
-            overflow-y: auto; /* Tạo thanh cuộn dọc */
-            background-color: #525659; /* Màu nền giống các ứng dụng xem PDF */
-            padding: 10px; /* Đệm xung quanh các trang PDF */
-            text-align: center; /* Căn giữa các trang PDF */
-            display: flex;
-            flex-direction: column;
-            align-items: center; /* Căn giữa theo chiều ngang cho các trang */
-        `;
+        scrollableFrame.className = 'pdf-scroll-frame'; 
         containerElement.appendChild(scrollableFrame); // Thêm khung cuộn vào container chính
 
         for (let i = 1; i <= pdf.numPages; i++) {
             const page = await pdf.getPage(i);
-            // Tăng scale để PDF rõ nét hơn, có thể điều chỉnh
-            const viewport = page.getViewport({ scale: 1.5 }); 
+            const viewport = page.getViewport({ scale: 1.5 }); // Có thể điều chỉnh scale nếu cần
             const canvas = document.createElement('canvas');
             canvas.height = viewport.height;
             canvas.width = viewport.width;
             
-            // THÊM CÁC TRANG CANVAS VÀO KHUNG CUỘN, KHÔNG PHẢI CONTAINER TRỰC TIẾP
             scrollableFrame.appendChild(canvas); 
 
-            // Áp dụng một số style cơ bản cho canvas để hiển thị đẹp hơn
+            // Style cơ bản cho canvas để hiển thị đẹp hơn
             canvas.style.cssText = `
-                display: block; /* Quan trọng để loại bỏ khoảng trắng dưới canvas */
-                margin-bottom: 10px; /* Khoảng cách giữa các trang */
-                max-width: 100%; /* Đảm bảo PDF không bị tràn ngang */
-                height: auto; /* Giữ tỷ lệ khung hình */
-                box-shadow: 0 0 8px rgba(0,0,0,0.5); /* Thêm bóng đổ cho đẹp */
+                display: block;
+                margin-bottom: 15px;
+                max-width: 100%;
+                height: auto;
+                box-shadow: 0 0 12px rgba(0,0,0,0.6);
+                border-radius: 5px;
+                background-color: white;
             `;
 
             await page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
@@ -230,12 +232,13 @@ function collectAnswers() {
             let subAnswers = '';
             qDiv.querySelectorAll('.tf-item').forEach(item => {
                 const selectedBtn = item.querySelector('.tf-btn.selected');
-                subAnswers += selectedBtn ? selectedBtn.dataset.value : '_';
+                subAnswers += selectedBtn ? selectedBtn.dataset.value : '_'; 
             });
             answers[`q${i}`] = subAnswers;
         } else if (!isNaN(parseFloat(key))) {
             const input = qDiv.querySelector('.numeric-option input');
-            answers[`q${i}`] = (input && input.value.trim() !== '') ? input.value.trim() : null;
+            const value = (input && input.value.trim() !== '') ? input.value.trim() : null;
+            answers[`q${i}`] = value;
         }
     });
     return answers;
@@ -247,13 +250,18 @@ window.submitAndGrade = function(isCheating = false) {
     const userAnswers = collectAnswers();
     let unansweredCount = 0;
     Object.values(userAnswers).forEach(answer => {
-        if (answer === null || answer === '' || (typeof answer === 'string' && answer.includes('_'))) {
+        if (answer === null || (typeof answer === 'string' && answer.includes('_')) || answer === '') {
             unansweredCount++;
         }
     });
     
     if (unansweredCount > 0 && !isCheating) {
-        Swal.fire({ icon: "info", title: "Chưa hoàn thành", text: `Bạn còn ${unansweredCount} câu chưa trả lời.` });
+        Swal.fire({ icon: "info", title: "Chưa hoàn thành", text: `Bạn còn ${unansweredCount} câu chưa trả lời. Bạn có muốn nộp bài không?`, showCancelButton: true, confirmButtonText: 'Có, tôi muốn nộp!', cancelButtonText: 'Không, để tôi làm tiếp' })
+            .then((result) => {
+                if (result.isConfirmed) {
+                    processSubmission({ isCheating, answers: userAnswers });
+                }
+            });
         return;
     }
 
@@ -296,14 +304,23 @@ function displayResults(score, serverData) {
         const viewBtn = document.getElementById('viewSolutionBtn');
         viewBtn.style.display = 'block';
         viewBtn.onclick = () => {
-            resultContainer.style.display = 'none';
-            document.getElementById('examMainContainer').style.display = 'flex';
-            document.getElementById('pdf-viewer-container').style.display = 'none';
-            const solutionContainer = document.createElement('div');
-            solutionContainer.id = 'solution-viewer-container';
-            solutionContainer.style.cssText = "flex: 1; overflow-y: auto; background-color: #525659; padding: 10px; text-align: center;";
-            document.getElementById('examMainContainer').prepend(solutionContainer);
-            renderPdf(serverData.solutionPdfUrl, solutionContainer);
+            resultContainer.style.display = 'none'; // Ẩn kết quả
+            const examMainContainer = document.getElementById('examMainContainer');
+            examMainContainer.style.display = 'flex'; // Hiển thị lại examMainContainer
+            
+            document.getElementById('pdf-viewer-container').style.display = 'none'; // Ẩn đề thi
+            
+            let solutionContainer = document.getElementById('solution-viewer-container');
+            if (!solutionContainer) { 
+                solutionContainer = document.createElement('div');
+                solutionContainer.id = 'solution-viewer-container';
+                // Không cần inline style quá nhiều, CSS sẽ xử lý
+                examMainContainer.prepend(solutionContainer);
+            } else {
+                solutionContainer.style.display = 'flex'; // Chỉ đảm bảo nó hiện
+            }
+            
+            renderPdf(serverData.solutionPdfUrl, solutionContainer); // Render giải pháp
         };
     }
 }
