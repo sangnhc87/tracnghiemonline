@@ -1,0 +1,143 @@
+/* public/css/stats.css */
+.stats-dashboard {
+    width: 100%;
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+}
+
+.stats-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.stats-header h1 {
+    margin: 0;
+    color: var(--text-color-dark);
+    font-size: 1.8rem;
+}
+
+.stats-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    align-items: flex-end;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 10px;
+}
+.filter-actions .btn {
+    flex-grow: 1;
+}
+
+.stats-results {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.stats-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.summary-card {
+    background-color: var(--surface-color);
+    padding: 20px;
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-sm);
+    text-align: center;
+    border-top: 4px solid var(--primary-color);
+}
+
+.summary-card h4 {
+    margin: 0 0 10px 0;
+    font-size: 1rem;
+    color: var(--text-color-light);
+}
+
+.summary-card p {
+    margin: 0;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-color-dark);
+}
+
+.stats-chart, .stats-table {
+    padding: 24px;
+}
+.stats-chart h3, .stats-table h3 {
+    text-align: center;
+    margin-top: 0;
+    margin-bottom: 24px;
+    color: var(--text-color-medium);
+}
+.table-wrapper {
+    overflow-x: auto;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+th, td {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+}
+thead th {
+    background-color: var(--off-white);
+    font-weight: 600;
+    color: var(--text-color-medium);
+}
+tbody tr:hover {
+    background-color: #f5f5f5;
+}
+
+.stats-placeholder {
+    text-align: center;
+    padding: 50px;
+    color: var(--text-color-light);
+    font-size: 1.2rem;
+}
+
+.dashboard-main-actions {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* Thêm vào cuối file public/css/stats.css */
+
+.charts-container {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr; /* Biểu đồ tròn nhỏ hơn, biểu đồ cột lớn hơn */
+    gap: 24px;
+}
+
+/* Đây là phần quan trọng nhất để sửa lỗi "to quá" */
+.chart-wrapper {
+    position: relative;
+    height: 350px; /* Giới hạn chiều cao */
+    width: 100%;
+}
+
+/* Responsive cho màn hình nhỏ */
+@media (max-width: 992px) {
+    .charts-container {
+        grid-template-columns: 1fr; /* Xếp chồng 2 biểu đồ lên nhau */
+    }
+    .chart-wrapper {
+        height: 300px; /* Giảm chiều cao hơn nữa */
+    }
+}

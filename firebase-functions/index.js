@@ -457,3 +457,118 @@ exports.getPdfFromGitLab = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError("internal", "Không thể tải file PDF từ GitLab.", error.message);
     }
 });
+
+
+
+// Thêm vào file functions/index.js
+
+// Hàm 1: Lấy danh sách đề thi và lớp học để đổ vào bộ lọc
+exports.getStatsInitialData = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Bạn phải đăng nhập.');
+    }
+    const teacherId = context.auth.uid;
+
+    const examsPromise = db.collection('exams')
+        .where('teacherId', '==', teacherId)
+        .select('examCode').get();
+        
+    const classesPromise = db.collection('classes')
+        .where('teacherId', '==', teacherId)
+        .select('name').get();
+
+    const [examsSnapshot, classesSnapshot] = await Promise.all([examsPromise, classesPromise]);
+
+    const exams = examsSnapshot.docs.map(doc => doc.data());
+    const classes = classesSnapshot.docs.map(doc => doc.data());
+
+    return { exams, classes };
+});
+
+// Hàm 2: Hàm xử lý dữ liệu thống kê chính
+// Thay thế toàn bộ hàm getExamStatistics cũ bằng hàm này
+exports.getExamStatistics = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Bạn phải đăng nhập.');
+    }
+    const teacherId = context.auth.uid;
+    const { examCode, className } = data;
+
+    if (!examCode) {
+        throw new functions.https.HttpsError('invalid-argument', 'Mã đề thi là bắt buộc.');
+    }
+
+    let query = db.collection('submissions')
+        .where('teacherId', '==', teacherId)
+        .where('examCode', '==', examCode);
+
+    if (className && className !== 'all') {
+        query = query.where('className', '==', className);
+    }
+
+    const snapshot = await query.get();
+
+    if (snapshot.empty) {
+        return { 
+            summary: { count: 0 },
+            filters: { examCode, className }
+        };
+    }
+    
+    let totalScore = 0;
+    let highestScore = -1;
+    let lowestScore = 11;
+    const detailedSubmissions = [];
+
+    // Dữ liệu cho biểu đồ phổ điểm (chi tiết)
+    const scoreDistribution = {
+        '[0, 2]': 0, '(2, 4]': 0, '(4, 5]': 0, '(5, 6.5]': 0, 
+        '(6.5, 8]': 0, '(8, 9]': 0, '(9, 10]': 0
+    };
+    
+    // Dữ liệu cho biểu đồ phân loại (tổng quan)
+    const performanceTiers = {
+        gioi: 0,   // >= 8.0
+        kha: 0,    // [6.5, 8.0)
+        trungBinh: 0, // [5.0, 6.5)
+        yeu: 0     // < 5.0
+    };
+
+    snapshot.forEach(doc => {
+        const sub = doc.data();
+        const score = sub.score;
+
+        totalScore += score;
+        if (score > highestScore) highestScore = score;
+        if (score < lowestScore) lowestScore = score;
+        detailedSubmissions.push(sub);
+
+        // Phân loại phổ điểm chi tiết
+        if (score <= 2) scoreDistribution['[0, 2]']++;
+        else if (score <= 4) scoreDistribution['(2, 4]']++;
+        else if (score <= 5) scoreDistribution['(4, 5]']++;
+        else if (score <= 6.5) scoreDistribution['(5, 6.5]']++;
+        else if (score <= 8) scoreDistribution['(6.5, 8]']++;
+        else if (score <= 9) scoreDistribution['(8, 9]']++;
+        else scoreDistribution['(9, 10]']++;
+
+        // Phân loại kết quả tổng quan
+        if (score >= 8) performanceTiers.gioi++;
+        else if (score >= 6.5) performanceTiers.kha++;
+        else if (score >= 5.0) performanceTiers.trungBinh++;
+        else performanceTiers.yeu++;
+    });
+
+    const count = snapshot.size;
+    const average = count > 0 ? totalScore / count : 0;
+    
+    detailedSubmissions.sort((a, b) => b.score - a.score);
+
+    return {
+        summary: { count, average, highest: highestScore, lowest: lowestScore },
+        scoreDistribution,
+        performanceTiers, // <-- Trả về dữ liệu mới
+        detailedSubmissions,
+        filters: { examCode, className }
+    };
+});

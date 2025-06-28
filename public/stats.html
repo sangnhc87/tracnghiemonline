@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thống kê & Phân tích Kết quả</title>
+    <!-- Nạp CSS cũ để có chung style nền và các nút -->
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Nạp CSS mới cho trang thống kê -->
+    <link rel="stylesheet" href="css/stats.css">
+    
+    <!-- Thư viện vẽ biểu đồ Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <!-- Thư viện xuất file Excel (SheetJS) -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Firebase SDKs -->
+    <script defer src="/__/firebase/9.10.0/firebase-app-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-auth-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-functions-compat.js"></script>
+    <script defer src="/__/firebase/init.js"></script>
+</head>
+<body>
+    <div id="app" class="stats-dashboard">
+        <header class="stats-header">
+            <h1><i class="fas fa-chart-line"></i> Bảng phân tích Kết quả Thi</h1>
+            <a href="/" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Quay lại Dashboard</a>
+        </header>
+
+        <!-- BỘ LỌC -->
+        <div class="stats-filters card">
+            <div class="form-group">
+                <label for="exam-filter">Chọn Đề thi:</label>
+                <select id="exam-filter"><option>Đang tải danh sách đề...</option></select>
+            </div>
+            <div class="form-group">
+                <label for="class-filter">Lọc theo Lớp:</label>
+                <select id="class-filter"><option value="all">Tất cả các lớp</option></select>
+            </div>
+            <div class="filter-actions">
+                <button id="view-stats-btn" class="btn btn-primary"><i class="fas fa-eye"></i> Xem Thống kê</button>
+                <button id="export-excel-btn" class="btn btn-success" disabled><i class="fas fa-file-excel"></i> Xuất ra Excel</button>
+            </div>
+        </div>
+
+        <!-- KHU VỰC HIỂN THỊ KẾT QUẢ -->
+        <div id="stats-results-container" class="stats-results" style="display: none;">
+            <!-- Tổng quan -->
+            <div class="stats-summary">
+                <div class="summary-card">
+                    <h4>Lượt nộp bài</h4>
+                    <p id="summary-submissions">0</p>
+                </div>
+                <div class="summary-card">
+                    <h4>Điểm Trung bình</h4>
+                    <p id="summary-avg-score">0.00</p>
+                </div>
+                <div class="summary-card">
+                    <h4>Điểm Cao nhất</h4>
+                    <p id="summary-max-score">0.00</p>
+                </div>
+                <div class="summary-card">
+                    <h4>Điểm Thấp nhất</h4>
+                    <p id="summary-min-score">0.00</p>
+                </div>
+            </div>
+
+            <!-- Biểu đồ -->
+            <!-- Thay thế bằng khối HTML mới này -->
+<div class="charts-container">
+    <div class="stats-chart card">
+        <h3>Tỷ lệ Xếp loại</h3>
+        <div class="chart-wrapper">
+            <canvas id="performance-doughnut-chart"></canvas>
+        </div>
+    </div>
+    <div class="stats-chart card">
+        <h3>Phổ điểm chi tiết</h3>
+        <div class="chart-wrapper">
+            <canvas id="score-bar-chart"></canvas>
+        </div>
+    </div>
+</div>
+
+            <!-- Bảng chi tiết -->
+            <div class="stats-table card">
+                <h3>Danh sách bài nộp chi tiết</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>STT</th>
+                                <th>Họ và Tên</th>
+                                <th>Lớp</th>
+                                <th>Điểm</th>
+                                <th>Thời gian nộp bài</th>
+                            </tr>
+                        </thead>
+                        <tbody id="submissions-table-body">
+                            <!-- Dữ liệu sẽ được chèn vào đây bằng JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div id="stats-placeholder" class="card stats-placeholder">
+            <p>Vui lòng chọn đề thi và nhấn "Xem Thống kê" để bắt đầu.</p>
+        </div>
+    </div>
+    
+    <div id="loading" class="loading-overlay" style="display:none;">
+        <div class="spinner"></div>
+        <p>Đang xử lý dữ liệu...</p>
+    </div>
+
+    <!-- Nạp JS của trang thống kê -->
+    <script defer src="js/stats.js"></script>
+</body>
+</html>
