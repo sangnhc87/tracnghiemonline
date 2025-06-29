@@ -492,7 +492,58 @@ exports.getPdfFromGitLab = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError("internal", "Không thể tải file PDF từ GitLab.");
     }
 });
+// ===================================================================
+// ==  HÀM MỚI: XỬ LÝ LINK PDF TỪ GOOGLE DRIVE, DROPBOX...         ==
+// ===================================================================
 
+exports.getPdfFromGeneralUrl = functions.https.onCall(async (data, context) => {
+    let url = data.url;
+
+    if (!url) {
+        throw new functions.https.HttpsError("invalid-argument", "URL không được để trống.");
+    }
+
+    // --- XỬ LÝ CHO LINK GOOGLE DRIVE ---
+    if (url.includes("drive.google.com")) {
+        // Biến đổi link 'view' thành link 'export' để tải trực tiếp
+        // Ví dụ: https://drive.google.com/file/d/FILE_ID/view
+        //   ->  https://drive.google.com/uc?export=download&id=FILE_ID
+        const match = url.match(/file\/d\/([^/]+)/);
+        if (match && match[1]) {
+            const fileId = match[1];
+            url = `https://drive.google.com/uc?export=download&id=${fileId}`;
+            console.log("Đã biến đổi URL Google Drive thành:", url);
+        } else {
+            throw new functions.https.HttpsError("invalid-argument", "Định dạng link Google Drive không hợp lệ.");
+        }
+    } 
+    // --- XỬ LÝ CHO LINK DROPBOX ---
+    else if (url.includes("dropbox.com")) {
+        // Biến đổi link xem trước của Dropbox thành link tải trực tiếp
+        // Ví dụ: https://www.dropbox.com/s/..../file.pdf?dl=0
+        //   ->  https://www.dropbox.com/s/..../file.pdf?dl=1
+        // Hoặc có thể thay 'www.dropbox.com' bằng 'dl.dropboxusercontent.com'
+        if (url.includes("?dl=0")) {
+            url = url.replace("?dl=0", "?dl=1");
+        } else if (!url.endsWith("?dl=1")) {
+            url += "?dl=1";
+        }
+        console.log("Đã biến đổi URL Dropbox thành:", url);
+    }
+    // Bạn có thể thêm các điều kiện else if khác cho các dịch vụ khác ở đây
+
+    try {
+        const response = await axios.get(url, {
+            responseType: 'arraybuffer'
+        });
+        const base64 = Buffer.from(response.data, 'binary').toString('base64');
+        return { base64Data: base64 };
+
+    } catch (error) {
+        console.error(`Lỗi khi tải PDF từ URL [${url}]:`, error.message);
+        throw new functions.https.HttpsError("internal", "Không thể tải file PDF từ URL được cung cấp.");
+    }
+});
 
 // -------------------------------------------------------------------
 // PHẦN 6: CÁC HÀM DÀNH RIÊNG CHO TRANG THỐNG KÊ
@@ -602,4 +653,118 @@ exports.getExamStatistics = functions.runWith({ timeoutSeconds: 120, memory: '25
         console.error("Lỗi nghiêm trọng trong getExamStatistics:", error);
         throw new functions.https.HttpsError('internal', 'Đã có lỗi xảy ra trên máy chủ khi xử lý thống kê.', error.message);
     }
+});
+
+// File: functions/index.js
+// THÊM các hàm này vào cuối file
+
+// [MỚI] Thêm đề thi PDF
+exports.addPdfExam = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần xác thực.");
+    const { examData } = data;
+    if (!examData) throw new functions.https.HttpsError("invalid-argument", "Thiếu dữ liệu.");
+    
+    const examCode = String(examData.examCode || "").trim();
+    if (!examCode.toUpperCase().startsWith('PDF-')) {
+        throw new functions.https.HttpsError("invalid-argument", "Mã đề PDF phải bắt đầu bằng 'PDF-'.");
+    }
+
+    const newPdfExam = {
+        teacherId: context.auth.uid,
+        examType: 'PDF',
+        examCode: examCode,
+        timeLimit: parseInt(examData.timeLimit, 10) || 90,
+        keys: String(examData.keys || "").split("|").map(k => k.trim()),
+        cores: String(examData.cores || "").split("|").map(c => c.trim()),
+        examPdfUrl: String(examData.examPdfUrl || "").trim(),
+        solutionPdfUrl: String(examData.solutionPdfUrl || "").trim(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+    
+    await db.collection("exams").add(newPdfExam);
+    return { success: true, message: "Đã thêm đề thi PDF thành công!" };
+});
+
+// [MỚI] Lấy danh sách đề PDF
+exports.getPdfExams = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần xác thực.");
+    const { uid } = context.auth.token;
+    
+    const snapshot = await db.collection("exams")
+                             .where("teacherId", "==", uid)
+                             .where("examType", "==", "PDF")
+                             .orderBy("createdAt", "desc")
+                             .get();
+                             
+    const exams = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return exams;
+});
+
+// [MỚI] Lấy chi tiết 1 đề PDF
+exports.getSinglePdfExam = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần xác thực.");
+    const { examId } = data;
+    if (!examId) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID đề thi.");
+    const doc = await db.collection("exams").doc(examId).get();
+    if (!doc.exists || doc.data().teacherId !== context.auth.uid) {
+        throw new functions.https.HttpsError("permission-denied", "Không có quyền xem đề thi này.");
+    }
+    return { id: doc.id, ...doc.data() };
+});
+
+// [HOÀN CHỈNH] Cập nhật một đề thi PDF đã có
+exports.updatePdfExam = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần xác thực.");
+    }
+    const { examId, examData } = data;
+    if (!examId || !examData) {
+        throw new functions.https.HttpsError("invalid-argument", "Thiếu ID hoặc dữ liệu đề thi.");
+    }
+
+    const examRef = db.collection("exams").doc(examId);
+    const doc = await examRef.get();
+    if (!doc.exists || doc.data().teacherId !== context.auth.uid) {
+        throw new functions.https.HttpsError("permission-denied", "Bạn không có quyền sửa đề thi này.");
+    }
+
+    const examCode = String(examData.examCode || "").trim();
+    if (!examCode.toUpperCase().startsWith('PDF-')) {
+        throw new functions.https.HttpsError("invalid-argument", "Mã đề PDF phải bắt đầu bằng 'PDF-'.");
+    }
+
+    const updatedPdfExam = {
+        examCode: examCode,
+        timeLimit: parseInt(examData.timeLimit, 10) || 90,
+        keys: String(examData.keys || "").split("|").map(k => k.trim()),
+        cores: String(examData.cores || "").split("|").map(c => c.trim()),
+        examPdfUrl: String(examData.examPdfUrl || "").trim(),
+        solutionPdfUrl: String(examData.solutionPdfUrl || "").trim(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    await examRef.update(updatedPdfExam);
+    return { success: true, message: "Đã cập nhật đề thi PDF thành công!" };
+});
+
+// [HOÀN CHỈNH] Xóa một đề thi PDF
+exports.deletePdfExam = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+    }
+    const { examId } = data;
+    if (!examId) {
+        throw new functions.https.HttpsError("invalid-argument", "Thiếu ID đề thi.");
+    }
+
+    const examRef = db.collection("exams").doc(examId);
+    const doc = await examRef.get();
+    
+    // Kiểm tra quyền sở hữu và đúng loại đề thi
+    if (!doc.exists || doc.data().teacherId !== context.auth.uid || doc.data().examType !== 'PDF') {
+        throw new functions.https.HttpsError("permission-denied", "Không có quyền xóa hoặc đây không phải đề PDF.");
+    }
+
+    await examRef.delete();
+    return { success: true, message: "Đã xóa đề thi PDF." };
 });

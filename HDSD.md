@@ -183,3 +183,37 @@ Vậy đáp án đúng là B.
 `![Đồ thị hàm số](sangnhc1/dothi_hamso_bac3.png)`
 
 ```
+
+---
+
+## V. Hướng dẫn sử dụng Link PDF
+
+Đối với các đề thi dạng PDF, hệ thống hỗ trợ lấy file từ nhiều nguồn khác nhau như Google Drive, GitLab, Dropbox.
+
+**YÊU CẦU QUAN TRỌNG NHẤT:** File PDF của bạn phải được **chia sẻ công khai** để hệ thống có thể truy cập.
+
+### Cách lấy link từ Google Drive (Khuyến khích)
+
+1.  Click chuột phải vào file PDF trong Google Drive, chọn **Chia sẻ**.
+2.  Trong phần "Quyền truy cập chung", đổi thành **"Bất kỳ ai có đường liên kết"**.
+3.  Nhấn **"Sao chép đường liên kết"** và dán vào ô "Link Đề thi PDF".
+
+*   **Ví dụ link hợp lệ:** `https://drive.google.com/file/d/13Mvh9lWrH6KEH4F0wnLmfNI8st9QRdLq/view?usp=sharing`
+
+### Cách lấy link từ Dropbox
+
+1.  Trên trang web Dropbox, rê chuột qua file PDF bạn muốn chia sẻ.
+2.  Nhấn nút **"Sao chép liên kết" (Copy link)**.
+3.  Dán liên kết vừa sao chép vào ô "Link Đề thi PDF". Hệ thống sẽ tự động xử lý để tải file.
+
+*   **Ví dụ link hợp lệ:** `https://www.dropbox.com/s/a1b2c3d4e5f6/de_minh_hoa.pdf?dl=0`
+*   
+### Cách lấy link từ GitLab
+
+1.  Mở file PDF trên GitLab.
+2.  Click vào nút **"Raw"** hoặc **"Open raw"**.
+3.  Sao chép địa chỉ URL trên thanh địa chỉ của trình duyệt.
+
+*   **Ví dụ link hợp lệ:** `https://gitlab.com/nguyensangnhc/pic4web/-/raw/main/Hinh/de_thi.pdf`
+
+---

@@ -169,7 +169,7 @@ function scrollToQuestion(index) {
     }
 }
 
-async function renderPdf(gitlabUrl, containerElement) {
+async function renderPdfggg(gitlabUrl, containerElement) {
     // Overlay tải luôn được thêm vào containerElement
     containerElement.innerHTML = `<div class="loading-overlay" style="position:absolute; display:flex; inset:0; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; flex-direction:column; z-index:1000;"><div class="spinner"></div><p style="color:white; margin-top:10px;">Đang tải PDF...</p></div>`;
 
@@ -217,7 +217,57 @@ async function renderPdf(gitlabUrl, containerElement) {
         console.error("Lỗi khi tải hoặc hiển thị PDF:", err);
     }
 }
+// Thay thế hàm renderPdf cũ bằng hàm này
 
+async function renderPdf(sourceUrl, containerElement) {
+    // Overlay tải luôn được thêm vào containerElement
+    containerElement.innerHTML = `<div class="loading-overlay" style="position:absolute; display:flex; inset:0; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; flex-direction:column; z-index:1000;"><div class="spinner"></div><p style="color:white; margin-top:10px;">Đang tải PDF...</p></div>`;
+
+    try {
+        let functionNameToCall;
+        
+        // --- LOGIC LỰA CHỌN HÀM CLOUD FUNCTION ---
+        if (sourceUrl.startsWith("https://gitlab.com")) {
+            // Nếu là link GitLab, dùng hàm cũ đã ổn định
+            functionNameToCall = 'getPdfFromGitLab';
+        } else {
+            // Nếu là link khác (Google Drive, Dropbox...), dùng hàm mới
+            functionNameToCall = 'getPdfFromGeneralUrl';
+        }
+        
+        console.log(`Đang gọi Cloud Function: ${functionNameToCall} cho URL: ${sourceUrl}`);
+
+        // Tạo tham chiếu đến hàm được chọn
+        const getPdfProxy = functions.httpsCallable(functionNameToCall);
+        const result = await getPdfProxy({ url: sourceUrl });
+
+        if (!result.data || !result.data.base64Data) {
+            throw new Error("Không nhận được dữ liệu base64 từ server.");
+        }
+        
+        const pdfData = Uint8Array.from(atob(result.data.base64Data), c => c.charCodeAt(0));
+        const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+        
+        containerElement.innerHTML = ''; // Xóa overlay
+
+        const scrollableFrame = document.createElement('div');
+        scrollableFrame.className = 'pdf-scroll-frame'; 
+        containerElement.appendChild(scrollableFrame);
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const viewport = page.getViewport({ scale: 1.5 });
+            const canvas = document.createElement('canvas');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            scrollableFrame.appendChild(canvas);
+            await page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
+        }
+    } catch (err) {
+        containerElement.innerHTML = `<div style="color:red; padding: 20px; text-align:center;"><h3>Lỗi tải PDF</h3><p>${err.message}</p><p>Vui lòng kiểm tra lại đường dẫn PDF hoặc kết nối mạng.</p></div>`;
+        console.error("Lỗi khi tải hoặc hiển thị PDF:", err);
+    }
+}
 // --- LOGIC NỘP BÀI VÀ HIỂN THỊ KẾT QUẢ ---
 function collectAnswers() {
     const answers = {};

@@ -702,6 +702,7 @@ function loadQuiz(data) {
     getEl("gradeBtn").style.display = "inline-flex";
     setTimeout(restoreProgress, 200);
 }
+
 function gradeQuiz(isCheating = false) {
     if (timerInterval) clearInterval(timerInterval);
     if (!examData) {
@@ -710,41 +711,26 @@ function gradeQuiz(isCheating = false) {
         else { Swal.fire("Lỗi", "Mất dữ liệu bài thi.", "error").then(showStudentLoginScreen); return; }
     }
     
-    // ==========================================================
-    // ==     SỬA LẠI LOGIC KIỂM TRA CÂU CHƯA LÀM CHO CHUẨN     ==
-    // ==========================================================
+    // --- [NÂNG CẤP] KIỂM TRA CÂU CHƯA LÀM CHÍNH XÁC ---
     let unanswered = [];
     if (!isCheating) {
-        // Lặp qua các câu hỏi đang hiển thị trên trang
         document.querySelectorAll('#quiz .question').forEach((questionDiv, newIndex) => {
             const displayQuestionNumber = newIndex + 1;
             const questionTitle = `Câu ${displayQuestionNumber}`;
             
-            // Xác định loại câu hỏi dựa trên các element con
             const isMC = questionDiv.querySelector('.mc-options');
             const isTableTF = questionDiv.querySelector('.table-tf-container');
             const isNumeric = questionDiv.querySelector('.numeric-option');
 
-            if (isMC) {
-                // Nếu là câu MC, kiểm tra xem có lựa chọn nào được chọn không
-                if (!questionDiv.querySelector('.mc-option.selected')) {
-                    unanswered.push(questionTitle);
-                }
+            if (isMC && !questionDiv.querySelector('.mc-option.selected')) {
+                unanswered.push(questionTitle);
             } else if (isTableTF) {
-                // Nếu là câu TABLE_TF, kiểm tra từng mệnh đề
-                let allAnswered = true;
                 isTableTF.querySelectorAll('tbody tr').forEach((row, subIndex) => {
                     if (!row.querySelector('input[type="radio"]:checked')) {
-                        allAnswered = false;
-                        // Báo cáo chi tiết hơn
                         unanswered.push(`${questionTitle} (Mệnh đề ${subIndex + 1})`);
                     }
                 });
-                // Nếu bạn chỉ muốn báo 1 lần cho cả câu, dùng logic sau:
-                // if (!allAnswered) { unanswered.push(questionTitle); }
-
             } else if (isNumeric) {
-                // Nếu là câu NUMERIC, kiểm tra input có rỗng không
                 const input = isNumeric.querySelector('input');
                 if (!input || input.value.trim() === '') {
                     unanswered.push(questionTitle);
@@ -754,13 +740,10 @@ function gradeQuiz(isCheating = false) {
     }
 
     if (unanswered.length > 0 && !isCheating) {
-        // showUnansweredDialog là hàm cũ của bạn, nó sẽ hoạt động tốt
         showUnansweredDialog(unanswered);
         return;
     }
-    // ==========================================================
-    // ==                 KẾT THÚC PHẦN SỬA LỖI                ==
-    // ==========================================================
+    // --- KẾT THÚC NÂNG CẤP KIỂM TRA ---
 
     let payload = {
         teacherAlias: examData.teacherAlias,
@@ -772,21 +755,20 @@ function gradeQuiz(isCheating = false) {
     };
 
     if (!isCheating) {
-        // Dùng lại hàm thu thập câu trả lời đã viết cho việc lưu tiến trình
         payload.answers = collectAnswersForProgress();
     }
     
-    // Xóa tiến trình đã lưu sau khi nộp bài
     const progressKey = `examProgress_${examData.examCode}_${examData.studentName}_${examData.className}`;
     localStorage.removeItem(progressKey);
 
     Swal.fire({ title: "Đang nộp bài...", html: "Vui lòng chờ...", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
     
-     functions.httpsCallable("submitExam")(payload).then(result => {
+    functions.httpsCallable("submitExam")(payload).then(result => {
         Swal.close();
         sessionStorage.removeItem('currentExamData');
         const { score, examData: serverExamData, detailedResults } = result.data;
         
+        // Hiển thị thông tin kết quả chung
         getEl("score").textContent = score.toFixed(2);
         getEl("student-name").textContent = examData.studentName;
         getEl("student-class").textContent = examData.className;
@@ -795,30 +777,49 @@ function gradeQuiz(isCheating = false) {
 
         const quizContainer = getEl("quiz");
         quizContainer.innerHTML = '';
+
         if (!serverExamData || typeof serverExamData.content !== 'string' || serverExamData.content.trim() === '') {
             quizContainer.innerHTML = "<p>Lỗi: Không thể hiển thị chi tiết bài làm.</p>";
         } else {
-            const questionBlocks = serverExamData.content.trim().split(/\n\s*\n/);
-            questionBlocks.forEach((block, i) => {
+            // ======================================================================
+            // == [NÂNG CẤP] RENDER LẠI KẾT QUẢ THEO ĐÚNG THỨ TỰ ĐÃ TRỘN ==
+            // ======================================================================
+            
+            // Lấy lại bản đồ câu hỏi đã được trộn
+            const questionOrderMap = window.questionMap || [];
+            const originalBlocks = serverExamData.content.trim().split(/\n\s*\n/);
+            
+            // Sắp xếp lại các khối câu hỏi gốc theo thứ tự đã hiển thị cho học sinh
+            const sortedBlocks = questionOrderMap.map(mapInfo => ({
+                newIndex: mapInfo.newIndex,
+                block: originalBlocks[mapInfo.originalIndex],
+                originalIndex: mapInfo.originalIndex
+            })).sort((a, b) => a.newIndex - b.newIndex);
+
+            // Render lại các câu hỏi theo đúng thứ tự học sinh đã làm
+            sortedBlocks.forEach(questionData => {
                 const questionDiv = document.createElement("div");
                 questionDiv.className = "question";
-                const resultForQ = detailedResults[`q${i}`];
-                if (!resultForQ) { // Bỏ qua câu hỏi không có kết quả chi tiết (có thể do lỗi)
-                    console.warn(`Missing detailed results for question ${i}. Skipping display.`);
+                
+                const resultForQ = detailedResults[`q${questionData.originalIndex}`];
+                if (!resultForQ) {
+                    console.warn(`Missing detailed results for question original index ${questionData.originalIndex}.`);
                     return;
                 }
 
-                // Luôn gọi parseMCQuestion để lấy parsedData (có solution và statement đã bọc span)
-                const parsedData = parseMCQuestion(block);
+                const parsedData = parseMCQuestion(questionData.block);
                 
-                const statementDiv = document.createElement('div');
-                statementDiv.className = 'question-statement';
+                if (parsedData) {
+                    const statementDiv = document.createElement('div');
+                    statementDiv.className = 'question-statement';
 
-                if (parsedData) { // Nếu parse thành công (MC, TABLE_TF, NUMERIC)
-                    statementDiv.innerHTML = processImagePlaceholders(parsedData.statement); // Lấy statement đã bọc span
+                    // Áp dụng lại logic hiển thị số câu mới
+                    let cleanStatement = parsedData.statement.replace(/^(Câu\s*\d+\s*[:.]?\s*)/i, '').trim();
+                    const newQuestionTitle = `<span class="question-number-highlight">Câu ${questionData.newIndex + 1}:</span>`;
+                    statementDiv.innerHTML = newQuestionTitle + " " + processImagePlaceholders(cleanStatement);
                     questionDiv.appendChild(statementDiv);
                     
-                    if (parsedData.type === 'MC') {
+                     if (parsedData.type === 'MC') {
                         questionDiv.innerHTML += renderNewMCResult(parsedData, resultForQ);
                     } else if (parsedData.type === 'TABLE_TF') {
                         const table = document.createElement('table');
@@ -881,8 +882,12 @@ function gradeQuiz(isCheating = false) {
                 renderKatexInElement(questionDiv);
             });
         }
+        
         getEl("quiz").style.display = 'block';
         getEl("gradeBtn").style.display = 'none';
+        // Di chuyển quizContainer vào trong result-container để hiển thị bên dưới
+        getEl("result-container").appendChild(quizContainer);
+        
     }).catch(error => {
         Swal.close();
         Swal.fire("Lỗi", `Lỗi nộp bài: ${error.message || "Lỗi không xác định."}`, "error").then(showStudentLoginScreen);
@@ -1173,19 +1178,42 @@ function showUnansweredDialog(unanswered){
     });
 }
 // --- QUẢN LÝ FORM (MODAL) ---
+// File: public/js/main.js
+// Thay thế hàm toggleExamFormFields cũ
 
 function toggleExamFormFields() {
-    // Hàm này phải được định nghĩa ở đây
     const type = getEl("examFormType").value;
-    const textFields = getEl("textExamFields");
-    const pdfFields = getEl("pdfExamFields");
+    const textFieldsContainer = getEl("textExamFields");
+    const pdfFieldsContainer = getEl("pdfExamFields");
+
+    // Lấy các trường input/textarea cần quản lý
+    const examFormContent = getEl("examFormContent");
+    const examFormPdfUrl = getEl("examFormPdfUrl");
+    
+    // Đảm bảo các phần tử tồn tại trước khi thao tác
+    if (!textFieldsContainer || !pdfFieldsContainer || !examFormContent || !examFormPdfUrl) {
+        return; // Thoát nếu không tìm thấy phần tử để tránh lỗi
+    }
 
     if (type === 'PDF') {
-        if(textFields) textFields.style.display = 'none';
-        if(pdfFields) pdfFields.style.display = 'block';
-    } else { // TEXT
-        if(textFields) textFields.style.display = 'block';
-        if(pdfFields) pdfFields.style.display = 'none';
+        // --- KHI CHỌN LOẠI ĐỀ PDF ---
+        textFieldsContainer.style.display = 'none';
+        pdfFieldsContainer.style.display = 'block';
+
+        // Tắt 'required' cho trường TEXT (vì nó bị ẩn)
+        examFormContent.required = false;
+        // Bật 'required' cho trường link PDF
+        examFormPdfUrl.required = true;
+
+    } else { // Loại đề là 'TEXT'
+        // --- KHI CHỌN LOẠI ĐỀ TEXT ---
+        textFieldsContainer.style.display = 'block';
+        pdfFieldsContainer.style.display = 'none';
+        
+        // Bật 'required' cho trường TEXT
+        examFormContent.required = true;
+        // Tắt 'required' cho trường link PDF
+        examFormPdfUrl.required = false;
     }
 }
 
