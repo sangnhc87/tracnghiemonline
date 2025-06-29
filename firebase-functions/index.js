@@ -307,7 +307,7 @@ exports.loadExamForStudent = functions.https.onCall(async (data, context) => {
 /**
  * Nhận bài làm của học sinh, chấm điểm và lưu vào CSDL.
  */
-exports.submitExam = functions.https.onCall(async (data, context) => {
+exports.submitExam_GOC = functions.https.onCall(async (data, context) => {
     const { teacherAlias, examCode, studentName, className, answers, isCheating } = data;
     if (!teacherAlias || !examCode || !studentName || !className) throw new functions.https.HttpsError("invalid-argument", "Thiếu thông tin định danh.");
     if (!isCheating && !answers) throw new functions.https.HttpsError("invalid-argument", "Thiếu dữ liệu câu trả lời.");
@@ -374,7 +374,106 @@ exports.submitExam = functions.https.onCall(async (data, context) => {
         detailedResults: detailedResults,
     };
 });
+// ===================================================================
+// ==           HÀM NÂNG CẤP: submitExam                        ==
+// ===================================================================
 
+/**
+ * [NÂNG CẤP] Nhận bài làm của học sinh, chấm điểm và lưu vào CSDL.
+ * Có khả năng chấm câu hỏi TABLE_TF dưới dạng object.
+ */
+exports.submitExam = functions.https.onCall(async (data, context) => {
+    const { teacherAlias, examCode, studentName, className, answers, isCheating } = data;
+    if (!teacherAlias || !examCode || !studentName || !className) {
+        throw new functions.https.HttpsError("invalid-argument", "Thiếu thông tin định danh.");
+    }
+    if (!isCheating && (answers === undefined || answers === null)) {
+        throw new functions.https.HttpsError("invalid-argument", "Thiếu dữ liệu câu trả lời.");
+    }
+
+    const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
+    if (teacherSnapshot.empty) throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên.");
+    const teacherDoc = teacherSnapshot.docs[0];
+
+    const examSnapshot = await db.collection("exams").where("teacherId", "==", teacherDoc.id).where("examCode", "==", examCode.trim()).limit(1).get();
+    if (examSnapshot.empty) throw new functions.https.HttpsError("not-found", `Không tìm thấy đề thi ${examCode}.`);
+    const examData = examSnapshot.docs[0].data();
+    
+    if (isCheating === true) {
+        await db.collection("submissions").add({ 
+            teacherId: teacherDoc.id, timestamp: admin.firestore.FieldValue.serverTimestamp(), 
+            examCode, studentName, className, score: 0, answers: {}, isCheating: true 
+        });
+        return { score: 0, examData, detailedResults: {} };
+    }
+
+    const correctKeys = examData.keys || [];
+    const cores = examData.cores || [];
+    if (correctKeys.length !== cores.length) {
+        throw new functions.https.HttpsError("internal", "Dữ liệu đề thi bị lỗi: Số lượng đáp án và điểm không khớp.");
+    }
+    
+    let totalScore = 0;
+    const detailedResults = {};
+
+    for (let i = 0; i < correctKeys.length; i++) {
+        const correctAnswer = correctKeys[i];
+        const coreValue = parseFloat(cores[i]) || 0;
+        const userAnswer = answers[`q${i}`];
+        let questionScore = 0;
+        let isCorrect = false;
+
+        if (userAnswer !== undefined && userAnswer !== null) {
+            // Xử lý câu MC và Numeric (dạng chuỗi)
+            if (typeof userAnswer === 'string') {
+                if (userAnswer.trim().toLowerCase() === String(correctAnswer).trim().toLowerCase()) {
+                    isCorrect = true;
+                }
+            } 
+            // Xử lý câu TABLE_TF (dạng object)
+            else if (typeof userAnswer === 'object' && typeof correctAnswer === 'string') {
+                // Giả định correctAnswer là một chuỗi như 'TFFT'
+                // và userAnswer là một object như {a: 'T', b: 'F', c: 'F', d: 'T'}
+                
+                const sortedUserAnswerKeys = Object.keys(userAnswer).sort();
+                if (sortedUserAnswerKeys.length === correctAnswer.length) {
+                    let constructedAnswerString = sortedUserAnswerKeys.map(key => userAnswer[key]).join('');
+                    if (constructedAnswerString.toUpperCase() === correctAnswer.toUpperCase()) {
+                        isCorrect = true;
+                    }
+                }
+            }
+        }
+        
+        if (isCorrect) {
+            questionScore = coreValue;
+        }
+
+        totalScore += questionScore;
+        detailedResults[`q${i}`] = { 
+            userAnswer: userAnswer || null, 
+            correctAnswer: correctAnswer, 
+            scoreEarned: questionScore,
+        };
+    }
+
+    const finalScore = parseFloat(totalScore.toFixed(2));
+    
+    await db.collection("submissions").add({ 
+        teacherId: teacherDoc.id, 
+        timestamp: admin.firestore.FieldValue.serverTimestamp(), 
+        examCode, studentName, className, answers,
+        score: finalScore,
+        detailedResults: detailedResults, // Rất quan trọng cho việc thống kê sau này
+        isCheating: false 
+    });
+
+    return {
+        score: finalScore,
+        examData,
+        detailedResults,
+    };
+});
 // -------------------------------------------------------------------
 // PHẦN 5: CÁC HÀM TIỆN ÍCH (PROXY LẤY PDF)
 // -------------------------------------------------------------------

@@ -1,185 +1,93 @@
-// public/js/quiz-parser.js (Phiên bản 3 - An toàn và Tường minh)
 
-/**
- * Phân tích một khối văn bản câu hỏi thành các thành phần.
- * @param {string} questionBlock - Toàn bộ văn bản của một câu hỏi.
- * @returns {object|null} - Trả về object { statement, options, solution, layout } hoặc null nếu khối không hợp lệ.
- */// public/js/quiz-parser.js
-
-/**
- * [NÂNG CẤP] Phân tích một khối câu hỏi.
- * Có khả năng nhận dạng 2 loại:
- * 1. Trắc nghiệm nhiều lựa chọn (A. B. C. D.) -> type: 'MC'
- * 2. Mệnh đề Đúng/Sai dạng bảng (a) b) c) d)) -> type: 'TABLE_TF'
- * @param {string} questionBlock - Toàn bộ văn bản của một câu hỏi.
- * @returns {object|null} - Trả về object chứa dữ liệu đã phân tích hoặc null.
- */
-function GGGparseMCQuestion(questionBlock) {
+function parseMCQuestion(questionBlock) {
+    // Kiểm tra đầu vào cơ bản
     if (typeof questionBlock !== 'string' || !questionBlock.trim()) {
         return null;
     }
 
+    // 1. Tách lời giải ra trước tiên để không ảnh hưởng đến logic phân tích
+    let solution = '';
+    const loigiaiRegex = /\\begin\{loigiai\}([\s\S]*?)\\end\{loigiai\}/i;
+    const matchSolution = questionBlock.match(loigiaiRegex);
+    if (matchSolution) {
+        solution = matchSolution[1].trim();
+        // Cập nhật lại khối câu hỏi sau khi đã tách lời giải
+        questionBlock = questionBlock.replace(loigiaiRegex, '').trim();
+    }
+
+    // 2. Khởi tạo các biến để lưu trữ kết quả
     const lines = questionBlock.trim().split('\n');
     let statement = '';
     const options = [];
-    let solution = '';
-    let inSolutionBlock = false;
-    let layoutHint = '2x2';
-    let questionType = null; // Sẽ là 'MC' hoặc 'TABLE_TF'
+    let questionType = null; // Sẽ được xác định trong quá trình lặp
+    let layoutHint = '2x2'; // Mặc định là layout 2x2
+    let shouldShuffleOptions = true; // Mặc định là luôn trộn đáp án
 
-    const mcOptionRegex = /^([A-D])\.\s*(.*)/;
-    const tableTfOptionRegex = /^([a-d])\)\s*(.*)/;
-    const layoutRegex = /^(##(1x4|2x2|4x1))$/i;
+    // 3. Định nghĩa các biểu thức chính quy (Regular Expressions) để nhận dạng
+    const mcOptionRegex = /^([A-D])\.\s*(.*)/;        // Ví dụ: "A. Đáp án 1"
+    const tableTfOptionRegex = /^([a-h])\)\s*(.*)/;   // Ví dụ: "a) Mệnh đề 1" (hỗ trợ đến h)
+    // [MỚI] Gộp các chỉ thị vào một regex duy nhất
+    const directiveRegex = /^##(1x4|2x2|4x1|no-shuffle)$/i;
 
+    // 4. Lặp qua từng dòng để phân tích
     lines.forEach(line => {
         const trimmedLine = line.trim();
 
-        if (layoutRegex.test(trimmedLine)) {
-            layoutHint = trimmedLine.substring(2).toLowerCase(); return;
+        // Kiểm tra xem dòng có phải là một chỉ thị không
+        const directiveMatch = trimmedLine.match(directiveRegex);
+        if (directiveMatch) {
+            const directive = directiveMatch[1].toLowerCase();
+            if (directive === 'no-shuffle') {
+                shouldShuffleOptions = false; // Nếu gặp ##no-shuffle, đặt cờ không trộn
+            } else {
+                layoutHint = directive; // Nếu là chỉ thị layout, cập nhật layout
+            }
+            return; // Dòng này là chỉ thị, không xử lý tiếp
         }
-        if (trimmedLine.toLowerCase() === '\\begin{loigiai}') { inSolutionBlock = true; return; }
-        if (trimmedLine.toLowerCase() === '\\end{loigiai}') { inSolutionBlock = false; return; }
-        if (inSolutionBlock) { solution += line + '\n'; return; }
 
+        // Kiểm tra xem dòng có phải là một lựa chọn không
         const mcMatch = trimmedLine.match(mcOptionRegex);
         const tableTfMatch = trimmedLine.match(tableTfOptionRegex);
 
         if (mcMatch) {
-            if (!questionType || questionType === 'MC') {
-                questionType = 'MC';
-                options.push({ label: mcMatch[1], content: mcMatch[2].trim() });
-            }
-        } else if (tableTfMatch) {
-            if (!questionType || questionType === 'TABLE_TF') {
-                questionType = 'TABLE_TF';
-                options.push({ label: tableTfMatch[1], content: tableTfMatch[2].trim() });
-            }
-        } else {
-            statement += line + '\n';
-        }
-    });
-
-    if (statement.trim() && options.length > 0 && questionType) {
-        return {
-            statement: statement.trim(),
-            options: options,
-            solution: solution.trim(),
-            layout: layoutHint,
-            type: questionType // **QUAN TRỌNG**: Trả về loại câu hỏi
-        };
-    }
-
-    return null;
-}
-// public/js/quiz-parser.js (Phiên bản Hoàn Chỉnh - Đã sửa lỗi nhận diện NUMERIC)
-
-/**
- * [NÂNG CẤP HOÀN CHỈNH] Phân tích một khối câu hỏi.
- * Có khả năng nhận dạng 3 loại:
- * 1. Trắc nghiệm nhiều lựa chọn (A. B. C. D.) -> type: 'MC'
- * 2. Mệnh đề Đúng/Sai dạng bảng (a) b) c) d)) -> type: 'TABLE_TF'
- * 3. Điền số (Numeric) - khi không có lựa chọn A,B,C,D hay a,b,c,d nào.
- * @param {string} questionBlock - Toàn bộ văn bản của một câu hỏi.
- * @returns {object|null} - Trả về object chứa dữ liệu đã phân tích hoặc null.
- */
-function parseMCQuestion(questionBlock) {
-    if (typeof questionBlock !== 'string' || !questionBlock.trim()) {
-        return null;
-    }
-
-    const lines = questionBlock.trim().split('\n');
-    let statement = '';
-    const options = [];
-    let solution = '';
-    let inSolutionBlock = false;
-    let layoutHint = '2x2';
-    let questionType = null; // Sẽ là 'MC', 'TABLE_TF', hoặc 'NUMERIC'
-
-    const mcOptionRegex = /^([A-D])\.\s*(.*)/;
-    const tableTfOptionRegex = /^([a-d])\)\s*(.*)/;
-    const layoutRegex = /^(##(1x4|2x2|4x1))$/i;
-
-    // Loại bỏ lời giải trước khi phân tích statement và options
-    const loigiaiRegex = /\\begin\{loigiai\}([\s\S]*?)\\end\{loigiai\}/i;
-    const matchExplanation = questionBlock.match(loigiaiRegex);
-    if (matchExplanation) {
-        solution = matchExplanation[1].trim();
-        questionBlock = questionBlock.replace(loigiaiRegex, '').trim(); // Cập nhật questionBlock sau khi tách lời giải
-    }
-
-    // Tái phân tích lines từ questionBlock đã loại bỏ lời giải
-    const processedLines = questionBlock.split('\n');
-
-    processedLines.forEach(line => {
-        const trimmedLine = line.trim();
-
-        if (layoutRegex.test(trimmedLine)) {
-            layoutHint = trimmedLine.substring(2).toLowerCase(); return;
-        }
-
-        const mcMatch = trimmedLine.match(mcOptionRegex);
-        const tableTfMatch = trimmedLine.match(tableTfOptionRegex);
-
-        if (mcMatch) {
-            // Nếu đã tìm thấy loại câu hỏi khác và nó không phải MC, thì có lỗi định dạng
-            if (questionType && questionType !== 'MC') {
-                 console.warn("Mixed question types detected. Falling back to null for:", questionBlock);
-                 return null; // Hoặc xử lý lỗi khác
-            }
             questionType = 'MC';
             options.push({ label: mcMatch[1], content: mcMatch[2].trim() });
         } else if (tableTfMatch) {
-            // Nếu đã tìm thấy loại câu hỏi khác và nó không phải TABLE_TF, thì có lỗi định dạng
-            if (questionType && questionType !== 'TABLE_TF') {
-                console.warn("Mixed question types detected. Falling back to null for:", questionBlock);
-                return null; // Hoặc xử lý lỗi khác
-            }
             questionType = 'TABLE_TF';
             options.push({ label: tableTfMatch[1], content: tableTfMatch[2].trim() });
         } else {
-            // Nếu không phải layout, không phải option, thì là một phần của statement
+            // Nếu không phải chỉ thị, không phải lựa chọn, thì nó là một phần của câu hỏi
             statement += line + '\n';
         }
     });
 
-    statement = statement.trim(); // Trim statement cuối cùng
+    statement = statement.trim();
 
-    // Xác định loại câu hỏi nếu chưa rõ
+    // 5. Xác định loại câu hỏi cuối cùng nếu chưa rõ
     if (!questionType) {
-        // Nếu không có options dạng A. B. C. D. hay a) b) c) d) nhưng có statement,
-        // thì giả định đây là câu hỏi điền số (Numeric).
+        // Nếu không tìm thấy lựa chọn nào nhưng có nội dung câu hỏi, coi đó là câu điền số
         if (statement) {
             questionType = 'NUMERIC';
         } else {
-            // Không có statement và không có options dạng đã biết => không phân tích được
+            // Không có nội dung, không có lựa chọn -> khối không hợp lệ
+            console.warn("Could not parse question block:", questionBlock);
             return null;
         }
     }
 
-    // Bọc "Câu N." bằng span cho đẹp
-    const qNumRegex = /^(Câu\s*\d+\s*[:.]?\s*)/i;
-    const qNumMatch = statement.match(qNumRegex);
-    if (qNumMatch) {
-        const matchedPart = qNumMatch[0];
-        statement = statement.replace(qNumRegex, `<span class="statement-q-num">${matchedPart}</span>`);
-    }
+    // 6. Bọc "Câu N." bằng thẻ span để có thể style riêng
+    // statement = statement.replace(/^(Câu\s*\d+\s*[:.]?\s*)/i, `<span class="statement-q-num">$&</span>`);
 
+    // 7. Trả về object kết quả hoàn chỉnh
     return {
         statement: statement,
-        options: options, // Có thể rỗng nếu là NUMERIC
+        options: options, // Có thể là mảng rỗng nếu là câu NUMERIC
         solution: solution,
         layout: layoutHint,
-        type: questionType
+        type: questionType,
+        shouldShuffleOptions: shouldShuffleOptions // **QUAN TRỌNG**: Thuộc tính mới
     };
 }
-
-
-/**
- * Tạo HTML cho các phương án của câu trắc nghiệm kiểu mới.
- * @param {object} parsedQuestion - Dữ liệu câu hỏi đã được phân tích.
- * @param {number} questionIndex - Chỉ số của câu hỏi.
- * @returns {string} - Chuỗi HTML của các phương án.
- */
 function renderNewMCOptions(parsedQuestion, questionIndex) {
     let optionsHTML = `<div class="mc-options mc-layout-${parsedQuestion.layout}" data-question-index="${questionIndex}">`;
     parsedQuestion.options.forEach(opt => {
@@ -197,11 +105,7 @@ function renderNewMCOptions(parsedQuestion, questionIndex) {
     return optionsHTML;
 }
 
-/**
- * Xử lý sự kiện click vào phương án.
- * @param {HTMLElement} selectedElement 
- * @param {number} questionIndex 
- */
+
 function selectMCOption(selectedElement, questionIndex) {
     const optionsContainer = document.querySelector(`.mc-options[data-question-index="${questionIndex}"]`);
     if (!optionsContainer) return;
@@ -209,12 +113,6 @@ function selectMCOption(selectedElement, questionIndex) {
     selectedElement.classList.add('selected');
 }
 
-/**
- * Tạo HTML hiển thị kết quả chi tiết cho câu trắc nghiệm kiểu mới.
- * @param {object} parsedQuestion 
- * @param {object} resultForQ 
- * @returns {string} 
- */
 function renderNewMCResult(parsedQuestion, resultForQ) {
     let optionsHTML = '<div class="mc-options mc-layout-' + parsedQuestion.layout + '">';
     parsedQuestion.options.forEach(opt => {
