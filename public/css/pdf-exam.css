@@ -29,7 +29,7 @@ body {
 
     /* <<< THAY ĐỔI 4 (CỰC KỲ QUAN TRỌNG): Thêm các thuộc tính này */
     min-height: 100vh; /* Ép #app cao ít nhất bằng màn hình */
-    padding-top: 60px; /* Giữ nguyên khoảng trống cho timer */
+    padding-top: 35px; /* Giữ nguyên khoảng trống cho timer */
     box-sizing: border-box; /* Đảm bảo padding không làm tăng chiều cao tổng */
 }
 
@@ -75,7 +75,7 @@ body {
     
     /* Bạn cần đảm bảo style cho timer (padding, height) được định nghĩa ở đây hoặc file css khác */
     /* Ví dụ: */
-    height: 60px; /* Chiều cao này phải tương ứng với padding-top của #app */
+    height: 35px; /* Chiều cao này phải tương ứng với padding-top của #app */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -91,7 +91,7 @@ body {
     flex: 1; /* RẤT QUAN TRỌNG: Làm cho main container chiếm hết chiều cao còn lại của #app */
     gap: 20px; /* Khoảng cách giữa 2 cột */
     overflow: hidden; /* NGĂN container này tự cuộn trên DESKTOP, các con của nó cuộn */
-    padding: 20px; /* Thêm padding tổng thể nếu chưa có trong style.css */
+    padding: 20px 10px 20px 30px; /* Tạo lề trái, phải, trên, xuong */
 }
 
 /* --- 4. PDF Viewer Container (#pdf-viewer-container và #solution-viewer-container) --- */
@@ -229,6 +229,11 @@ body::-webkit-scrollbar-track
         flex-direction: column;
         overflow-y: auto; 
         padding-bottom: 80px;
+        /* === THÊM 3 DÒNG NÀY VÀO ĐÚNG CHỖ NÀY === */
+        padding-left: 20px;   /* Tạo lề trái */
+        padding-right: 10px;  /* Tạo lề phải */
+        box-sizing: border-box; /* Đảm bảo padding không làm vỡ layout */
+        /* ========================================= */
     }
     #pdf-viewer-container,
     #solution-viewer-container {
@@ -256,4 +261,15 @@ body::-webkit-scrollbar-track
     #quiz-container {
         min-width: 200px;
     }
+}
+#submitBtnFooter {
+    padding: 6px 14px;  /* Giảm khoảng đệm bên trong nút (ví dụ: từ 10px 20px) */
+    font-size: 0.9rem; /* Giảm cỡ chữ của nút (ví dụ: từ 1rem) */
+}
+.nav-item {
+    padding: 5px 10px; /* Giảm khoảng đệm */
+    font-size: 0.85rem; /* Giảm cỡ chữ */
+    min-width: 35px;   /* Giảm chiều rộng tối thiểu nếu có */
+    height: 35px;      /* Đặt chiều cao cụ thể nếu muốn tất cả bằng nhau */
+    line-height: 25px; /* Căn chữ vào giữa theo chiều dọc */
 }
