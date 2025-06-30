@@ -167,13 +167,12 @@
                                 <label for="examFormContent">Nội dung đề thi (Soạn trực tiếp):</label>
                                 <textarea id="examFormContent" rows="15" required placeholder="Soạn nội dung..."></textarea>
                             </div>
-                            <!-- [THÊM MỚI] Checkbox -->
-                            <div class="form-group form-check" style="display: flex; align-items: center; gap: 10px;">
-                                <input type="checkbox" class="form-check-input" id="useStorageCheckbox" style="width: auto; height: auto;">
-                                <label class="form-check-label" for="useStorageCheckbox" style="margin-bottom: 0;">
-                                    Lưu nội dung lên Storage (Tối ưu cho đề dài)
-                                </label>
-                            </div>
+                            <div class="form-group form-check" style="display: none;">
+    <input type="checkbox" class="form-check-input" id="useStorageCheckbox" checked>
+    <label class="form-check-label" for="useStorageCheckbox">
+        Lưu nội dung lên Storage (Tối ưu cho đề dài)
+    </label>
+</div>
                         </div>
                         <div id="pdfExamFields" style="display:none;">
                             <div class="form-group">

@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
         examIdInput.value = '';
     };
 
-    async function handlePdfExamFormSubmit() {
+    async function GGGhandlePdfExamFormSubmit() {
         const examId = examIdInput.value;
         const examCode = examCodeInput.value.trim();
 
@@ -77,7 +77,78 @@ document.addEventListener('DOMContentLoaded', () => {
             Swal.fire("Lỗi", `Lỗi khi lưu đề thi: ${error.message}`, "error");
         }
     }
+// Hàm gốc của bạn, giờ được nâng cấp
+async function handlePdfExamFormSubmit() {
+    // === PHẦN 1: Lấy dữ liệu và các phần tử DOM ===
+    // (Giữ nguyên như code gốc của bạn)
+    const examId = examIdInput.value;
+    const examCode = examCodeInput.value.trim();
+    const keysValue = keysInput.value.trim();
+    const coresValue = coresInput.value.trim();
 
+    // === PHẦN 2: KIỂM TRA DỮ LIỆU ĐẦU VÀO (NÂNG CẤP) ===
+
+    // 2.1: Kiểm tra tiền tố 'PDF-' (Đã có, giữ nguyên)
+    if (!examCode.toUpperCase().startsWith('PDF-')) {
+        Swal.fire("Lỗi định dạng", "Mã đề thi PDF bắt buộc phải có tiền tố 'PDF-'.", "error");
+        return; // Dừng lại
+    }
+
+    // 2.2: [NÂNG CẤP] Kiểm tra khớp số lượng Đáp án và Điểm
+    // Đếm số lượng phần tử bằng cách tách chuỗi và lọc bỏ các phần tử rỗng
+    const keysCount = keysValue.split('|').filter(k => k.trim() !== '').length;
+    const coresCount = coresValue.split('|').filter(c => c.trim() !== '').length;
+
+    // Nếu cả hai đều có giá trị và không bằng nhau -> báo lỗi
+    if (keysCount > 0 && coresCount > 0 && keysCount !== coresCount) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Dữ liệu không khớp!',
+            html: `Số lượng <b>Đáp án (${keysCount})</b> không bằng số lượng <b>Điểm (${coresCount})</b>.<br>Vui lòng kiểm tra lại!`,
+        });
+        return; // Dừng lại
+    }
+
+    // === PHẦN 3: CHUẨN BỊ DỮ LIỆU VÀ GỌI SERVER ===
+    const examData = {
+        examCode: examCode,
+        timeLimit: parseInt(timeLimitInput.value, 10),
+        keys: keysValue,
+        cores: coresValue,
+        examPdfUrl: examPdfUrlInput.value.trim(),
+        solutionPdfUrl: solutionPdfUrlInput.value.trim(),
+    };
+    
+    const functionName = examId ? "updatePdfExam" : "addPdfExam";
+    const dataToSend = { examData };
+    if (examId) dataToSend.examId = examId;
+    
+    // [NÂNG CẤP] Hiển thị loading trước khi gọi hàm
+    Swal.fire({
+        title: 'Đang xử lý...',
+        text: 'Vui lòng chờ trong giây lát.',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    try {
+        const callableFunction = functions.httpsCallable(functionName);
+        const result = await callableFunction(dataToSend);
+        
+        // Đóng loading và hiển thị thông báo thành công
+        Swal.fire("Thành công!", result.data.message, "success");
+        
+        // Gọi các hàm dọn dẹp và tải lại dữ liệu
+        window.resetForm();
+        loadPdfExams();
+
+    } catch (error) {
+        // [NÂNG CẤP] Đóng loading và hiển thị thông báo lỗi thân thiện hơn
+        Swal.fire("Đã có lỗi xảy ra", `Lỗi: ${error.message}`, "error");
+    }
+}
     async function loadPdfExams() {
         listContainer.innerHTML = '<div class="list-item">Đang tải...</div>';
         try {

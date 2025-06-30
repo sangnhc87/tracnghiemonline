@@ -3,10 +3,169 @@
 <head>
     <meta charset="UTF-8">
     <title>Quản lý Đề thi PDF</title>
-    <!-- Nạp các CSS và thư viện cần thiết tương tự file index.html -->
+    <!-- Nạp các CSS và thư viện cần thiết -->
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- Firebase SDKs -->
+
+    <!-- === BẮT ĐẦU CSS THIẾT KẾ LẠI CHUYÊN NGHIỆP === -->
+    <style>
+        /* 1. GHI ĐÈ LÊN CONTAINER CHA (Đã OK) */
+        #app.dashboard-container {
+            max-width: 95% !important;
+            font-family: 'Be Vietnam Pro', sans-serif; /* Áp dụng font chữ đẹp */
+        }
+        .dashboard-sections {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            gap: 40px;
+        }
+        .dashboard-sections .dashboard-section {
+            width: 100% !important;
+        }
+
+        /* 2. THIẾT KẾ LẠI FORM NHẬP LIỆU */
+        .dashboard-section:first-child {
+            background: #ffffff;
+            padding: 30px 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e9ecef;
+        }
+        .dashboard-section:first-child h3 {
+            font-size: 1.8rem;
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 35px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        /* Nhãn (label) và ô input */
+        .form-group label {
+            font-weight: 500;
+            margin-bottom: 10px;
+            color: #495057;
+        }
+        .form-group input[type="text"],
+        .form-group input[type="number"] {
+            font-size: 1rem;
+            padding: 14px 16px;
+            border-radius: 8px;
+            border: 1px solid #ced4da;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-group input:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+            outline: none;
+        }
+        
+        /* 
+         * SẮP XẾP LẠI 2 NÚT LƯU, HỦY
+        */
+        
+        /* Tạo một khu vực riêng cho các nút */
+        #pdfExamForm {
+            display: flex;
+            flex-direction: column; /* Các .form-group sẽ xếp dọc */
+        }
+        
+        /* Dùng một thẻ div ảo để bọc các nút (không cần sửa HTML) */
+        /* Chúng ta sẽ dùng chính các nút để tạo container */
+        #pdfExamForm button[type="submit"],
+        #pdfExamForm button[type="button"] {
+            margin-top: 20px; /* Tạo khoảng cách với ô input cuối */
+        }
+
+        /* Tạo container cho các nút và căn phải */
+        form#pdfExamForm > button:last-of-type {
+            margin-right: 0;
+        }
+        form#pdfExamForm {
+            text-align: right; /* Căn phải các phần tử inline */
+        }
+        form#pdfExamForm > button {
+             display: inline-block; /* Để các nút nằm trên 1 hàng */
+             width: auto; /* Bỏ các style width cũ nếu có */
+        }
+
+        /* Tinh chỉnh nút */
+        #pdfExamForm button {
+            padding: 12px 28px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.2s ease-in-out;
+            border: none;
+            cursor: pointer;
+        }
+        #pdfExamForm button.btn-primary {
+            background-color: #007bff;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2);
+        }
+        #pdfExamForm button.btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 123, 255, 0.3);
+        }
+        #pdfExamForm button.btn-secondary {
+            background-color: #f8f9fa;
+            color: #495057;
+            border: 1px solid #ced4da;
+        }
+        #pdfExamForm button.btn-secondary:hover {
+            background-color: #e9ecef;
+            transform: translateY(-2px);
+        }
+
+        /* 3. THIẾT KẾ LẠI DANH SÁCH ĐỀ THI DẠNG CARD */
+        .dashboard-section:last-child {
+            background: transparent;
+            box-shadow: none;
+            padding: 0;
+        }
+        .dashboard-section:last-child h3 {
+            font-size: 1.8rem;
+            color: #2c3e50;
+        }
+        #pdf-exam-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 30px;
+        }
+        .list-item {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .list-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        .list-item-title { font-size: 1.2rem; font-weight: 700; color: #34495e; margin-bottom: 15px; }
+        .list-item-details { color: #7f8c8d; font-size: 0.9rem; margin-bottom: 20px; flex-grow: 1; }
+        .list-item-details span { margin-right: 15px; }
+        .list-item-actions { display: flex; gap: 10px; }
+        .list-item-actions button {
+            color: white;
+            padding: 9px 16px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-radius: 6px;
+        }
+        button[onclick*='edit'] { background-color: #28a745; }
+        button[onclick*='delete'] { background-color: #dc3545; }
+
+    </style>
+    <!-- === KẾT THÚC CSS === -->
 </head>
 <body>
     <div id="app" class="dashboard-container">

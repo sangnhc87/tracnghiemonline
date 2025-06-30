@@ -1,0 +1,174 @@
+/* File: css/pdf-teacher-style.css */
+
+/* --- THIẾT LẬP TỔNG THỂ --- */
+body {
+    background-color: #f4f7f9;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #333;
+    line-height: 1.6;
+}
+
+#app.dashboard-container {
+    max-width: 100%;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+#app h2 {
+    text-align: center;
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+#app > p:first-of-type {
+    text-align: center;
+    color: #7f8c8d;
+    margin-bottom: 40px;
+}
+#app > p a {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+/* --- TÁCH BIỆT FORM VÀ DANH SÁCH --- */
+.dashboard-sections {
+    display: flex;
+    flex-direction: column; /* Xếp chồng theo chiều dọc */
+    align-items: center;    /* Căn giữa theo chiều ngang */
+    gap: 40px;              /* Khoảng cách giữa form và danh sách */
+}
+
+
+/* --- KHU VỰC FORM (RỘNG 80%) --- */
+/* Dùng :first-child để nhắm vào div chứa form mà không cần sửa HTML */
+.dashboard-sections .dashboard-section:first-child {
+    width: 95%;
+    max-width: 1100px;
+    background: #ffffff;
+    padding: 30px 40px;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.07);
+    order: 1; /* Đảm bảo form luôn ở trên */
+}
+
+/* --- KHU VỰC DANH SÁCH ĐỀ THI --- */
+/* Dùng :last-child để nhắm vào div chứa danh sách */
+.dashboard-sections .dashboard-section:last-child {
+    width: 80%;
+    max-width: 1100px;
+    background: transparent; /* Nền trong suốt để hòa vào nền body */
+    box-shadow: none;
+    padding: 0;
+    order: 2; /* Đảm bảo danh sách luôn ở dưới */
+}
+
+/* Styling cho tiêu đề của cả 2 khu vực */
+.dashboard-section h3 {
+    margin-top: 0;
+    margin-bottom: 30px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e9ecef;
+    color: #2c3e50;
+    font-size: 1.5rem;
+}
+
+/* --- STYLING CHO FORM NHẬP LIỆU --- */
+.form-group label {
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: block;
+}
+.form-group input[type="text"],
+.form-group input[type="number"] {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: all 0.2s ease-in-out;
+}
+.form-group input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.15);
+}
+#pdfExamForm button {
+    padding: 12px 25px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    color: white;
+    margin-right: 10px;
+}
+#pdfExamForm .btn-primary { background-color: #007bff; }
+#pdfExamForm .btn-secondary { background-color: #6c757d; }
+
+
+/* --- LÀM ĐẸP DANH SÁCH ĐỀ THI --- */
+/* Sử dụng Grid Layout để tạo lưới thẻ hiện đại */
+#pdf-exam-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 25px;
+}
+
+/* Style cho mỗi item trong danh sách (giả định JS tạo ra class .list-item) */
+.list-item {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.list-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+}
+
+/* Style cho các phần tử bên trong (giả định tên class từ các file khác) */
+.list-item-content { flex-grow: 1; }
+.list-item-title { font-weight: 600; font-size: 1.1rem; color: #343a40; }
+.list-item-details { font-size: 0.9rem; color: #6c757d; margin: 10px 0; }
+.list-item-actions { margin-top: 15px; display: flex; gap: 10px; }
+.list-item-actions button {
+    color: white;
+    padding: 8px 12px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+/* Giả định có class .edit-btn và .delete-btn */
+.list-item-actions .edit-btn, .list-item-actions button[onclick*='edit'] { background-color: #28a745; }
+.list-item-actions .delete-btn, .list-item-actions button[onclick*='delete'] { background-color: #dc3545; }
+
+/* --- RESPONSIVE --- */
+@media (max-width: 992px) {
+    .dashboard-sections .dashboard-section:first-child,
+    .dashboard-sections .dashboard-section:last-child {
+        width: 90%;
+    }
+}
+@media (max-width: 576px) {
+    .dashboard-sections .dashboard-section:first-child,
+    .dashboard-sections .dashboard-section:last-child {
+        width: 100%;
+        padding: 20px;
+    }
+    #pdf-exam-list { grid-template-columns: 1fr; }
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"] {
+    width: 100%;
+    /* Tăng padding để ô cao hơn */
+    padding: 16px 15px; 
+    border: 1px solid #ced4da;
+    border-radius: 8px; /* Bo góc mềm mại hơn một chút */
+    /* Tăng cỡ chữ để dễ đọc hơn */
+    font-size: 1.1rem; 
+    transition: all 0.2s ease-in-out;
+}
