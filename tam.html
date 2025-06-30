@@ -13,7 +13,7 @@
     
     <!-- CSS -->
     <link rel="stylesheet" href="css/style.css" />
-    <link rel="stylesheet" href="css/quiz-parser.css" />
+    <link rel="stylesheet" href="css/quiz-parser.css" /> 
     
     <!-- Thư viện bên thứ ba -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU07EWHeAOgpuTO/lA+K/BIhfEpजगीU0T4goEBCYoWru/gGu4ydfrAN" crossorigin="anonymous">
@@ -59,7 +59,7 @@
             </div>
             <div class="form-group">
                 <label for="examCode">Mã đề thi:</label>
-                <input type="text" id="examCode" placeholder="Nhập mã đề (VD: T001 hoặc PDF-001)" />
+                <input type="text" id="examCode" placeholder="Nhập mã đề (VD: T001)" />
             </div>
             <div class="form-group">
                 <label for="classSelect">Chọn Lớp:</label>
@@ -69,7 +69,7 @@
                 <label for="studentSelect">Chọn Họ tên:</label>
                 <select id="studentSelect"><option value="">-- Chọn tên --</option></select>
             </div>
-            <!-- [SỬA ĐỔI] Gọi hàm mới -->
+            <!-- [SỬA ĐỔI] Gọi hàm mới để xử lý cả đề cũ và đề mới trên Storage -->
             <button onclick="startExamWithStorage()" class="btn btn-primary btn-full"><i class="fas fa-play-circle"></i> Bắt đầu thi</button>
             <p class="form-link">Bạn là giáo viên? <a href="#" onclick="showTeacherLogin()">Đăng nhập tại đây</a></p>
         </div>
@@ -136,9 +136,10 @@
             <div class="modal-content card">
                 <h2 id="examFormTitle"></h2>
                 <div class="modal-form-scrollable-area">
-                    <!-- [SỬA ĐỔI] Gọi hàm mới -->
+                    <!-- [SỬA ĐỔI] Gọi hàm mới để xử lý cả lưu vào Firestore và Storage -->
                     <form id="examForm" onsubmit="event.preventDefault(); handleExamFormSubmitWithStorage();">
                         <input type="hidden" id="examId" />
+                        
                         <div class="form-group">
                             <label for="examFormType">Loại đề thi:</label>
                             <select id="examFormType" onchange="toggleExamFormFields()">
@@ -146,6 +147,7 @@
                                 <option value="PDF">Đề dạng PDF (Từ link)</option>
                             </select>
                         </div>
+                        
                         <div class="form-group">
                             <label for="examFormCode">Mã đề thi:</label>
                             <input type="text" id="examFormCode" required placeholder="Đề TEXT: T... | Đề PDF: PDF-..." />
@@ -162,12 +164,14 @@
                             <label for="examFormCores">Điểm từng câu (phân tách bằng |):</label>
                             <input type="text" id="examFormCores" required placeholder="0.2|0.2|0.2|0.2..." />
                         </div>
+                        
+                        <!-- Vùng cho đề TEXT -->
                         <div id="textExamFields">
                             <div class="form-group">
                                 <label for="examFormContent">Nội dung đề thi (Soạn trực tiếp):</label>
-                                <textarea id="examFormContent" rows="15" required placeholder="Soạn nội dung..."></textarea>
+                                <textarea id="examFormContent" rows="15" required placeholder="Soạn nội dung và đáp án chi tiết vào đây..."></textarea>
                             </div>
-                            <!-- [THÊM MỚI] Checkbox -->
+                            <!-- [THÊM MỚI] Checkbox để chọn lưu vào Storage -->
                             <div class="form-group form-check" style="display: flex; align-items: center; gap: 10px;">
                                 <input type="checkbox" class="form-check-input" id="useStorageCheckbox" style="width: auto; height: auto;">
                                 <label class="form-check-label" for="useStorageCheckbox" style="margin-bottom: 0;">
@@ -175,6 +179,8 @@
                                 </label>
                             </div>
                         </div>
+
+                        <!-- Vùng cho đề PDF -->
                         <div id="pdfExamFields" style="display:none;">
                             <div class="form-group">
                                 <label for="examFormPdfUrl">Link Đề thi PDF:</label>
@@ -214,10 +220,11 @@
         </div>
     </div>
     
-    <!-- Thứ tự nạp Script quan trọng -->
+     <!-- Thứ tự nạp Script quan trọng -->
     <script defer src="js/quiz-parser.js"></script>
     <script defer src="js/redirect.js"></script> 
     <script defer src="js/main.js"></script>
     <script defer src="js/storage_handler.js"></script>
+
 </body>
 </html>

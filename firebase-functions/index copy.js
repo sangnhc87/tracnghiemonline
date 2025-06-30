@@ -1,189 +1,120 @@
-// firebase-functions/index.js (Phiên bản Nâng cấp Hoàn Chỉnh Tuyệt đối)
+// ===================================================================
+// ==   FIREBASE FUNCTIONS - PHIÊN BẢN HOÀN CHỈNH & ỔN ĐỊNH        ==
+// ===================================================================
 
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
+const axios = require("axios");
 
+// Khởi tạo Firebase Admin SDK
 admin.initializeApp();
 const db = admin.firestore();
 
-/**
- * Phân tích một chuỗi văn bản lớn thành các câu hỏi và lời giải riêng biệt.
- * Hàm này đủ mạnh để xử lý các định dạng "Câu X:", "Bài X:", "Question X:"
- * và tách lời giải kèm theo.
- * @param {string} rawText Chuỗi văn bản thô từ textarea.
- * @return {{questions: string[], explanations: string[]}} Một object chứa mảng câu hỏi và mảng lời giải.
- */
-function parseExamContent(rawText) {
-    if (!rawText || typeof rawText !== 'string') {
-        return { questions: [], explanations: [] };
-    }
-
-    const questions = [];
-    const explanations = [];
-
-    // 1. Normalize newlines (Windows \r\n to Unix \n) for consistent parsing.
-    rawText = rawText.replace(/\r\n/g, '\n');
-
-    // 2. Define the regex to find the start of a question.
-    // (?:^|\n\s*)  : Matches the start of the string OR a newline followed by optional whitespace.
-    // ([Cc][âĂaA][uUu]|[Bb][àÀaA][iI]|[Qq][uUu][eE][sS][tT][iI][oO][nN]) : Matches "Câu", "Bài", "Question" (case-insensitive).
-    // \s*\d+       : Matches optional whitespace, digits (question number).
-    // [:.]?        : Matches an optional colon or period after the number.
-    const questionStartPattern = /(?:^|\n\s*)([Cc][âĂaA][uUu]|[Bb][àÀaA][iI]|[Qq][uUu][eE][sS][tT][iI][oO][nN])\s*\d+[:.]?/g;
-
-    // Use matchAll to get all occurrences of question starts and their indices.
-    const matches = [...rawText.matchAll(questionStartPattern)];
-
-    // 3. If no explicit question patterns are found but content exists, treat as a single question.
-    if (matches.length === 0 && rawText.trim() !== '') {
-        questions.push(rawText.trim());
-        explanations.push('');
-        return { questions, explanations };
-    } else if (matches.length === 0) { // If no matches and no content
-        return { questions: [], explanations: [] };
-    }
-
-    // 4. Iterate through the matches to extract each question block.
-    for (let i = 0; i < matches.length; i++) {
-        const currentMatch = matches[i];
-        const startIndex = currentMatch.index;
-
-        // The end index for the current block is the start of the next match,
-        // or the end of the entire rawText if it's the last question.
-        const endIndex = (i + 1 < matches.length) ? matches[i + 1].index : rawText.length;
-
-        // Extract and trim the raw block of text for the current question.
-        let block = rawText.substring(startIndex, endIndex).trim();
-        if (!block) continue; // Skip any empty blocks resulting from split
-
-        let questionText = block;
-        let explanationText = '';
-
-        // 5. Extract the explanation part (e.g., \begin{loigiai}...\end{loigiai})
-        const loigiaiRegex = /\\begin\{loigiai\}([\s\S]*?)\\end\{loigiai\}/i;
-        const matchExplanation = questionText.match(loigiaiRegex);
-
-        if (matchExplanation && matchExplanation[1]) {
-            explanationText = matchExplanation[1].trim();
-            // Remove the explanation part from the question text to get pure question content.
-            questionText = questionText.replace(loigiaiRegex, '').trim();
-        }
-
-        questions.push(questionText);
-        explanations.push(explanationText);
-    }
-    
-    return { questions, explanations };
-}
-
-
-// --- CÁC HÀM XÁC THỰC & QUẢN LÝ TÀI KHOẢN GIÁO VIÊN ---
+// -------------------------------------------------------------------
+// PHẦN 1: CÁC HÀM XÁC THỰC VÀ QUẢN LÝ USER (GIÁO VIÊN)
+// -------------------------------------------------------------------
 
 /**
- * Xử lý đăng nhập của giáo viên: tạo tài khoản mới nếu chưa có, hoặc trả về thông tin hiện có.
+ * Được gọi khi giáo viên đăng nhập lần đầu hoặc các lần sau.
+ * Nếu là lần đầu, tạo một record user mới với thời gian dùng thử.
+ * Nếu không, trả về dữ liệu user hiện có.
  */
 exports.onTeacherSignIn = functions.https.onCall(async (data, context) => {
-  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
-  const { uid, email, name } = context.auth.token;
-  const userRef = db.collection("users").doc(uid);
-  const userDoc = await userRef.get();
-  if (!userDoc.exists) {
-    const trialEndDate = admin.firestore.Timestamp.fromMillis(Date.now() + 180 * 24 * 60 * 60 * 1000); // 180 days trial
-    await userRef.set({ 
-      email, 
-      name: name || email, 
-      role: "teacher", 
-      trialEndDate, 
-      createdAt: admin.firestore.FieldValue.serverTimestamp(), 
-      teacherAlias: null 
-    });
-    return { trialEndDate: trialEndDate.toDate().toISOString(), teacherAlias: null };
-  } else {
-    const existingData = userDoc.data();
-    // Chuyển đổi trialEndDate từ Date string (legacy) sang Timestamp nếu cần
-    if (existingData.trialEndDate && !(existingData.trialEndDate instanceof admin.firestore.Timestamp)) {
-        existingData.trialEndDate = admin.firestore.Timestamp.fromDate(new Date(existingData.trialEndDate));
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
     }
-    return existingData;
-  }
+    const { uid, email, name } = context.auth.token;
+    const userRef = db.collection("users").doc(uid);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+        // 180 ngày dùng thử cho người dùng mới
+        const trialEndDate = admin.firestore.Timestamp.fromMillis(Date.now() + 180 * 24 * 60 * 60 * 1000);
+        const newUserProfile = {
+            email,
+            name: name || email,
+            role: "teacher",
+            trialEndDate,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            teacherAlias: null
+        };
+        await userRef.set(newUserProfile);
+        return newUserProfile;
+    } else {
+        return userDoc.data();
+    }
 });
 
 /**
- * Cập nhật mã Alias cho giáo viên.
+ * Cập nhật Alias (mã định danh duy nhất) cho giáo viên.
  */
 exports.updateTeacherAlias = functions.https.onCall(async (data, context) => {
-  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
-  const { uid } = context.auth;
-  const newAlias = String(data.alias).trim().toLowerCase();
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+    }
+    const { uid } = context.auth.token;
+    const newAlias = String(data.alias || "").trim().toLowerCase();
 
-  // Validate Alias format
-  if (!newAlias || newAlias.length < 3 || newAlias.length > 20 || !/^[a-z0-9]+$/.test(newAlias)) {
-    throw new functions.https.HttpsError("invalid-argument", "Alias phải từ 3-20 ký tự, chỉ chứa chữ và số.");
-  }
+    if (!newAlias || newAlias.length < 3 || newAlias.length > 20 || !/^[a-z0-9]+$/.test(newAlias)) {
+        throw new functions.https.HttpsError("invalid-argument", "Alias phải từ 3-20 ký tự, chỉ chứa chữ thường và số.");
+    }
 
-  // Check if Alias is already taken by another user
-  const aliasCheck = await db.collection("users").where("teacherAlias", "==", newAlias).limit(1).get();
-  if (!aliasCheck.empty && aliasCheck.docs[0].id !== uid) {
-    throw new functions.https.HttpsError("already-exists", "Alias này đã có người dùng khác sử dụng.");
-  }
+    const aliasCheck = await db.collection("users").where("teacherAlias", "==", newAlias).limit(1).get();
+    if (!aliasCheck.empty && aliasCheck.docs[0].id !== uid) {
+        throw new functions.https.HttpsError("already-exists", "Alias này đã có người dùng khác sử dụng.");
+    }
 
-  // Update Alias in Firestore
-  await db.collection("users").doc(uid).update({ teacherAlias: newAlias });
-  return { success: true, message: "Cập nhật Alias thành công!" };
+    await db.collection("users").doc(uid).update({ teacherAlias: newAlias });
+    return { success: true, message: "Cập nhật Alias thành công!" };
 });
 
-// --- CÁC HÀM QUẢN LÝ DỮ LIỆU (CRUD) ---
+// -------------------------------------------------------------------
+// PHẦN 2: CÁC HÀM CRUD CHO ĐỀ THI (Hợp nhất TEXT và PDF)
+// -------------------------------------------------------------------
 
 /**
- * Lấy toàn bộ dữ liệu đề thi và lớp học của một giáo viên.
- */
-exports.getTeacherFullData = functions.https.onCall(async (data, context) => {
-  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
-  const { uid } = context.auth;
-  const examsPromise = db.collection("exams").where("teacherId", "==", uid).get();
-  const classesPromise = db.collection("classes").where("teacherId", "==", uid).get();
-  const [examsSnapshot, classesSnapshot] = await Promise.all([examsPromise, classesPromise]);
-  
-  const exams = examsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-  const classes = classesSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-  return { exams, classes };
-});
-
-// --- Quản lý Đề thi ---
-
-/**
- * Thêm một đề thi mới vào Firestore.
+ * Thêm một đề thi mới (TEXT hoặc PDF).
  */
 exports.addExam = functions.https.onCall(async (data, context) => {
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+    
     const { examData } = data;
-    if (!examData) throw new functions.https.HttpsError("invalid-argument", "Thiếu dữ liệu đề thi.");
-    
-    const { questions, explanations } = parseExamContent(examData.content);
-    
-    if (questions.length === 0) {
-        throw new functions.https.HttpsError("invalid-argument", "Không tìm thấy câu hỏi nào trong nội dung đề thi. Hãy chắc chắn bạn đã dùng định dạng 'Câu 1:', 'Bài 2:', v.v...");
+    if (!examData || !examData.examCode || !examData.keys) {
+        throw new functions.https.HttpsError("invalid-argument", "Thiếu Mã đề hoặc Đáp án.");
     }
 
-    const newExamData = {
+    const newExam = {
         teacherId: context.auth.uid,
+        examType: examData.examType || 'TEXT',
         examCode: String(examData.examCode).trim(),
         timeLimit: parseInt(examData.timeLimit, 10) || 90,
-        keys: String(examData.keys || "").split("|").map(k => k.trim()),
-        cores: String(examData.cores || "").split("|").map(c => c.trim()),
-        questionTexts: questions,
-        explanations: explanations,
+        keys: String(examData.keys).split("|").map(k => k.trim()),
+        cores: String(examData.cores || "").split("|").map(c => parseFloat(c.trim()) || 0.2),
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
     };
-    await db.collection("exams").add(newExamData);
-    return { success: true, message: `Đã thêm thành công ${questions.length} câu hỏi!` };
+
+    if (newExam.examType === 'TEXT') {
+        if (!examData.content) throw new functions.https.HttpsError("invalid-argument", "Đề TEXT cần có nội dung.");
+        newExam.content = examData.content;
+    } else if (newExam.examType === 'PDF') {
+        if (!newExam.examCode.toUpperCase().startsWith('PDF-')) {
+            throw new functions.https.HttpsError("invalid-argument", "Mã đề PDF phải bắt đầu bằng 'PDF-'.");
+        }
+        if (!examData.examPdfUrl) throw new functions.https.HttpsError("invalid-argument", "Đề PDF cần có Link đề thi.");
+        newExam.examPdfUrl = examData.examPdfUrl;
+        newExam.solutionPdfUrl = examData.solutionPdfUrl || '';
+    }
+
+    await db.collection("exams").add(newExam);
+    return { success: true, message: "Đã thêm đề thi thành công!" };
 });
 
 /**
- * Cập nhật một đề thi hiện có.
+ * Cập nhật một đề thi đã có (TEXT hoặc PDF).
  */
 exports.updateExam = functions.https.onCall(async (data, context) => {
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+    
     const { examId, examData } = data;
     if (!examId || !examData) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID hoặc dữ liệu đề thi.");
     
@@ -192,338 +123,649 @@ exports.updateExam = functions.https.onCall(async (data, context) => {
     if (!doc.exists || doc.data().teacherId !== context.auth.uid) {
         throw new functions.https.HttpsError("permission-denied", "Bạn không có quyền sửa đề thi này.");
     }
-
-    const { questions, explanations } = parseExamContent(examData.content);
-
-    if (questions.length === 0) {
-        throw new functions.https.HttpsError("invalid-argument", "Không tìm thấy câu hỏi nào trong nội dung bạn cung cấp.");
-    }
-
-    const updatedExamData = {
+    
+    const updatedExam = {
+        examType: examData.examType || 'TEXT',
         examCode: String(examData.examCode).trim(),
         timeLimit: parseInt(examData.timeLimit, 10) || 90,
-        keys: String(examData.keys || "").split("|").map(k => k.trim()),
-        cores: String(examData.cores || "").split("|").map(c => c.trim()),
-        questionTexts: questions,
-        explanations: explanations,
+        keys: String(examData.keys).split("|").map(k => k.trim()),
+        cores: String(examData.cores || "").split("|").map(c => parseFloat(c.trim()) || 0.2),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
-    await examRef.update(updatedExamData);
-    return { success: true, message: `Đã cập nhật thành công ${questions.length} câu hỏi!` };
+    
+    if (updatedExam.examType === 'TEXT') {
+        updatedExam.content = examData.content || '';
+        updatedExam.examPdfUrl = admin.firestore.FieldValue.delete();
+        updatedExam.solutionPdfUrl = admin.firestore.FieldValue.delete();
+    } else if (updatedExam.examType === 'PDF') {
+        if (!updatedExam.examCode.toUpperCase().startsWith('PDF-')) {
+            throw new functions.https.HttpsError("invalid-argument", "Mã đề PDF phải bắt đầu bằng 'PDF-'.");
+        }
+        updatedExam.examPdfUrl = examData.examPdfUrl || '';
+        updatedExam.solutionPdfUrl = examData.solutionPdfUrl || '';
+        updatedExam.content = admin.firestore.FieldValue.delete();
+    }
+    
+    await examRef.update(updatedExam);
+    return { success: true, message: "Đã cập nhật đề thi thành công!" };
 });
 
 /**
  * Xóa một đề thi.
  */
 exports.deleteExam = functions.https.onCall(async (data, context) => {
-  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
-  const { examId } = data;
-  if (!examId) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID đề thi.");
-  const examRef = db.collection("exams").doc(examId);
-  const doc = await examRef.get();
-  if (!doc.exists || doc.data().teacherId !== context.auth.uid) throw new functions.https.HttpsError("permission-denied", "Không có quyền xóa đề thi này.");
-  await examRef.delete();
-  return { success: true, message: "Đã xóa đề thi." };
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+    const { examId } = data;
+    if (!examId) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID đề thi.");
+
+    const examRef = db.collection("exams").doc(examId);
+    const doc = await examRef.get();
+    if (!doc.exists || doc.data().teacherId !== context.auth.uid) {
+        throw new functions.https.HttpsError("permission-denied", "Không có quyền xóa đề thi này.");
+    }
+    await examRef.delete();
+    return { success: true, message: "Đã xóa đề thi." };
 });
 
 /**
- * Lấy chi tiết một đề thi để chỉnh sửa.
+ * Lấy toàn bộ dữ liệu (đề thi, lớp học) cho dashboard của giáo viên.
+ */
+exports.getTeacherFullData = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+    const { uid } = context.auth.token;
+
+    const examsPromise = db.collection("exams").where("teacherId", "==", uid).get();
+    const classesPromise = db.collection("classes").where("teacherId", "==", uid).get();
+
+    const [examsSnapshot, classesSnapshot] = await Promise.all([examsPromise, classesPromise]);
+    const exams = examsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const classes = classesSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    return { exams, classes };
+});
+
+/**
+ * Lấy chi tiết một đề thi để sửa.
  */
 exports.getTeacherFullExam = functions.https.onCall(async (data, context) => {
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
     const { examId } = data;
     if (!examId) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID đề thi.");
+
     const doc = await db.collection("exams").doc(examId).get();
-    if (!doc.exists || doc.data().teacherId !== context.auth.uid) throw new functions.https.HttpsError("permission-denied", "Không có quyền xem đề thi này.");
+    if (!doc.exists || doc.data().teacherId !== context.auth.uid) {
+        throw new functions.https.HttpsError("permission-denied", "Không có quyền xem đề thi này.");
+    }
     return { id: doc.id, ...doc.data() };
 });
 
-// --- Quản lý Lớp học ---
+// -------------------------------------------------------------------
+// PHẦN 3: CÁC HÀM CRUD CHO LỚP HỌC
+// -------------------------------------------------------------------
 
-/**
- * Thêm một lớp học mới.
- */
 exports.addClass = functions.https.onCall(async (data, context) => {
-  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
-  const { classData } = data;
-  if (!classData || !classData.name) throw new functions.https.HttpsError("invalid-argument", "Tên lớp không được trống.");
-  await db.collection("classes").add({ 
-    teacherId: context.auth.uid, 
-    name: String(classData.name).trim(), 
-    students: Array.isArray(classData.students) ? classData.students.filter(s => s.trim() !== "") : [], 
-    createdAt: admin.firestore.FieldValue.serverTimestamp() 
-  });
-  return { success: true, message: "Đã thêm lớp học thành công!" };
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+    const { classData } = data;
+    if (!classData || !classData.name) throw new functions.https.HttpsError("invalid-argument", "Tên lớp không được trống.");
+    await db.collection("classes").add({
+        teacherId: context.auth.token.uid,
+        name: String(classData.name).trim(),
+        students: Array.isArray(classData.students) ? classData.students.filter(s => s.trim() !== "") : [],
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    return { success: true, message: "Đã thêm lớp học thành công!" };
 });
 
-/**
- * Cập nhật một lớp học hiện có.
- */
 exports.updateClass = functions.https.onCall(async (data, context) => {
-  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
-  const { classId, classData } = data;
-  if (!classId || !classData) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID hoặc dữ liệu lớp học.");
-  const classRef = db.collection("classes").doc(classId);
-  const doc = await classRef.get();
-  if (!doc.exists || doc.data().teacherId !== context.auth.uid) throw new functions.https.HttpsError("permission-denied", "Không có quyền sửa lớp học này.");
-  await classRef.update({ 
-    name: String(classData.name).trim(), 
-    students: Array.isArray(classData.students) ? classData.students.filter(s => s.trim() !== "") : [] 
-  });
-  return { success: true, message: "Đã cập nhật lớp học thành công!" };
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+    const { classId, classData } = data;
+    if (!classId || !classData) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID hoặc dữ liệu lớp học.");
+    const classRef = db.collection("classes").doc(classId);
+    const doc = await classRef.get();
+    if (!doc.exists || doc.data().teacherId !== context.auth.token.uid) throw new functions.https.HttpsError("permission-denied", "Không có quyền sửa lớp học này.");
+    await classRef.update({
+        name: String(classData.name).trim(),
+        students: Array.isArray(classData.students) ? classData.students.filter(s => s.trim() !== "") : []
+    });
+    return { success: true, message: "Đã cập nhật lớp học thành công!" };
 });
 
-/**
- * Xóa một lớp học.
- */
 exports.deleteClass = functions.https.onCall(async (data, context) => {
-  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
-  const { classId } = data;
-  if (!classId) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID lớp học.");
-  const classRef = db.collection("classes").doc(classId);
-  const doc = await classRef.get();
-  if (!doc.exists || doc.data().teacherId !== context.auth.uid) throw new functions.https.HttpsError("permission-denied", "Không có quyền xóa lớp học này.");
-  await classRef.delete();
-  return { success: true, message: "Đã xóa lớp học." };
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+    const { classId } = data;
+    if (!classId) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID lớp học.");
+    const classRef = db.collection("classes").doc(classId);
+    const doc = await classRef.get();
+    if (!doc.exists || doc.data().teacherId !== context.auth.token.uid) throw new functions.https.HttpsError("permission-denied", "Không có quyền xóa lớp học này.");
+    await classRef.delete();
+    return { success: true, message: "Đã xóa lớp học." };
 });
 
-/**
- * Lấy chi tiết một lớp học để chỉnh sửa.
- */
 exports.getTeacherFullClass = functions.https.onCall(async (data, context) => {
-  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
-  const { classId } = data;
-  if (!classId) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID lớp học.");
-  const doc = await db.collection("classes").doc(classId).get();
-  if (!doc.exists || doc.data().teacherId !== context.auth.uid) throw new functions.https.HttpsError("permission-denied", "Không có quyền xem lớp học này.");
-  return { id: doc.id, ...doc.data() };
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+    const { classId } = data;
+    if (!classId) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID lớp học.");
+    const doc = await db.collection("classes").doc(classId).get();
+    if (!doc.exists || doc.data().teacherId !== context.auth.token.uid) throw new functions.https.HttpsError("permission-denied", "Không có quyền xem lớp học này.");
+    return { id: doc.id, ...doc.data() };
 });
 
-// --- CÁC HÀM DÀNH CHO HỌC SINH ---
+// -------------------------------------------------------------------
+// PHẦN 4: CÁC HÀM CHO HỌC SINH
+// -------------------------------------------------------------------
 
 /**
- * Lấy danh sách các lớp học và học sinh cho một giáo viên (dựa trên alias).
+ * Lấy danh sách lớp của một giáo viên (dựa trên Alias).
  */
 exports.getClassesForStudent = functions.https.onCall(async (data, context) => {
-  const teacherAlias = String(data.teacherAlias).trim().toLowerCase();
-  if (!teacherAlias) throw new functions.https.HttpsError("invalid-argument", "Mã giáo viên là bắt buộc.");
-  
-  const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
-  if (teacherSnapshot.empty) throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên với Alias này.");
-  
-  const teacherDoc = teacherSnapshot.docs[0];
-  const teacherData = teacherDoc.data();
-  // Check trial end date (handles both Timestamp and legacy Date string)
-  const trialEndDateMillis = teacherData.trialEndDate?.toMillis ? teacherData.trialEndDate.toMillis() : new Date(teacherData.trialEndDate).getTime();
-
-  if (!teacherData.trialEndDate || trialEndDateMillis < Date.now()) {
-    throw new functions.https.HttpsError("permission-denied", "Tài khoản của giáo viên này đã hết hạn dùng thử.");
-  }
-
-  const classesSnapshot = await db.collection("classes").where("teacherId", "==", teacherDoc.id).get();
-  const classData = {};
-  classesSnapshot.forEach((doc) => { classData[doc.data().name] = doc.data().students || []; });
-  return classData;
+    const teacherAlias = String(data.teacherAlias).trim().toLowerCase();
+    if (!teacherAlias) throw new functions.https.HttpsError("invalid-argument", "Mã giáo viên là bắt buộc.");
+    const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
+    if (teacherSnapshot.empty) throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên với Alias này.");
+    const teacherDoc = teacherSnapshot.docs[0];
+    const teacherData = teacherDoc.data();
+    const trialEndDateMillis = teacherData.trialEndDate?.toMillis ? teacherData.trialEndDate.toMillis() : new Date(teacherData.trialEndDate).getTime();
+    if (!teacherData.trialEndDate || trialEndDateMillis < Date.now()) {
+        throw new functions.https.HttpsError("permission-denied", "Tài khoản của giáo viên này đã hết hạn dùng thử.");
+    }
+    const classesSnapshot = await db.collection("classes").where("teacherId", "==", teacherDoc.id).get();
+    const classData = {};
+    classesSnapshot.forEach((doc) => { classData[doc.data().name] = doc.data().students || []; });
+    return classData;
 });
 
 /**
- * Tải dữ liệu đề thi cho học sinh.
+ * Lấy dữ liệu của một đề thi để học sinh bắt đầu làm bài.
  */
 exports.loadExamForStudent = functions.https.onCall(async (data, context) => {
-  const { teacherAlias, examCode } = data;
-  if (!teacherAlias || !examCode) throw new functions.https.HttpsError("invalid-argument", "Mã giáo viên và Mã đề là bắt buộc.");
-  
-  const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
-  if (teacherSnapshot.empty) throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên.");
-  
-  const teacherDoc = teacherSnapshot.docs[0];
-  const teacherData = teacherDoc.data();
-
-  // Check trial end date
-  const trialEndDateMillis = teacherData.trialEndDate?.toMillis ? teacherData.trialEndDate.toMillis() : new Date(teacherData.trialEndDate).getTime();
-  if (!teacherData.trialEndDate || trialEndDateMillis < Date.now()) {
-    throw new new functions.https.HttpsError("permission-denied", "Tài khoản của giáo viên này đã hết hạn dùng thử."); // Corrected typo here
-  }
-
-  const examSnapshot = await db.collection("exams").where("teacherId", "==", teacherDoc.id).where("examCode", "==", examCode).limit(1).get();
-  if (examSnapshot.empty) throw new functions.https.HttpsError("not-found", `Không tìm thấy đề thi ${examCode} của giáo viên này.`);
-  
-  const examData = examSnapshot.docs[0].data();
-  const keysArray = Array.isArray(examData.keys) ? examData.keys : [];
-  
-  // Xác định loại câu hỏi dựa trên định dạng của 'key'
-  const questionTypes = keysArray.map(k => {
-      if (typeof k !== 'string') return "Invalid"; 
-      if (k.length === 1 && "ABCD".includes(k)) return "MC"; // Multiple Choice (e.g., 'A', 'B')
-      if (/^[TF]+$/.test(k)) return "TF"; // True/False (e.g., 'T', 'F', 'TTF')
-      // Numeric: Stricter check for purely numeric strings (integer or float)
-      if (!isNaN(parseFloat(k)) && String(parseFloat(k)) === k.trim()) return "Numeric"; 
-      return "Unknown"; // Fallback for unrecognized key formats
-  });
-  // Calculate count of sub-answers for TF questions (e.g., 'TTF' has 3 sub-answers)
-  const tfCounts = keysArray.map(k => (typeof k === 'string' && /^[TF]+$/.test(k)) ? k.length : 0);
-  
-  return {
-    questionTexts: examData.questionTexts || [], 
-    explanations: examData.explanations || [], 
-    timeLimit: examData.timeLimit || 90,
-    questionTypes: questionTypes, // Return identified types to frontend for rendering
-    tfCounts: tfCounts, // Return TF sub-answer counts
-  };
+    const { teacherAlias, examCode } = data;
+    if (!teacherAlias || !examCode) throw new functions.https.HttpsError("invalid-argument", "Mã giáo viên và Mã đề là bắt buộc.");
+    
+    const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
+    if (teacherSnapshot.empty) throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên.");
+    
+    const teacherDoc = teacherSnapshot.docs[0];
+    const examSnapshot = await db.collection("exams")
+                                 .where("teacherId", "==", teacherDoc.id)
+                                 .where("examCode", "==", examCode.trim())
+                                 .limit(1).get();
+                                 
+    if (examSnapshot.empty) throw new functions.https.HttpsError("not-found", `Không tìm thấy đề thi ${examCode} của giáo viên này.`);
+    
+    const examData = examSnapshot.docs[0].data();
+    
+    return {
+        examType: examData.examType || 'TEXT',
+        content: examData.content || '', 
+        timeLimit: examData.timeLimit || 90,
+        keysStr: examData.keys || [],
+        coresStr: examData.cores || [],
+        examPdfUrl: examData.examPdfUrl || null,
+        solutionPdfUrl: examData.solutionPdfUrl || null,
+    };
 });
 
 /**
- * Nhận bài làm của học sinh, chấm điểm và lưu kết quả.
+ * Nhận bài làm của học sinh, chấm điểm và lưu vào CSDL.
  */
-exports.submitExam = functions.https.onCall(async (data, context) => {
-  const { teacherAlias, examCode, studentName, className, answers, isCheating } = data;
-  if (!teacherAlias || !examCode || !studentName || !className) {
-      throw new functions.https.HttpsError("invalid-argument", "Thiếu thông tin định danh (học sinh, đề thi...).");
-  }
-  // If not cheating, answers object must be provided
-  if (!isCheating && !answers) {
-      throw new functions.https.HttpsError("invalid-argument", "Thiếu dữ liệu câu trả lời của bài làm.");
-  }
+exports.submitExam_GOC = functions.https.onCall(async (data, context) => {
+    const { teacherAlias, examCode, studentName, className, answers, isCheating } = data;
+    if (!teacherAlias || !examCode || !studentName || !className) throw new functions.https.HttpsError("invalid-argument", "Thiếu thông tin định danh.");
+    if (!isCheating && !answers) throw new functions.https.HttpsError("invalid-argument", "Thiếu dữ liệu câu trả lời.");
 
-  const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
-  if (teacherSnapshot.empty) {
-      throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên.");
-  }
-  const teacherDoc = teacherSnapshot.docs[0];
+    const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
+    if (teacherSnapshot.empty) throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên.");
+    const teacherDoc = teacherSnapshot.docs[0];
 
-  // Logic xử lý khi phát hiện gian lận (isCheating === true)
-  if (isCheating === true) {
-    // Save submission with 0 score and isCheating flag
+    const examSnapshot = await db.collection("exams").where("teacherId", "==", teacherDoc.id).where("examCode", "==", examCode.trim()).limit(1).get();
+    if (examSnapshot.empty) throw new functions.https.HttpsError("not-found", `Không tìm thấy đề thi ${examCode}.`);
+    const examData = examSnapshot.docs[0].data();
+    
+    if (isCheating === true) {
+        await db.collection("submissions").add({ 
+            teacherId: teacherDoc.id, timestamp: admin.firestore.FieldValue.serverTimestamp(), 
+            examCode, studentName, className, score: 0, isCheating: true 
+        });
+        return { score: 0, examData: examData, detailedResults: {} };
+    }
+
+    const { keys, cores } = examData;
+    if (!Array.isArray(keys) || !Array.isArray(cores)) {
+        throw new functions.https.HttpsError("internal", "Dữ liệu đề thi bị lỗi: Keys hoặc Cores không hợp lệ.");
+    }
+    
+    let totalScore = 0;
+    const detailedResults = {};
+
+    keys.forEach((key, i) => {
+        let questionScore = 0;
+        const userAnswer = answers[`q${i}`];
+        const coreValue = parseFloat(cores[i]) || 0; 
+        
+        const questionType = (() => {
+            if (typeof key !== 'string') return "Invalid";
+            if (key.length === 1 && "ABCD".includes(key.toUpperCase())) return "MC";
+            if (/^[TF]+$/i.test(key)) return "TF";
+            if (!isNaN(parseFloat(key)) && String(parseFloat(key)) === key.trim()) return "Numeric";
+            return "Unknown";
+        })();
+        
+        if (questionType === "MC") {
+            if (userAnswer === key) {
+                questionScore = coreValue;
+            }
+        }
+        // Thêm logic chấm TF, Numeric ở đây nếu cần
+
+        totalScore += questionScore;
+        detailedResults[`q${i}`] = { userAnswer: userAnswer || null, correctAnswer: key, scoreEarned: questionScore, type: questionType };
+    });
+
     await db.collection("submissions").add({ 
         teacherId: teacherDoc.id, 
         timestamp: admin.firestore.FieldValue.serverTimestamp(), 
-        examCode, 
-        studentName, 
-        className, 
-        score: 0, 
-        isCheating: true 
+        examCode, studentName, className, answers,
+        score: parseFloat(totalScore.toFixed(2)), 
+        isCheating: false 
     });
-    // Even if cheating, return examData to frontend so it can display questions/explanations/correct answers
-    const examSnapshot = await db.collection("exams").where("teacherId", "==", teacherDoc.id).where("examCode", "==", examCode).limit(1).get();
-    const examDataFromDb = examSnapshot.empty ? {} : examSnapshot.docs[0].data();
-    
-    return { 
-        score: 0, 
-        examData: { 
-            questionTexts: examDataFromDb.questionTexts || [], 
-            explanations: examDataFromDb.explanations || [],
-            keysStr: examDataFromDb.keys || [],
-            coreStr: examDataFromDb.cores || []
-        }, 
-        detailedResults: {} // No detailed results for cheated exam
+
+    return {
+        score: parseFloat(totalScore.toFixed(2)),
+        examData: { ...examData, keysStr: keys, coreStr: cores },
+        detailedResults: detailedResults,
     };
-  }
+});
+// ===================================================================
+// ==           HÀM NÂNG CẤP: submitExam                        ==
+// ===================================================================
 
-  // Fetch exam data for grading
-  const examSnapshot = await db.collection("exams").where("teacherId", "==", teacherDoc.id).where("examCode", "==", examCode).limit(1).get();
-  if (examSnapshot.empty) {
-      throw new functions.https.HttpsError("not-found", `Không tìm thấy đề thi ${examCode} để chấm điểm.`);
-  }
+/**
+ * [NÂNG CẤP] Nhận bài làm của học sinh, chấm điểm và lưu vào CSDL.
+ * Có khả năng chấm câu hỏi TABLE_TF dưới dạng object.
+ */
+exports.submitExam = functions.https.onCall(async (data, context) => {
+    const { teacherAlias, examCode, studentName, className, answers, isCheating } = data;
+    if (!teacherAlias || !examCode || !studentName || !className) {
+        throw new functions.https.HttpsError("invalid-argument", "Thiếu thông tin định danh.");
+    }
+    if (!isCheating && (answers === undefined || answers === null)) {
+        throw new functions.https.HttpsError("invalid-argument", "Thiếu dữ liệu câu trả lời.");
+    }
 
-  const examData = examSnapshot.docs[0].data();
-  const { keys, cores, questionTexts, explanations } = examData;
-  
-  // Basic validation for keys and cores
-  if (!Array.isArray(keys) || !Array.isArray(cores) || keys.length !== questionTexts.length) {
-      throw new functions.https.HttpsError("internal", "Dữ liệu đề thi bị lỗi: Keys hoặc Cores không hợp lệ (số lượng không khớp).");
-  }
+    const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
+    if (teacherSnapshot.empty) throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên.");
+    const teacherDoc = teacherSnapshot.docs[0];
 
-  // Re-determine questionTypes for server-side grading robustness
-  const questionTypes = keys.map(k => {
-      if (typeof k !== 'string') return "Invalid";
-      if (k.length === 1 && "ABCD".includes(k)) return "MC";
-      if (/^[TF]+$/.test(k)) return "TF";
-      if (!isNaN(parseFloat(k)) && String(parseFloat(k)) === k.trim()) return "Numeric";
-      return "Unknown";
-  });
-  
-  let totalScore = 0;
-  const detailedResults = {}; // Stores details for each question's result
-
-  // Iterate through each question to grade
-  keys.forEach((key, i) => {
-    let questionScore = 0;
-    const type = questionTypes[i];
-    // Attempt to parse core value, default to 0 if invalid
-    const coreValue = parseFloat(cores[i]) || 0; 
+    const examSnapshot = await db.collection("exams").where("teacherId", "==", teacherDoc.id).where("examCode", "==", examCode.trim()).limit(1).get();
+    if (examSnapshot.empty) throw new functions.https.HttpsError("not-found", `Không tìm thấy đề thi ${examCode}.`);
+    const examData = examSnapshot.docs[0].data();
     
-    // --- Specific Grading Logic for each question type ---
-    if (type === "MC") {
+    if (isCheating === true) {
+        await db.collection("submissions").add({ 
+            teacherId: teacherDoc.id, timestamp: admin.firestore.FieldValue.serverTimestamp(), 
+            examCode, studentName, className, score: 0, answers: {}, isCheating: true 
+        });
+        return { score: 0, examData, detailedResults: {} };
+    }
+
+    const correctKeys = examData.keys || [];
+    const cores = examData.cores || [];
+    if (correctKeys.length !== cores.length) {
+        throw new functions.https.HttpsError("internal", "Dữ liệu đề thi bị lỗi: Số lượng đáp án và điểm không khớp.");
+    }
+    
+    let totalScore = 0;
+    const detailedResults = {};
+
+    for (let i = 0; i < correctKeys.length; i++) {
+        const correctAnswer = correctKeys[i];
+        const coreValue = parseFloat(cores[i]) || 0;
         const userAnswer = answers[`q${i}`];
-        if (userAnswer === key) {
-            questionScore = coreValue;
-        }
-        detailedResults[`q${i}`] = { userAnswer: userAnswer || "", correctAnswer: key, scoreEarned: questionScore, type };
-    } else if (type === "TF") {
-        let countCorrect = 0;
-        const userSubAnswers = [];
-        // Parse TF core values, allowing for comma-separated scores like "0.1,0.25,0.5,1"
-        const tfCoreValues = (cores[i] || "").split(",").map(x => parseFloat(x)).filter(n => !isNaN(n)); 
-        
-        for (let j = 0; j < key.length; j++) { // Iterate through each T/F sub-answer
-            const subAnswer = answers[`q${i}_sub${j}`];
-            userSubAnswers.push(subAnswer);
-            if (subAnswer === key[j]) { // Check if user's sub-answer matches correct key's sub-answer
-                countCorrect++;
+        let questionScore = 0;
+        let isCorrect = false;
+
+        if (userAnswer !== undefined && userAnswer !== null) {
+            // Xử lý câu MC và Numeric (dạng chuỗi)
+            if (typeof userAnswer === 'string') {
+                if (userAnswer.trim().toLowerCase() === String(correctAnswer).trim().toLowerCase()) {
+                    isCorrect = true;
+                }
+            } 
+            // Xử lý câu TABLE_TF (dạng object)
+            else if (typeof userAnswer === 'object' && typeof correctAnswer === 'string') {
+                // Giả định correctAnswer là một chuỗi như 'TFFT'
+                // và userAnswer là một object như {a: 'T', b: 'F', c: 'F', d: 'T'}
+                
+                const sortedUserAnswerKeys = Object.keys(userAnswer).sort();
+                if (sortedUserAnswerKeys.length === correctAnswer.length) {
+                    let constructedAnswerString = sortedUserAnswerKeys.map(key => userAnswer[key]).join('');
+                    if (constructedAnswerString.toUpperCase() === correctAnswer.toUpperCase()) {
+                        isCorrect = true;
+                    }
+                }
             }
         }
         
-        // Logic to assign score based on `countCorrect` and `tfCoreValues`
-        // If tfCoreValues is "0.1,0.25,0.5,1" for 4 sub-questions:
-        // 1 correct => 0.1, 2 correct => 0.25, 3 correct => 0.5, 4 correct => 1.0
-        if (countCorrect > 0 && countCorrect <= tfCoreValues.length) {
-            questionScore = tfCoreValues[countCorrect - 1]; // Use 0-indexed for array access
-        } else if (countCorrect > tfCoreValues.length && tfCoreValues.length > 0) {
-            // If more correct sub-answers than defined score tiers, give max tier score
-            questionScore = tfCoreValues[tfCoreValues.length - 1];
-        } else {
-            questionScore = 0; // Default to 0 if no correct sub-answers or no score defined
-        }
-
-        detailedResults[`q${i}`] = { userAnswer: userSubAnswers, correctAnswer: key, scoreEarned: questionScore, type };
-    } else if (type === "Numeric") {
-        const userAnswer = answers[`q${i}`];
-        const parsedUserAnswer = parseFloat(userAnswer);
-        const parsedCorrectAnswer = parseFloat(key);
-
-        // Compare numeric answers with a small tolerance for floating point precision
-        if (!isNaN(parsedUserAnswer) && !isNaN(parsedCorrectAnswer) && Math.abs(parsedUserAnswer - parsedCorrectAnswer) < 1e-9) {
+        if (isCorrect) {
             questionScore = coreValue;
         }
-        detailedResults[`q${i}`] = { userAnswer: userAnswer || "", correctAnswer: key, scoreEarned: questionScore, type };
-    } else { // Handle 'Unknown' or 'Invalid' types, assign 0 score
-        detailedResults[`q${i}`] = { userAnswer: answers[`q${i}`] || "", correctAnswer: key, scoreEarned: 0, type: type };
+
+        totalScore += questionScore;
+        detailedResults[`q${i}`] = { 
+            userAnswer: userAnswer || null, 
+            correctAnswer: correctAnswer, 
+            scoreEarned: questionScore,
+        };
     }
-    totalScore += questionScore;
-  });
 
-  // Save submission details to Firestore
-  await db.collection("submissions").add({ 
-      teacherId: teacherDoc.id, 
-      timestamp: admin.firestore.FieldValue.serverTimestamp(), 
-      examCode, 
-      studentName, 
-      className, 
-      answers: answers, // Save the raw answers object
-      score: parseFloat(totalScore.toFixed(2)), 
-      isCheating: false 
-  });
+    const finalScore = parseFloat(totalScore.toFixed(2));
+    
+    await db.collection("submissions").add({ 
+        teacherId: teacherDoc.id, 
+        timestamp: admin.firestore.FieldValue.serverTimestamp(), 
+        examCode, studentName, className, answers,
+        score: finalScore,
+        detailedResults: detailedResults, // Rất quan trọng cho việc thống kê sau này
+        isCheating: false 
+    });
 
-  // Return final score, full exam data, and detailed results for frontend display
-  return {
-    score: parseFloat(totalScore.toFixed(2)),
-    examData: { 
-      keysStr: keys, // Return original keys for frontend reference
-      coreStr: cores, // Return original cores for frontend reference
-      questionTexts: questionTexts || [],
-      explanations: explanations || [],
-      timeLimit: examData.timeLimit,
-    },
-    detailedResults: detailedResults,
-  };
+    return {
+        score: finalScore,
+        examData,
+        detailedResults,
+    };
 });
+// -------------------------------------------------------------------
+// PHẦN 5: CÁC HÀM TIỆN ÍCH (PROXY LẤY PDF)
+// -------------------------------------------------------------------
+
+exports.getPdfFromGitLab = functions.https.onCall(async (data, context) => {
+    const gitlabUrl = data.url;
+    if (!gitlabUrl || !gitlabUrl.startsWith("https://gitlab.com")) {
+        throw new functions.https.HttpsError("invalid-argument", "URL không hợp lệ hoặc không phải từ GitLab.");
+    }
+    try {
+        const response = await axios.get(gitlabUrl, { responseType: 'arraybuffer' });
+        const base64 = Buffer.from(response.data, 'binary').toString('base64');
+        return { base64Data: base64 };
+    } catch (error) {
+        console.error("Lỗi khi tải PDF từ GitLab:", error.message);
+        throw new functions.https.HttpsError("internal", "Không thể tải file PDF từ GitLab.");
+    }
+});
+// ===================================================================
+// ==  HÀM MỚI: XỬ LÝ LINK PDF TỪ GOOGLE DRIVE, DROPBOX...         ==
+// ===================================================================
+
+exports.getPdfFromGeneralUrl = functions.https.onCall(async (data, context) => {
+    let url = data.url;
+
+    if (!url) {
+        throw new functions.https.HttpsError("invalid-argument", "URL không được để trống.");
+    }
+
+    // --- XỬ LÝ CHO LINK GOOGLE DRIVE ---
+    if (url.includes("drive.google.com")) {
+        // Biến đổi link 'view' thành link 'export' để tải trực tiếp
+        // Ví dụ: https://drive.google.com/file/d/FILE_ID/view
+        //   ->  https://drive.google.com/uc?export=download&id=FILE_ID
+        const match = url.match(/file\/d\/([^/]+)/);
+        if (match && match[1]) {
+            const fileId = match[1];
+            url = `https://drive.google.com/uc?export=download&id=${fileId}`;
+            console.log("Đã biến đổi URL Google Drive thành:", url);
+        } else {
+            throw new functions.https.HttpsError("invalid-argument", "Định dạng link Google Drive không hợp lệ.");
+        }
+    } 
+    // --- XỬ LÝ CHO LINK DROPBOX ---
+    else if (url.includes("dropbox.com")) {
+        // Biến đổi link xem trước của Dropbox thành link tải trực tiếp
+        // Ví dụ: https://www.dropbox.com/s/..../file.pdf?dl=0
+        //   ->  https://www.dropbox.com/s/..../file.pdf?dl=1
+        // Hoặc có thể thay 'www.dropbox.com' bằng 'dl.dropboxusercontent.com'
+        if (url.includes("?dl=0")) {
+            url = url.replace("?dl=0", "?dl=1");
+        } else if (!url.endsWith("?dl=1")) {
+            url += "?dl=1";
+        }
+        console.log("Đã biến đổi URL Dropbox thành:", url);
+    }
+    // Bạn có thể thêm các điều kiện else if khác cho các dịch vụ khác ở đây
+
+    try {
+        const response = await axios.get(url, {
+            responseType: 'arraybuffer'
+        });
+        const base64 = Buffer.from(response.data, 'binary').toString('base64');
+        return { base64Data: base64 };
+
+    } catch (error) {
+        console.error(`Lỗi khi tải PDF từ URL [${url}]:`, error.message);
+        throw new functions.https.HttpsError("internal", "Không thể tải file PDF từ URL được cung cấp.");
+    }
+});
+
+// -------------------------------------------------------------------
+// PHẦN 6: CÁC HÀM DÀNH RIÊNG CHO TRANG THỐNG KÊ
+// -------------------------------------------------------------------
+
+/**
+ * Lấy dữ liệu ban đầu (danh sách đề, lớp) cho các bộ lọc trên trang thống kê.
+ */
+exports.getStatsInitialData = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Bạn phải đăng nhập.');
+    const teacherId = context.auth.uid;
+    const examsPromise = db.collection('exams').where('teacherId', '==', teacherId).select('examCode').get();
+    const classesPromise = db.collection('classes').where('teacherId', '==', teacherId).select('name').get();
+    const [examsSnapshot, classesSnapshot] = await Promise.all([examsPromise, classesPromise]);
+    const exams = examsSnapshot.docs.map(doc => doc.data());
+    const classes = classesSnapshot.docs.map(doc => doc.data());
+    return { exams, classes };
+});
+
+/**
+ * Hàm xử lý thống kê chính, mạnh mẽ và an toàn.
+ */
+exports.getExamStatistics = functions.runWith({ timeoutSeconds: 120, memory: '256MB' }).https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Bạn phải đăng nhập.');
+    
+    const teacherId = context.auth.uid;
+    const { examCode, className, duplicateHandling } = data;
+
+    if (!examCode) throw new functions.https.HttpsError('invalid-argument', 'Mã đề thi là bắt buộc.');
+    
+    console.log(`Bắt đầu thống kê: Teacher=${teacherId}, Exam=${examCode}, Class=${className}, Handling=${duplicateHandling}`);
+
+    try {
+        let query = db.collection('submissions').where('teacherId', '==', teacherId).where('examCode', '==', examCode);
+        if (className && className !== 'all') {
+            query = query.where('className', '==', className);
+        }
+        
+        const snapshot = await query.orderBy('timestamp', 'desc').get();
+        if (snapshot.empty) return { summary: { count: 0 }, filters: data };
+        const allSubmissions = snapshot.docs.map(doc => doc.data());
+
+        let filteredSubmissions = [];
+        if (duplicateHandling === 'all' || !duplicateHandling) {
+            filteredSubmissions = allSubmissions;
+        } else {
+            const studentSubmissionsMap = new Map();
+            for (const sub of allSubmissions) {
+                const studentKey = `${sub.studentName || 'N/A'}|${sub.className || 'N/A'}`;
+                const existingSub = studentSubmissionsMap.get(studentKey);
+                if (!existingSub || (duplicateHandling === 'highest' && (sub.score || 0) > (existingSub.score || 0))) {
+                    studentSubmissionsMap.set(studentKey, sub);
+                }
+            }
+            filteredSubmissions = Array.from(studentSubmissionsMap.values());
+        }
+
+        if (filteredSubmissions.length === 0) return { summary: { count: 0 }, filters: data };
+        
+        const examDocSnapshot = await db.collection('exams').where('teacherId', '==', teacherId).where('examCode', '==', examCode).limit(1).get();
+        if (examDocSnapshot.empty) throw new functions.https.HttpsError('not-found', `Không tìm thấy đề thi với mã ${examCode}.`);
+        const correctKeys = examDocSnapshot.docs[0].data().keys || [];
+
+        let totalScore = 0, highestScore = -1, lowestScore = 11;
+        const performanceTiers = { gioi: 0, kha: 0, trungBinh: 0, yeu: 0 };
+        const scoreDistribution = { '[0, 2]': 0, '(2, 4]': 0, '(4, 5]': 0, '(5, 6.5]': 0, '(6.5, 8]': 0, '(8, 9]': 0, '(9, 10]': 0 };
+        const questionAnalysis = {};
+        correctKeys.forEach((key, i) => { questionAnalysis[`q${i}`] = { totalAttempts: 0, correctAttempts: 0, choices: {} }; });
+
+        for (const sub of filteredSubmissions) {
+            const score = typeof sub.score === 'number' ? sub.score : 0;
+            totalScore += score;
+            if (score > highestScore) highestScore = score;
+            if (score < lowestScore) lowestScore = score;
+
+            if (score >= 8) performanceTiers.gioi++; else if (score >= 6.5) performanceTiers.kha++; else if (score >= 5.0) performanceTiers.trungBinh++; else performanceTiers.yeu++;
+            if (score <= 2) scoreDistribution['[0, 2]']++; else if (score <= 4) scoreDistribution['(2, 4]']++; else if (score <= 5) scoreDistribution['(4, 5]']++; else if (score <= 6.5) scoreDistribution['(5, 6.5]']++; else if (score <= 8) scoreDistribution['(6.5, 8]']++; else if (score <= 9) scoreDistribution['(8, 9]']++; else scoreDistribution['(9, 10]']++;
+
+            for (let i = 0; i < correctKeys.length; i++) {
+                const qKey = `q${i}`;
+                if (!questionAnalysis[qKey]) continue;
+                const userAnswer = (sub.answers && sub.answers[qKey] !== undefined) ? sub.answers[qKey] : null;
+
+                if (userAnswer !== null) {
+                    questionAnalysis[qKey].totalAttempts++;
+                    const choice = userAnswer === '' ? 'Bỏ trống' : String(userAnswer);
+                    questionAnalysis[qKey].choices[choice] = (questionAnalysis[qKey].choices[choice] || 0) + 1;
+                    if ((sub.detailedResults && sub.detailedResults[qKey]?.scoreEarned > 0) || (!sub.detailedResults && String(userAnswer) === String(correctKeys[i]))) {
+                        questionAnalysis[qKey].correctAttempts++;
+                    }
+                }
+            }
+        }
+        
+        const count = filteredSubmissions.length;
+        const average = count > 0 ? totalScore / count : 0;
+        filteredSubmissions.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+        console.log(`Thống kê thành công cho ${examCode}. Trả về ${count} bản ghi.`);
+
+        return {
+            summary: { count, average, highest: highestScore, lowest: lowestScore },
+            scoreDistribution, performanceTiers, detailedSubmissions: filteredSubmissions,
+            questionAnalysis, filters: data
+        };
+    } catch (error) {
+        console.error("Lỗi nghiêm trọng trong getExamStatistics:", error);
+        throw new functions.https.HttpsError('internal', 'Đã có lỗi xảy ra trên máy chủ khi xử lý thống kê.', error.message);
+    }
+});
+
+// File: functions/index.js
+// THÊM các hàm này vào cuối file
+
+// [MỚI] Thêm đề thi PDF
+exports.addPdfExam = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần xác thực.");
+    const { examData } = data;
+    if (!examData) throw new functions.https.HttpsError("invalid-argument", "Thiếu dữ liệu.");
+    
+    const examCode = String(examData.examCode || "").trim();
+    if (!examCode.toUpperCase().startsWith('PDF-')) {
+        throw new functions.https.HttpsError("invalid-argument", "Mã đề PDF phải bắt đầu bằng 'PDF-'.");
+    }
+
+    const newPdfExam = {
+        teacherId: context.auth.uid,
+        examType: 'PDF',
+        examCode: examCode,
+        timeLimit: parseInt(examData.timeLimit, 10) || 90,
+        keys: String(examData.keys || "").split("|").map(k => k.trim()),
+        cores: String(examData.cores || "").split("|").map(c => c.trim()),
+        examPdfUrl: String(examData.examPdfUrl || "").trim(),
+        solutionPdfUrl: String(examData.solutionPdfUrl || "").trim(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+    
+    await db.collection("exams").add(newPdfExam);
+    return { success: true, message: "Đã thêm đề thi PDF thành công!" };
+});
+
+// [MỚI] Lấy danh sách đề PDF
+exports.getPdfExams = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần xác thực.");
+    const { uid } = context.auth.token;
+    
+    const snapshot = await db.collection("exams")
+                             .where("teacherId", "==", uid)
+                             .where("examType", "==", "PDF")
+                             .orderBy("createdAt", "desc")
+                             .get();
+                             
+    const exams = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return exams;
+});
+
+// [MỚI] Lấy chi tiết 1 đề PDF
+exports.getSinglePdfExam = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần xác thực.");
+    const { examId } = data;
+    if (!examId) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID đề thi.");
+    const doc = await db.collection("exams").doc(examId).get();
+    if (!doc.exists || doc.data().teacherId !== context.auth.uid) {
+        throw new functions.https.HttpsError("permission-denied", "Không có quyền xem đề thi này.");
+    }
+    return { id: doc.id, ...doc.data() };
+});
+
+// [HOÀN CHỈNH] Cập nhật một đề thi PDF đã có
+exports.updatePdfExam = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần xác thực.");
+    }
+    const { examId, examData } = data;
+    if (!examId || !examData) {
+        throw new functions.https.HttpsError("invalid-argument", "Thiếu ID hoặc dữ liệu đề thi.");
+    }
+
+    const examRef = db.collection("exams").doc(examId);
+    const doc = await examRef.get();
+    if (!doc.exists || doc.data().teacherId !== context.auth.uid) {
+        throw new functions.https.HttpsError("permission-denied", "Bạn không có quyền sửa đề thi này.");
+    }
+
+    const examCode = String(examData.examCode || "").trim();
+    if (!examCode.toUpperCase().startsWith('PDF-')) {
+        throw new functions.https.HttpsError("invalid-argument", "Mã đề PDF phải bắt đầu bằng 'PDF-'.");
+    }
+
+    const updatedPdfExam = {
+        examCode: examCode,
+        timeLimit: parseInt(examData.timeLimit, 10) || 90,
+        keys: String(examData.keys || "").split("|").map(k => k.trim()),
+        cores: String(examData.cores || "").split("|").map(c => c.trim()),
+        examPdfUrl: String(examData.examPdfUrl || "").trim(),
+        solutionPdfUrl: String(examData.solutionPdfUrl || "").trim(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    await examRef.update(updatedPdfExam);
+    return { success: true, message: "Đã cập nhật đề thi PDF thành công!" };
+});
+
+// [HOÀN CHỈNH] Xóa một đề thi PDF
+exports.deletePdfExam = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+    }
+    const { examId } = data;
+    if (!examId) {
+        throw new functions.https.HttpsError("invalid-argument", "Thiếu ID đề thi.");
+    }
+
+    const examRef = db.collection("exams").doc(examId);
+    const doc = await examRef.get();
+    
+    // Kiểm tra quyền sở hữu và đúng loại đề thi
+    if (!doc.exists || doc.data().teacherId !== context.auth.uid || doc.data().examType !== 'PDF') {
+        throw new functions.https.HttpsError("permission-denied", "Không có quyền xóa hoặc đây không phải đề PDF.");
+    }
+
+    await examRef.delete();
+    return { success: true, message: "Đã xóa đề thi PDF." };
+});
+

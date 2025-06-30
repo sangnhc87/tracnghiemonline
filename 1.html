@@ -13,7 +13,7 @@
     
     <!-- CSS -->
     <link rel="stylesheet" href="css/style.css" />
-    <link rel="stylesheet" href="css/quiz-parser.css" />
+    <link rel="stylesheet" href="css/quiz-parser.css" /> 
     
     <!-- Thư viện bên thứ ba -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU07EWHeAOgpuTO/lA+K/BIhfEpजगीU0T4goEBCYoWru/gGu4ydfrAN" crossorigin="anonymous">
@@ -30,6 +30,7 @@
     <script defer src="/__/firebase/9.10.0/firebase-auth-compat.js"></script>
     <script defer src="/__/firebase/9.10.0/firebase-firestore-compat.js"></script>
     <script defer src="/__/firebase/9.10.0/firebase-functions-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-storage-compat.js"></script> <!-- Thêm Storage SDK -->
     <script defer src="/__/firebase/init.js"></script>
 </head>
 <body>
@@ -69,8 +70,8 @@
                 <label for="studentSelect">Chọn Họ tên:</label>
                 <select id="studentSelect"><option value="">-- Chọn tên --</option></select>
             </div>
-            <!-- [SỬA ĐỔI] Gọi hàm mới -->
-            <button onclick="startExamWithStorage()" class="btn btn-primary btn-full"><i class="fas fa-play-circle"></i> Bắt đầu thi</button>
+            <!-- [SỬA ĐỔI] Gọi hàm startExam chuẩn trong main.js -->
+            <button onclick="startExam()" class="btn btn-primary btn-full"><i class="fas fa-play-circle"></i> Bắt đầu thi</button>
             <p class="form-link">Bạn là giáo viên? <a href="#" onclick="showTeacherLogin()">Đăng nhập tại đây</a></p>
         </div>
 
@@ -136,19 +137,21 @@
             <div class="modal-content card">
                 <h2 id="examFormTitle"></h2>
                 <div class="modal-form-scrollable-area">
-                    <!-- [SỬA ĐỔI] Gọi hàm mới -->
-                    <form id="examForm" onsubmit="event.preventDefault(); handleExamFormSubmitWithStorage();">
+                    <!-- [SỬA ĐỔI] Gọi hàm chuẩn trong main.js -->
+                    <form id="examForm" onsubmit="event.preventDefault(); handleExamFormSubmit();">
                         <input type="hidden" id="examId" />
+                        
                         <div class="form-group">
                             <label for="examFormType">Loại đề thi:</label>
                             <select id="examFormType" onchange="toggleExamFormFields()">
-                                <option value="TEXT" selected>Đề dạng Văn bản (Soạn trực tiếp)</option>
-                                <option value="PDF">Đề dạng PDF (Từ link)</option>
+                                <option value="TEXT" selected>Đề dạng Văn bản</option>
+                                <option value="PDF">Đề dạng PDF</option>
                             </select>
                         </div>
+                        
                         <div class="form-group">
                             <label for="examFormCode">Mã đề thi:</label>
-                            <input type="text" id="examFormCode" required placeholder="Đề TEXT: T... | Đề PDF: PDF-..." />
+                            <input type="text" id="examFormCode" required placeholder="Ví dụ: T001 hoặc PDF-001" />
                         </div>
                         <div class="form-group">
                             <label for="examFormTime">Thời gian làm bài (phút):</label>
@@ -156,34 +159,31 @@
                         </div>
                         <div class="form-group">
                             <label for="examFormKeys">Đáp án (phân tách bằng |):</label>
-                            <input type="text" id="examFormKeys" required placeholder="A|B|C|D..." />
+                            <input type="text" id="examFormKeys" required placeholder="A|B|C|D... hoặc TF..." />
                         </div>
                         <div class="form-group">
                             <label for="examFormCores">Điểm từng câu (phân tách bằng |):</label>
-                            <input type="text" id="examFormCores" required placeholder="0.2|0.2|0.2|0.2..." />
+                            <input type="text" id="examFormCores" required placeholder="0.2|0.2|0.2..." />
                         </div>
+                        
+                        <!-- Vùng cho đề TEXT -->
                         <div id="textExamFields">
                             <div class="form-group">
-                                <label for="examFormContent">Nội dung đề thi (Soạn trực tiếp):</label>
-                                <textarea id="examFormContent" rows="15" required placeholder="Soạn nội dung..."></textarea>
-                            </div>
-                            <!-- [THÊM MỚI] Checkbox -->
-                            <div class="form-group form-check" style="display: flex; align-items: center; gap: 10px;">
-                                <input type="checkbox" class="form-check-input" id="useStorageCheckbox" style="width: auto; height: auto;">
-                                <label class="form-check-label" for="useStorageCheckbox" style="margin-bottom: 0;">
-                                    Lưu nội dung lên Storage (Tối ưu cho đề dài)
-                                </label>
+                                <label for="examFormContentFile">Tải lên file nội dung (.txt):</label>
+                                <input type="file" id="examFormContentFile" accept=".txt,.md">
+                                <small>Soạn đề thi trong file .txt hoặc .md và tải lên đây.</small>
                             </div>
                         </div>
+
+                        <!-- Vùng cho đề PDF -->
                         <div id="pdfExamFields" style="display:none;">
                             <div class="form-group">
-                                <label for="examFormPdfUrl">Link Đề thi PDF:</label>
-                                <input type="text" id="examFormPdfUrl" placeholder="Dán link đến file PDF của đề thi" />
-                                <small>Link phải cho phép truy cập công khai. Ví dụ từ Google Drive, Dropbox.</small>
+                                <label for="examFormPdfFile">Tải lên file Đề thi (.pdf):</label>
+                                <input type="file" id="examFormPdfFile" accept=".pdf">
                             </div>
                             <div class="form-group">
-                                <label for="examFormSolutionUrl">Link Lời giải PDF (tùy chọn):</label>
-                                <input type="text" id="examFormSolutionUrl" placeholder="Dán link đến file PDF của lời giải" />
+                                <label for="examFormSolutionFile">Tải lên file Lời giải (.pdf, tùy chọn):</label>
+                                <input type="file" id="examFormSolutionFile" accept=".pdf">
                             </div>
                         </div>
                     </form>
@@ -213,11 +213,9 @@
             </div>
         </div>
     </div>
-    
     <!-- Thứ tự nạp Script quan trọng -->
     <script defer src="js/quiz-parser.js"></script>
     <script defer src="js/redirect.js"></script> 
     <script defer src="js/main.js"></script>
-    <script defer src="js/storage_handler.js"></script>
 </body>
 </html>

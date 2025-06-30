@@ -551,7 +551,7 @@ function restoreProgress() {
         }
     });
 }
-function loadQuiz(data) {
+function loadQuiz_TuyetVoi(data) {
     const quizContainer = getEl("quiz");
     quizContainer.innerHTML = "";
     window.questionMap = [];
@@ -702,7 +702,157 @@ function loadQuiz(data) {
     getEl("gradeBtn").style.display = "inline-flex";
     setTimeout(restoreProgress, 200);
 }
+// File: public/js/main.js
+// File: public/js/main.js
+// Thay thế hàm loadQuiz cũ bằng phiên bản CUỐI CÙNG này
 
+function loadQuiz(data) {
+    const quizContainer = getEl("quiz");
+    quizContainer.innerHTML = "";
+    window.questionMap = []; 
+
+    const rawContent = data.content.trim();
+    const questionGroupsRaw = rawContent.split(/\n\s*##group-separator##\s*\n/);
+    
+    let finalShuffledQuestions = [];
+    let originalIndexCounter = 0;
+
+    // --- LOGIC TRỘN CÂU HỎI THEO NHÓM (giữ nguyên) ---
+    questionGroupsRaw.forEach(groupRaw => {
+        if (!groupRaw.trim()) return;
+        let questionsInGroup = groupRaw.trim().split(/\n\s*\n/).map(block => ({ originalIndex: originalIndexCounter++, block }));
+        finalShuffledQuestions.push(...shuffleArray(questionsInGroup));
+    });
+
+    if (finalShuffledQuestions.length === 0 && rawContent) {
+        let allQuestions = rawContent.split(/\n\s*\n/).map((block, index) => ({ originalIndex: index, block }));
+        finalShuffledQuestions = shuffleArray(allQuestions);
+    }
+    
+    // --- BẮT ĐẦU VÒNG LẶP RENDER GIAO DIỆN ---
+    finalShuffledQuestions.forEach((questionData, newIndex) => {
+        const questionDiv = document.createElement("div");
+        questionDiv.className = "question";
+        questionDiv.id = `question-${questionData.originalIndex}`;
+        
+        const parsedData = parseMCQuestion(questionData.block);
+
+        if (parsedData) {
+            const statementDiv = document.createElement("div");
+            statementDiv.className = "question-statement";
+
+            // ==========================================================
+            // ==     SỬA LẠI LOGIC HIỂN THỊ ĐỂ STYLE MÀU ĐÚNG       ==
+            // ==========================================================
+            
+            // 1. Tạo tiêu đề câu hỏi MỚI với số thứ tự đã trộn
+            const newQuestionTitle = `Câu ${newIndex + 1}:`;
+            
+            // 2. Lấy nội dung câu hỏi gốc và xóa bỏ phần "Câu N:" cũ đi
+            let questionContent = parsedData.statement.replace(/^(Câu\s*\d+\s*[:.]?\s*)/i, '').trim();
+
+            // 3. Kết hợp lại: Tiêu đề mới được bọc trong span để CSS tô màu cam
+            statementDiv.innerHTML = `<span class="question-number-highlight">${newQuestionTitle}</span> ${processImagePlaceholders(questionContent)}`;
+            
+            // ==========================================================
+            // ==                 KẾT THÚC PHẦN SỬA LỖI                ==
+            // ==========================================================
+
+            questionDiv.appendChild(statementDiv);
+
+            // Logic render các lựa chọn giữ nguyên như phiên bản trước
+            if (parsedData.type === 'MC') {
+                const optionsContainer = document.createElement('div');
+                optionsContainer.className = `mc-options mc-layout-${parsedData.layout}`;
+                optionsContainer.dataset.questionIndex = questionData.originalIndex;
+
+                let shuffledOptions = shuffleArray(parsedData.options);
+                shuffledOptions.forEach(opt => {
+                    const optionDiv = document.createElement("div");
+                    optionDiv.className = "mc-option";
+                    optionDiv.dataset.value = opt.label;
+                    optionDiv.innerHTML = `<span class="mc-option-label">${opt.label}</span><span class="mc-option-content">${processImagePlaceholders(opt.content)}</span>`;
+                    optionDiv.onclick = function() {
+                        selectMCOption(this, questionData.originalIndex);
+                        saveProgress();
+                    };
+                    optionsContainer.appendChild(optionDiv);
+                });
+                questionDiv.appendChild(optionsContainer);
+            } 
+            else if (parsedData.type === 'TABLE_TF') {
+                let optionsToRender = parsedData.shouldShuffleOptions ? shuffleArray(parsedData.options) : parsedData.options;
+                const table = document.createElement('table');
+                table.className = 'table-tf-container';
+                table.innerHTML = `<thead><tr><th>Mệnh đề</th><th>Đúng</th><th>Sai</th></tr></thead>`;
+                const tbody = document.createElement('tbody');
+                
+                optionsToRender.forEach((opt) => {
+                    const groupName = `q${questionData.originalIndex}_sub${opt.label}`;
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td>${opt.label}) ${processImagePlaceholders(opt.content)}</td><td><label class="table-tf-radio"><input type="radio" name="${groupName}" value="T"></label></td><td><label class="table-tf-radio"><input type="radio" name="${groupName}" value="F"></label></td>`;
+                    tbody.appendChild(row);
+                });
+                
+                table.appendChild(tbody);
+                questionDiv.appendChild(table);
+                table.addEventListener('click', (e) => {
+                    if (e.target.closest('.table-tf-radio')) {
+                        const clickedLabel = e.target.closest('.table-tf-radio');
+                        clickedLabel.closest('tr').querySelectorAll('.table-tf-radio').forEach(l => l.classList.remove('selected'));
+                        clickedLabel.classList.add('selected');
+                        clickedLabel.querySelector('input').checked = true;
+                        saveProgress();
+                    }
+                });
+
+            } else if (parsedData.type === 'NUMERIC') {
+                const numDiv = document.createElement("div");
+                numDiv.className = "numeric-option";
+                const input = document.createElement("input");
+                input.type = "text";
+                input.name = `q${questionData.originalIndex}`;
+                input.placeholder = "Nhập đáp số";
+                input.addEventListener('input', saveProgress);
+                numDiv.appendChild(input);
+                questionDiv.appendChild(numDiv);
+            }
+
+            
+            // Xử lý lời giải (nếu có)
+            if (parsedData.solution && parsedData.solution.trim() !== '') {
+                const toggleBtn = document.createElement("button");
+                toggleBtn.className = "toggle-explanation btn";
+                toggleBtn.textContent = "Xem lời giải";
+                toggleBtn.style.display = 'none'; // Mặc định ẩn, chỉ hiện sau khi nộp
+                const expDiv = document.createElement("div");
+                expDiv.className = "explanation hidden";
+                expDiv.innerHTML = processImagePlaceholders(parsedData.solution);
+                toggleBtn.onclick = () => {
+                    expDiv.classList.toggle("hidden");
+                    toggleBtn.textContent = expDiv.classList.contains("hidden") ? "Xem lời giải" : "Ẩn lời giải";
+                };
+                questionDiv.appendChild(toggleBtn);
+                questionDiv.appendChild(expDiv);
+            }
+
+        } else { // Fallback nếu parseMCQuestion trả về null (khối câu hỏi không hợp lệ)
+            // Có thể hiển thị thông báo lỗi hoặc bỏ qua câu hỏi này
+            console.error(`Không thể phân tích câu hỏi ${i + 1}:`, questionBlock);
+            const errorDiv = document.createElement("div");
+            errorDiv.className = "question-statement";
+            errorDiv.innerHTML = `<p style="color: red;">Lỗi: Không thể tải câu hỏi này (kiểu không rõ hoặc định dạng sai).</p><pre>${questionBlock}</pre>`;
+            questionDiv.appendChild(errorDiv);
+        }
+        
+        quizContainer.appendChild(questionDiv);
+        renderKatexInElement(questionDiv);
+    });
+
+    getEl("quiz").style.display = "block";
+    getEl("gradeBtn").style.display = "inline-flex";
+    setTimeout(restoreProgress, 200);
+}
 function gradeQuiz(isCheating = false) {
     if (timerInterval) clearInterval(timerInterval);
     if (!examData) {
@@ -1349,3 +1499,6 @@ document.addEventListener("visibilitychange", function() {
         }
     }
 });
+
+
+

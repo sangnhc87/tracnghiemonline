@@ -1082,3 +1082,18 @@ textarea { resize: vertical; min-height: 100px; }
     border-color: var(--wrong-color);
     z-index: 1;
 }
+/* ========================================================== */
+/* ==      KHÔI PHỤC STYLE MÀU CAM CHO TIÊU ĐỀ CÂU HỎI     == */
+/* ========================================================== */
+
+/* Tìm đến thẻ span có class là .question-number-highlight */
+.question-statement .question-number-highlight {
+    display: inline-block; /* Cho phép padding và margin */
+    font-size: 1.1em;      /* To hơn một chút so với text thường */
+    font-weight: 700;      /* In đậm */
+    color: #e44d26;         /* MÀU CAM đặc trưng */
+    background-color: rgba(228, 77, 38, 0.1); /* Nền cam rất nhạt để nổi bật */
+    padding: 2px 8px;      /* Thêm một chút đệm cho đẹp */
+    border-radius: 5px;    /* Bo góc nhẹ */
+    margin-right: 8px;     /* Tạo khoảng cách với nội dung câu hỏi */
+}

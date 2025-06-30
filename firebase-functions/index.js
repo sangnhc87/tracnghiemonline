@@ -273,9 +273,6 @@ exports.getClassesForStudent = functions.https.onCall(async (data, context) => {
     return classData;
 });
 
-/**
- * Lấy dữ liệu của một đề thi để học sinh bắt đầu làm bài.
- */
 exports.loadExamForStudent = functions.https.onCall(async (data, context) => {
     const { teacherAlias, examCode } = data;
     if (!teacherAlias || !examCode) throw new functions.https.HttpsError("invalid-argument", "Mã giáo viên và Mã đề là bắt buộc.");
@@ -293,17 +290,21 @@ exports.loadExamForStudent = functions.https.onCall(async (data, context) => {
     
     const examData = examSnapshot.docs[0].data();
     
+    // Trả về tất cả các trường cần thiết cho cả hai luồng
     return {
         examType: examData.examType || 'TEXT',
-        content: examData.content || '', 
         timeLimit: examData.timeLimit || 90,
-        keysStr: examData.keys || [],
-        coresStr: examData.cores || [],
+        keys: examData.keys || [],
+        cores: examData.cores || [],
         examPdfUrl: examData.examPdfUrl || null,
         solutionPdfUrl: examData.solutionPdfUrl || null,
+        // Dữ liệu cho luồng cũ
+        content: examData.content || '', 
+        // Dữ liệu cho luồng mới
+        contentStoragePath: examData.contentStoragePath || null,
+        storageVersion: examData.storageVersion || 1, 
     };
 });
-
 /**
  * Nhận bài làm của học sinh, chấm điểm và lưu vào CSDL.
  */
@@ -768,3 +769,114 @@ exports.deletePdfExam = functions.https.onCall(async (data, context) => {
     await examRef.delete();
     return { success: true, message: "Đã xóa đề thi PDF." };
 });
+
+// thêm chức năng tận dụng 5G
+// =====================================================================
+// ==     CÁC HÀM MỚI - DÀNH RIÊNG CHO LUỒNG LƯU TRỮ TRÊN STORAGE    ==
+// =====================================================================
+
+// Đảm bảo bạn có các dòng này ở đầu file
+const { getStorage } = require("firebase-admin/storage");
+const storage = getStorage();
+
+/**
+ * [MỚI] Thêm đề thi TEXT và lưu nội dung vào Firebase Storage.
+ */
+exports.addExamWithStorage = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần xác thực.");
+    const { uid } = context.auth.token;
+    const { examData } = data;
+    if (!examData || !examData.examCode || !examData.keys || !examData.content) {
+        throw new functions.https.HttpsError("invalid-argument", "Thiếu dữ liệu (Mã đề, Đáp án, Nội dung).");
+    }
+
+    // 1. Upload nội dung lên Storage
+    const fileName = `exam_content/${uid}/${examData.examCode.trim()}_${Date.now()}.txt`;
+    const file = storage.bucket().file(fileName);
+    await file.save(examData.content, { contentType: 'text/plain; charset=utf-8' });
+
+    // 2. Chuẩn bị dữ liệu để lưu vào Firestore
+    const newExam = {
+        teacherId: uid,
+        examType: 'TEXT',
+        examCode: String(examData.examCode).trim(),
+        timeLimit: parseInt(examData.timeLimit, 10) || 90,
+        keys: String(examData.keys).split("|").map(k => k.trim()),
+        cores: String(examData.cores || "").split("|").map(c => parseFloat(c.trim()) || 0.2),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        // Lưu đường dẫn file thay vì nội dung
+        contentStoragePath: fileName, 
+        // Đánh dấu đây là đề thi thế hệ mới
+        storageVersion: 2 
+    };
+
+    // 3. Lưu document vào Firestore
+    await db.collection("exams").add(newExam);
+    return { success: true, message: "Đã thêm đề thi và lưu nội dung lên Storage thành công!" };
+});
+
+/**
+ * [MỚI] Cập nhật đề thi TEXT có nội dung trên Firebase Storage.
+ */
+exports.updateExamWithStorage = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần xác thực.");
+    const { examId, examData } = data;
+    if (!examId || !examData) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID hoặc dữ liệu.");
+
+    const examRef = db.collection("exams").doc(examId);
+    const doc = await examRef.get();
+    if (!doc.exists || doc.data().teacherId !== context.auth.uid) {
+        throw new functions.https.HttpsError("permission-denied", "Không có quyền sửa đề thi này.");
+    }
+    const oldExamData = doc.data();
+
+    // 1. Xóa file content cũ trên Storage nếu có
+    if (oldExamData.contentStoragePath) {
+        try {
+            await storage.bucket().file(oldExamData.contentStoragePath).delete();
+        } catch (e) {
+            console.warn(`Không thể xóa file cũ: ${oldExamData.contentStoragePath}`, e.message);
+        }
+    }
+    
+    // 2. Upload file mới
+    const fileName = `exam_content/${context.auth.uid}/${examData.examCode.trim()}_${Date.now()}.txt`;
+    const file = storage.bucket().file(fileName);
+    await file.save(examData.content, { contentType: 'text/plain; charset=utf-8' });
+
+    // 3. Chuẩn bị dữ liệu cập nhật
+    const updatedExam = {
+        examCode: String(examData.examCode).trim(),
+        timeLimit: parseInt(examData.timeLimit, 10) || 90,
+        keys: String(examData.keys).split("|").map(k => k.trim()),
+        cores: String(examData.cores || "").split("|").map(c => parseFloat(c.trim()) || 0.2),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        contentStoragePath: fileName,
+        storageVersion: 2,
+        content: admin.firestore.FieldValue.delete(), // Xóa trường content cũ nếu còn tồn tại
+    };
+
+    // 4. Cập nhật Firestore
+    await examRef.update(updatedExam);
+    return { success: true, message: "Đã cập nhật đề thi trên Storage thành công!" };
+});
+
+/**
+ * [MỚI] Hàm này sẽ thay thế loadExamForStudent cho các đề thi trên Storage.
+ * Tuy nhiên, để đơn giản, chúng ta sẽ tích hợp logic này vào hàm startExam ở client.
+ * Hàm này chỉ để tham khảo, hàm loadExamForStudent cũ vẫn được giữ lại.
+ */
+exports.getContentUrl = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần xác thực.");
+    const { path } = data;
+    if (!path) throw new functions.https.HttpsError("invalid-argument", "Thiếu đường dẫn file.");
+
+    const file = storage.bucket().file(path);
+    const [downloadURL] = await file.getSignedUrl({
+        action: 'read',
+        expires: Date.now() + 15 * 60 * 1000, // URL có hiệu lực 15 phút
+    });
+    return { contentUrl: downloadURL };
+});
+
+
