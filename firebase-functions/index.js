@@ -880,3 +880,121 @@ exports.getContentUrl = functions.https.onCall(async (data, context) => {
 });
 
 
+// File: functions/index.js
+
+// ... (toàn bộ code cũ của bạn giữ nguyên) ...
+
+// ==============================================================
+// ==  [NÂNG CẤP] HÀM KIỂM TRA QUYỀN TRUY CẬP VÀ THỜI GIAN DÙNG THỬ  ==
+// ==============================================================
+exports.checkTeacherAccess = functions.https.onCall(async (data, context) => {
+    // Đảm bảo chỉ người dùng đã đăng nhập mới gọi được hàm này
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+    }
+
+    const userRef = db.collection("users").doc(context.auth.uid);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Không tìm thấy hồ sơ người dùng.");
+    }
+
+    const userData = userDoc.data();
+    const trialEndDate = userData.trialEndDate; // Đây là một Timestamp object từ Firestore
+
+    // Nếu không có thông tin ngày hết hạn, coi như đã hết hạn
+    if (!trialEndDate) {
+        return { hasAccess: false, daysRemaining: 0 };
+    }
+
+    const trialEndDateMillis = trialEndDate.toMillis();
+    const nowMillis = Date.now();
+    
+    // Tính số ngày còn lại (làm tròn lên)
+    const daysRemaining = Math.max(0, Math.ceil((trialEndDateMillis - nowMillis) / (1000 * 60 * 60 * 24)));
+
+    return {
+        hasAccess: nowMillis < trialEndDateMillis, // True nếu hôm nay < ngày hết hạn
+        daysRemaining: daysRemaining
+    };
+});
+
+
+
+
+
+
+
+// File: functions/index.js
+
+// ... (các hàm cũ của bạn như onTeacherSignIn, addPdfExam, submitExam...) ...
+
+// ==============================================================
+// == [MỚI] HÀM CHO ADMIN DASHBOARD                         ==
+// ==============================================================
+
+/**
+ * [ADMIN FUNCTION] Lấy danh sách người dùng (giáo viên).
+ * Chỉ cho phép truy cập bởi một tài khoản admin cụ thể.
+ */
+exports.adminGetUsers = functions.https.onCall(async (data, context) => {
+    // === BẢO MẬT: CHỈ CHO PHÉP ADMIN CỤ THỂ TRUY CẬP ===
+    // Thay 'YOUR_ADMIN_EMAIL@gmail.com' bằng email tài khoản Google của bạn (admin)
+    const ADMIN_EMAIL = 'nguyensangnhc@gmail.com'; 
+    if (!context.auth || context.auth.token.email !== ADMIN_EMAIL) {
+        throw new functions.https.HttpsError("permission-denied", "Bạn không có quyền truy cập chức năng này.");
+    }
+
+    const usersSnapshot = await db.collection("users").orderBy("email").get();
+    const users = [];
+    usersSnapshot.forEach(doc => {
+        const userData = doc.data();
+        // Chuyển đổi Timestamp sang định dạng dễ đọc cho client
+        const trialEndDate = userData.trialEndDate ? userData.trialEndDate.toDate().toISOString() : null;
+        users.push({
+            id: doc.id, // UID của người dùng
+            email: userData.email,
+            name: userData.name,
+            teacherAlias: userData.teacherAlias,
+            trialEndDate: trialEndDate, // Dạng chuỗi ISO
+            createdAt: userData.createdAt ? userData.createdAt.toDate().toISOString() : null,
+            role: userData.role
+        });
+    });
+    return users;
+});
+
+/**
+ * [ADMIN FUNCTION] Cập nhật ngày hết hạn dùng thử cho một người dùng.
+ * Chỉ cho phép truy cập bởi một tài khoản admin cụ thể.
+ */
+exports.adminUpdateUserTrialDate = functions.https.onCall(async (data, context) => {
+    // === BẢO MẬT: CHỈ CHO PHÉP ADMIN CỤ THỂ TRUY CẬP ===
+    const ADMIN_EMAIL = 'nguyensangnhc@gmail.com'; // Thay bằng email của bạn
+    if (!context.auth || context.auth.token.email !== ADMIN_EMAIL) {
+        throw new functions.https.HttpsError("permission-denied", "Bạn không có quyền thực hiện chức năng này.");
+    }
+
+    const { userId, newTrialEndDateISO } = data; // newTrialEndDateISO là chuỗi ISO date
+    if (!userId || !newTrialEndDateISO) {
+        throw new functions.https.HttpsError("invalid-argument", "Thiếu User ID hoặc Ngày hết hạn mới.");
+    }
+
+    try {
+        const newDate = new Date(newTrialEndDateISO);
+        if (isNaN(newDate.getTime())) { // Kiểm tra ngày có hợp lệ không
+            throw new functions.https.HttpsError("invalid-argument", "Ngày hết hạn không hợp lệ.");
+        }
+        const newTimestamp = admin.firestore.Timestamp.fromDate(newDate);
+
+        await db.collection("users").doc(userId).update({
+            trialEndDate: newTimestamp,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp() // Cập nhật thời gian sửa đổi
+        });
+        return { success: true, message: "Đã cập nhật ngày hết hạn thành công!" };
+    } catch (error) {
+        console.error("Lỗi cập nhật ngày hết hạn:", error);
+        throw new functions.https.HttpsError("internal", `Không thể cập nhật ngày hết hạn: ${error.message}`);
+    }
+});

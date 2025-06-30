@@ -1,0 +1,237 @@
+/* File: css/admin.css */
+
+:root {
+    --primary-color: #007bff;
+    --primary-color-dark: #0056b3;
+    --secondary-color: #6c757d;
+    --danger-color: #dc3545;
+    --success-color: #28a745;
+    --background-color: #f4f7f9;
+    --surface-color: #ffffff;
+    --text-dark: #212529;
+    --text-medium: #495057;
+    --text-light: #6c757d;
+    --border-color: #dee2e6;
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --font-family: 'Be Vietnam Pro', sans-serif;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--background-color);
+    color: var(--text-dark);
+    line-height: 1.6;
+    margin: 0;
+}
+
+.admin-dashboard-container {
+    max-width: 1200px;
+    margin: 30px auto;
+    background-color: var(--surface-color);
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.admin-header {
+    background: var(--primary-color);
+    color: white;
+    padding: 20px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: var(--shadow);
+}
+.admin-header h1 {
+    font-size: 1.8rem;
+    margin: 0;
+}
+.admin-header .user-info {
+    font-size: 0.95rem;
+}
+.admin-header .user-info strong {
+    font-weight: 600;
+}
+.btn-logout {
+    color: white;
+    text-decoration: none;
+    margin-left: 15px;
+    font-size: 1.1rem;
+    transition: color 0.2s;
+}
+.btn-logout:hover {
+    color: var(--danger-color);
+}
+
+.admin-main-content {
+    padding: 30px;
+}
+
+.admin-section {
+    background-color: var(--surface-color);
+    padding: 25px 30px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    margin-bottom: 30px;
+    border: 1px solid var(--border-color);
+}
+.admin-section h2 {
+    font-size: 1.5rem;
+    color: var(--primary-color-dark);
+    margin-top: 0;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+.admin-section h2 i {
+    margin-right: 10px;
+    color: var(--primary-color);
+}
+
+/* Filter Controls */
+.filter-controls {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    align-items: center;
+}
+.filter-controls input[type="text"],
+.filter-controls select {
+    flex-grow: 1;
+    padding: 10px 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+}
+.filter-controls button {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+.btn-primary { background-color: var(--primary-color); color: white; }
+.btn-primary:hover { background-color: var(--primary-color-dark); transform: translateY(-2px); }
+
+
+/* User Table */
+.user-table-container {
+    overflow-x: auto; /* Cho phép cuộn ngang nếu bảng quá rộng */
+}
+.user-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: var(--surface-color);
+}
+.user-table th, .user-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+}
+.user-table th {
+    background-color: var(--background-color);
+    color: var(--text-medium);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+}
+.user-table tbody tr:hover {
+    background-color: #f0f8ff; /* Nhấn mạnh hàng khi di chuột */
+}
+.user-table .trial-status.active { color: var(--success-color); font-weight: 600; }
+.user-table .trial-status.expired { color: var(--danger-color); font-weight: 600; }
+.user-table .date-input {
+    width: 140px; /* Chiều rộng cố định cho date picker */
+    padding: 8px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+.user-table .save-btn {
+    background-color: var(--success-color);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.user-table .save-btn:hover { background-color: #218838; }
+
+.loading-text {
+    text-align: center;
+    color: var(--text-light);
+    padding: 50px;
+}
+
+/* Loading Overlay (giữ nguyên hoặc tùy chỉnh theo style của bạn) */
+.loading-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(255, 255, 255, 0.9);
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    z-index: 9999;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.spinner {
+    width: 60px; height: 60px;
+    border: 6px solid rgba(0, 123, 255, 0.2);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+.loading-overlay p {
+    margin-top: 15px;
+    font-weight: 500;
+    color: var(--primary-color);
+    font-size: 1.1rem;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+
+/* Footer */
+.admin-footer {
+    text-align: center;
+    padding: 20px;
+    margin-top: 30px;
+    color: var(--text-light);
+    font-size: 0.9rem;
+    border-top: 1px solid var(--border-color);
+}
+.admin-footer a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+.admin-footer a:hover {
+    text-decoration: underline;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .admin-dashboard-container {
+        margin: 15px;
+        border-radius: 10px;
+    }
+    .admin-header, .admin-main-content {
+        padding: 15px;
+    }
+    .admin-header h1 {
+        font-size: 1.5rem;
+    }
+    .filter-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .filter-controls input, .filter-controls select, .filter-controls button {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    .user-table th, .user-table td {
+        padding: 8px 10px;
+        font-size: 0.85rem;
+    }
+    .user-table .date-input {
+        width: 120px;
+    }
+}

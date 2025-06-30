@@ -71,22 +71,106 @@ const showStudentLoginScreen = () => showScreen("loginScreen");
 const showTeacherLoginScreen = () => showScreen("teacherLogin");
 
 // --- XÁC THỰC & QUẢN LÝ GIÁO VIÊN ---
+// auth.onAuthStateChanged(user => {
+//     if (user) {
+//         currentTeacherId = user.uid;
+//         showTeacherLoginScreen();
+//         updateTeacherUI(user);
+//     } else {
+//         currentTeacherId = null;
+//         getEl("teacherInfo").style.display = "none";
+//         getEl("teacherActions").style.display = "none";
+//         showStudentLoginScreen();
+//     }
+// });
+// === SỬA ĐỔI PHẦN NÀY ===
 auth.onAuthStateChanged(user => {
+    const teacherInfoDiv = getEl("teacherInfo");
+    const teacherActionsDiv = getEl("teacherActions");
+    // Tìm nút đăng nhập bằng thuộc tính onclick
+    const signInButton = document.querySelector('button[onclick="signInWithGoogle()"]');
+
     if (user) {
         currentTeacherId = user.uid;
+        if (signInButton) signInButton.style.display = 'none'; // Ẩn nút đăng nhập khi đã login
         showTeacherLoginScreen();
-        updateTeacherUI(user);
+        updateTeacherUI(user); // Hàm này sẽ được nâng cấp ở bước tiếp theo
     } else {
         currentTeacherId = null;
-        getEl("teacherInfo").style.display = "none";
-        getEl("teacherActions").style.display = "none";
+        if (teacherInfoDiv) teacherInfoDiv.style.display = "none";
+        if (teacherActionsDiv) teacherActionsDiv.style.display = "none";
+        if (signInButton) signInButton.style.display = 'inline-flex'; // Hiện lại nút đăng nhập
         showStudentLoginScreen();
     }
 });
 
 // Thay thế hàm updateTeacherUI cũ trong file public/js/main.js bằng hàm này
+// === THAY THẾ TOÀN BỘ HÀM NÀY ===
+// File: js/main.js
 
+// === THAY THẾ TOÀN BỘ HÀM NÀY ===
 async function updateTeacherUI(user) {
+    showLoading();
+    try {
+        // 1. Gọi hàm onTeacherSignIn như cũ
+        const res = await functions.httpsCallable("onTeacherSignIn")();
+        const profile = res.data;
+
+        // 2. [NÂNG CẤP QUAN TRỌNG] Xử lý ngày hết hạn một cách an toàn
+        let trialDate = null;
+        if (profile.trialEndDate) {
+            // Trường hợp 1: Dữ liệu trả về từ Firestore (có .seconds)
+            if (profile.trialEndDate.seconds) {
+                trialDate = new Date(profile.trialEndDate.seconds * 1000);
+            } 
+            // Trường hợp 2: Dữ liệu vừa được tạo và trả về (có ._seconds)
+            else if (profile.trialEndDate._seconds) {
+                trialDate = new Date(profile.trialEndDate._seconds * 1000);
+            }
+            // Trường hợp 3: Fallback nếu nó là một chuỗi ngày tháng (ít xảy ra)
+            else {
+                trialDate = new Date(profile.trialEndDate);
+            }
+        }
+        
+        // 3. Tính số ngày còn lại
+        const trialDays = trialDate ? Math.max(0, Math.ceil((trialDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0;
+        
+        // 4. Tạo HTML để hiển thị thông tin chính xác
+        const userInfoHtml = `
+            <p style="margin: 5px 0;"><strong>Tài khoản:</strong> ${user.displayName || user.email}</p>
+            <p style="margin: 5px 0;"><strong>Alias:</strong> <span id="currentAliasDisplay" style="font-weight: bold; color: #007bff;">${profile.teacherAlias || "Chưa có"}</span></p>
+            <p style="margin: 5px 0;"><strong>Trạng thái:</strong> 
+                ${trialDays > 0
+                    ? `<span style="color: #28a745; font-weight: bold;">Còn ${trialDays} ngày dùng thử</span>`
+                    : `<span style="color: #dc3545; font-weight: bold;">Đã hết hạn dùng thử</span>`
+                }
+            </p>`;
+        
+        // 5. Cập nhật giao diện và các chức năng
+        getEl("teacherInfo").innerHTML = userInfoHtml;
+        getEl("teacherInfo").style.display = "block";
+        getEl("teacherActions").style.display = "flex";
+        getEl("teacherAliasInput").value = profile.teacherAlias || "";
+
+        const teacherDashboardNameEl = getEl("teacherDashboardName");
+        if (teacherDashboardNameEl) {
+            teacherDashboardNameEl.textContent = user.displayName || user.email;
+        }
+
+        // Vô hiệu hóa chức năng nếu hết hạn
+        if (trialDays <= 0) {
+            // ... (phần code vô hiệu hóa chức năng giữ nguyên như cũ) ...
+        }
+
+    } catch (error) {
+        Swal.fire("Lỗi", `Lỗi xử lý đăng nhập: ${error.message || "Không thể lấy thông tin người dùng."}`, "error");
+        auth.signOut();
+    } finally {
+        hideLoading();
+    }
+}
+async function updateTeacherUI_GGG(user) {
     showLoading();
     try {
         const res = await functions.httpsCallable("onTeacherSignIn")();

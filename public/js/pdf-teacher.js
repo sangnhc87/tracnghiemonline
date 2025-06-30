@@ -19,17 +19,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const solutionPdfUrlInput = getEl('solutionPdfUrl');
 
     // --- XÁC THỰC ---
-    auth.onAuthStateChanged(user => {
-        if (user) {
-            currentTeacherId = user.uid;
-            if (teacherNameEl) teacherNameEl.textContent = user.displayName || user.email;
-            loadPdfExams();
-        } else {
-            Swal.fire("Chưa đăng nhập", "Vui lòng đăng nhập để truy cập trang này.", "warning")
-               .then(() => window.location.href = '/');
-        }
-    });
-
+    // auth.onAuthStateChanged(user => {
+    //     if (user) {
+    //         currentTeacherId = user.uid;
+    //         if (teacherNameEl) teacherNameEl.textContent = user.displayName || user.email;
+    //         loadPdfExams();
+    //     } else {
+    //         Swal.fire("Chưa đăng nhập", "Vui lòng đăng nhập để truy cập trang này.", "warning")
+    //            .then(() => window.location.href = '/');
+    //     }
+    // });
+// === SỬA ĐỔI PHẦN NÀY trong pdf-teacher.js ===
+auth.onAuthStateChanged(user => {
+    if (user) {
+        currentTeacherId = user.uid;
+        if (teacherNameEl) teacherNameEl.textContent = user.displayName || user.email;
+        // Thay vì gọi loadPdfExams() ngay, hãy gọi hàm kiểm tra quyền
+        checkAccessAndProceed(); 
+    } else {
+        Swal.fire("Chưa đăng nhập", "Vui lòng đăng nhập để truy cập trang này.", "warning")
+           .then(() => window.location.href = '/');
+    }
+});
     // --- GÁN SỰ KIỆN ---
     if (pdfExamForm) {
         pdfExamForm.addEventListener('submit', (e) => {
@@ -44,7 +55,38 @@ document.addEventListener('DOMContentLoaded', () => {
         pdfExamForm.reset();
         examIdInput.value = '';
     };
+// === THÊM HÀM MỚI NÀY vào pdf-teacher.js ===
+async function checkAccessAndProceed() {
+    showLoading(); // Bạn có thể thêm hàm showLoading/hideLoading vào file này nếu chưa có
+    try {
+        const checkAccessCallable = functions.httpsCallable('checkTeacherAccess');
+        const result = await checkAccessCallable();
+        const accessInfo = result.data;
 
+        if (accessInfo.hasAccess) {
+            // Nếu được phép, chạy các hàm như bình thường
+            loadPdfExams();
+        } else {
+            // Nếu hết hạn, hiển thị thông báo và vô hiệu hóa form
+            Swal.fire({
+                icon: 'error',
+                title: 'Tài khoản đã hết hạn',
+                text: 'Bạn không thể thêm, sửa, hoặc xóa đề thi. Vui lòng liên hệ quản trị viên.',
+                allowOutsideClick: false
+            });
+            // Vô hiệu hóa form và các nút
+            document.querySelectorAll('#pdfExamForm input, #pdfExamForm button, .list-item-actions button').forEach(el => {
+                el.disabled = true;
+                el.style.opacity = 0.5;
+                el.style.cursor = 'not-allowed';
+            });
+        }
+    } catch (error) {
+        Swal.fire('Lỗi nghiêm trọng', `Không thể kiểm tra quyền truy cập: ${error.message}`, 'error');
+    } finally {
+        hideLoading();
+    }
+}
     async function GGGhandlePdfExamFormSubmit() {
         const examId = examIdInput.value;
         const examCode = examCodeInput.value.trim();

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Quản lý Giáo viên</title>
+
+    <!-- Fonts, Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    
+    <!-- Thư viện bên thứ ba (SweetAlert2 và date picker) -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+    <!-- CSS tùy chỉnh cho Admin Dashboard -->
+    <link rel="stylesheet" href="css/admin.css">
+
+    <!-- Firebase SDKs -->
+    <script defer src="/__/firebase/9.10.0/firebase-app-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-auth-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-firestore-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-functions-compat.js"></script>
+    <script defer src="/__/firebase/init.js"></script>
+</head>
+<body>
+    <!-- Lớp phủ Loading -->
+    <div id="loading-overlay" class="loading-overlay" style="display:none;">
+        <div class="spinner"></div>
+        <p>Đang tải...</p>
+    </div>
+
+    <div id="app" class="admin-dashboard-container">
+        <header class="admin-header">
+            <h1><i class="fas fa-users-cog"></i> Admin Dashboard</h1>
+            <div class="user-info">
+                <span>Chào mừng, <strong id="adminName">...</strong>!</span>
+                <a href="#" id="adminSignOutBtn" class="btn-logout" title="Đăng xuất"><i class="fas fa-sign-out-alt"></i></a>
+            </div>
+        </header>
+
+        <main class="admin-main-content">
+            <section class="admin-section filter-section">
+                <h2><i class="fas fa-search"></i> Tìm kiếm và Lọc Giáo viên</h2>
+                <div class="filter-controls">
+                    <input type="text" id="userSearchInput" placeholder="Tìm theo email, tên, hoặc alias...">
+                    <select id="accessFilter">
+                        <option value="all">Tất cả</option>
+                        <option value="active">Đang hoạt động</option>
+                        <option value="expired">Đã hết hạn</option>
+                    </select>
+                    <button id="refreshUsersBtn" class="btn btn-primary"><i class="fas fa-sync-alt"></i> Tải lại</button>
+                </div>
+            </section>
+
+            <section class="admin-section user-list-section">
+                <h2><i class="fas fa-chalkboard-teacher"></i> Danh sách Giáo viên</h2>
+                <div id="userList" class="user-table-container">
+                    <!-- Bảng danh sách người dùng sẽ được JS chèn vào đây -->
+                    <p class="loading-text">Đang tải danh sách giáo viên...</p>
+                </div>
+            </section>
+        </main>
+
+        <footer class="admin-footer">
+            <a href="/"><i class="fas fa-home"></i> Về trang chủ</a>
+        </footer>
+    </div>
+    
+    <!-- Script cho Admin Dashboard -->
+    <script defer src="js/admin.js"></script>
+</body>
+</html>
