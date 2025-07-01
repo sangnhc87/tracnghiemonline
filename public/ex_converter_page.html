@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Công Cụ Chuyển Đổi Định Dạng Đề Thi</title>
+
+    <!-- Fonts, Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    
+    <!-- Thư viện SweetAlert2 cho thông báo -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- KaTeX cho hiển thị công thức toán học trong phần review -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+    <!-- CSS riêng cho trang chuyển đổi -->
+    <link rel="stylesheet" href="css/ex_converter_page.css">
+    
+    <!-- Các CSS cần thiết cho việc REVIEW (lấy từ hệ thống thi gốc) -->
+    <link rel="stylesheet" href="css/quiz-parser.css"> 
+    <link rel="stylesheet" href="css/style.css"> 
+
+    <!-- Script quiz-parser.js để hiển thị review -->
+    <script src="js/quiz-parser.js"></script> 
+    <!-- Script chứa hàm chuyển đổi chính -->
+    <script src="js/ex-converter.js"></script> 
+</head>
+<body>
+    <div id="app-converter">
+        <header class="converter-header">
+            <h1><i class="fas fa-exchange-alt"></i> Công Cụ Chuyển Đổi Định Dạng Đề Thi</h1>
+            <p>Chuyển đổi nội dung đề thi từ định dạng <code>\begin{ex}...\end{ex}</code> sang định dạng chuẩn.</p>
+        </header>
+
+        <main class="converter-main-content">
+            <!-- Cột Input -->
+            <div class="converter-panel input-panel">
+                <h2><i class="fas fa-file-import"></i> Định dạng `\begin{ex}` (Input)</h2>
+                <textarea id="converter-input-area" class="converter-textarea" placeholder="Dán toàn bộ nội dung đề thi dạng \begin{ex}...\end{ex} vào đây...
+Ví dụ:
+\begin{ex}
+  Câu 1: Nội dung câu hỏi.
+  \choice
+  {NỘI DUNG A}
+  {NỘI DUNG B}
+  \loigiai{
+    Lời giải.
+  }
+\end{ex}"></textarea>
+                <div class="panel-actions">
+                    <button id="load-file-btn" class="btn btn-secondary"><i class="fas fa-folder-open"></i> Tải file .tex</button>
+                    <button id="convert-btn" class="btn btn-primary"><i class="fas fa-sync-alt"></i> Chuyển đổi</button>
+                    <button id="clear-input-btn" class="btn btn-secondary"><i class="fas fa-eraser"></i> Xóa Input</button>
+                </div>
+                <input type="file" id="file-input-hidden" accept=".tex,.txt" style="display: none;"> <!-- Input file ẩn -->
+            </div>
+
+            <!-- Cột Output và Review -->
+            <div class="converter-panel output-panel">
+                <h2><i class="fas fa-file-export"></i> Định dạng Chuẩn (Output)</h2>
+                <textarea id="converter-output-area" class="converter-textarea" readonly placeholder="Kết quả chuyển đổi sẽ xuất hiện ở đây..."></textarea>
+                <div class="panel-actions">
+                    <button id="copy-output-btn" class="btn btn-success"><i class="fas fa-copy"></i> Sao chép Output</button>
+                    <button id="clear-output-btn" class="btn btn-secondary"><i class="fas fa-eraser"></i> Xóa Output</button>
+                </div>
+                
+                <!-- Khu vực hiển thị Keys và Cores -->
+                <div class="keys-cores-display">
+                    <h3>Đáp án và Điểm (Để copy vào form tạo đề)</h3>
+                    <div class="keys-cores-row">
+                        <label for="extracted-keys">Keys:</label>
+                        <input type="text" id="extracted-keys" readonly placeholder="A|B|C|..." />
+                        <button class="btn btn-copy" onclick="copyToClipboard(document.getElementById('extracted-keys'))" title="Sao chép Keys"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <div class="keys-cores-row">
+                        <label for="extracted-cores">Cores:</label>
+                        <input type="text" id="extracted-cores" readonly placeholder="0.2|0.2|..." />
+                        <button class="btn btn-copy" onclick="copyToClipboard(document.getElementById('extracted-cores'))" title="Sao chép Cores"><i class="fas fa-copy"></i></button>
+                    </div>
+                </div>
+
+                <!-- Khu vực Review -->
+                <h3 class="review-title"><i class="fas fa-eye"></i> Xem trước Output</h3>
+                <div id="review-display-area" class="review-display-area">
+                    <p style="text-align: center; color: #888; padding: 20px;">Nội dung xem trước sẽ hiển thị ở đây.</p>
+                </div>
+            </div>
+        </main>
+
+        <footer class="converter-footer">
+            <p>Sử dụng nội dung đã sao chép từ "Output" để dán vào khung soạn thảo chính hoặc form tạo đề.</p>
+        </footer>
+    </div>
+    <!-- MỚI: Script chứa các tiện ích xử lý chuỗi LaTeX -->
+    <script src="js/latex-string-utils.js"></script> 
+
+    <!-- Script riêng cho trang này -->
+    <script defer src="js/ex_converter_page.js"></script>
+</body>
+</html>

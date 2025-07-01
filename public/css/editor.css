@@ -1,0 +1,347 @@
+/* File: css/editor.css */
+
+/* Variables (có thể dùng lại từ style.css) */
+:root {
+    --primary-color: #007bff;
+    --primary-color-dark: #0056b3;
+    --secondary-color: #6c757d;
+    --secondary-color-dark: #5a6268;
+    --success-color: #28a745;
+    --success-color-dark: #218838;
+    --danger-color: #dc3545;
+    --background-color: #f4f7f9; /* Nền xám nhẹ */
+    --surface-color: #ffffff; /* Nền cho các card, panel */
+    --text-dark: #212529;
+    --text-medium: #495057;
+    --text-light: #6c757d;
+    --border-color: #dee2e6;
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --font-family: 'Be Vietnam Pro', sans-serif;
+    
+    /* Màu đặc trưng cho review (từ quiz-parser.css) */
+    --gas-question-number-color: #e44d26; 
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--background-color);
+    color: var(--text-dark);
+    line-height: 1.6;
+    margin: 0;
+    display: flex; /* Dùng flexbox cho bố cục toàn trang */
+    min-height: 100vh; /* Chiếm toàn bộ chiều cao màn hình */
+    overflow: hidden; /* Ngăn scrollbar không mong muốn */
+}
+
+#app-editor {
+    display: flex;
+    flex-direction: column; /* Header, Main, Footer xếp dọc */
+    width: 100%;
+    margin: 0 auto; /* Căn giữa */
+    box-shadow: var(--shadow);
+    background-color: var(--surface-color);
+    height: 100vh; /* Chiếm toàn bộ chiều cao trình duyệt */
+}
+
+/* Header */
+.editor-header {
+    background: var(--primary-color);
+    color: white;
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
+    flex-wrap: wrap; /* Cho phép wrap trên màn hình nhỏ */
+    gap: 15px; /* Khoảng cách giữa các nhóm */
+}
+.editor-header h1 {
+    font-size: 1.6rem;
+    margin: 0;
+    min-width: 150px; 
+}
+.editor-header h1 i {
+    margin-right: 10px;
+}
+
+/* Toolbar (Chứa các nút hỗ trợ soạn thảo) */
+.toolbar {
+    display: flex;
+    gap: 8px;
+    background-color: rgba(255, 255, 255, 0.15);
+    padding: 8px 15px;
+    border-radius: 8px;
+    flex-wrap: wrap;
+}
+.toolbar button {
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.toolbar button:hover {
+    background-color: rgba(255, 255, 255, 0.25);
+    border-color: white;
+}
+.toolbar button i {
+    font-size: 1.1rem;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+}
+.btn { /* Style chung cho các nút */
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+.btn-primary { background-color: var(--primary-color); color: white; }
+.btn-primary:hover { background-color: var(--primary-color-dark); transform: translateY(-2px); }
+.btn-secondary { background-color: var(--secondary-color); color: white; }
+.btn-secondary:hover { background-color: var(--secondary-color-dark); transform: translateY(-2px); }
+
+
+/* Main Content (2 cột chính) */
+.editor-main {
+    display: flex;
+    flex-grow: 1; /* Chiếm hết chiều cao còn lại */
+    overflow: hidden; /* Quan trọng: Ngăn thanh cuộn chung cho main */
+}
+
+.editor-panel {
+    flex: 1; /* Mỗi panel chiếm 1 nửa */
+    padding: 20px;
+    overflow-y: auto; /* Tạo thanh cuộn riêng cho mỗi panel */
+    border-right: 1px solid var(--border-color); /* Đường phân cách */
+}
+.editor-panel:last-child {
+    border-right: none;
+}
+
+/* Cột soạn thảo */
+.input-panel {
+    background-color: var(--background-color); 
+}
+.raw-content-editor {
+    width: 100%;
+    min-height: calc(100vh - 150px); /* Chiều cao = viewport - header - footer - padding */
+    padding: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: monospace; /* Font monospace cho code/text thô */
+    line-height: 1.5;
+    resize: vertical; /* Cho phép kéo dãn theo chiều dọc */
+    background-color: var(--surface-color);
+    color: var(--text-dark);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); /* Bóng đổ vào trong */
+    transition: all 0.2s;
+}
+.raw-content-editor:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+}
+
+
+/* Cột Review */
+.review-panel {
+    background-color: var(--surface-color); 
+}
+.review-panel h2 { /* Đã bỏ tiêu đề H2 trong HTML */
+    display: none; /* Ẩn đi để không hiển thị */
+}
+
+.review-display-area {
+    min-height: calc(100vh - 120px); /* Tối thiểu chiều cao còn lại của panel */
+    background-color: var(--background-color);
+    border: 1px dashed var(--border-color);
+    padding: 15px;
+    border-radius: 8px;
+    font-size: 1rem;
+    line-height: 1.7;
+    /* Kế thừa các style từ quiz-parser.css và style.css cho .question, .mc-option, v.v. */
+}
+
+/* Footer */
+.editor-footer {
+    background: var(--surface-color);
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.05);
+    flex-shrink: 0;
+}
+.editor-footer .footer-left strong {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+.editor-footer p.copy-hint {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-light);
+}
+.btn-success { background-color: var(--success-color); color: white; }
+.btn-success:hover { background-color: var(--success-color-dark); transform: translateY(-2px); }
+
+
+/* Responsive */
+@media (max-width: 992px) {
+    .editor-main {
+        flex-direction: column; /* Xếp cột chồng lên nhau */
+    }
+    .editor-panel {
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        min-height: 45vh; /* Mỗi panel chiếm ít nhất 45% chiều cao trên mobile */
+    }
+    .editor-panel:last-child {
+        border-bottom: none;
+    }
+    .editor-header .toolbar {
+        flex-wrap: wrap; 
+        width: 100%;
+        justify-content: center;
+    }
+    .header-actions {
+        width: 100%;
+        justify-content: center;
+    }
+    .editor-footer {
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+    }
+    .editor-footer .footer-left, .editor-footer .footer-right {
+        flex-direction: column;
+        gap: 10px;
+    }
+    .editor-footer p {
+        text-align: center;
+    }
+}
+@media (max-width: 576px) {
+    .editor-header, .editor-panel {
+        padding: 15px;
+    }
+    .toolbar button {
+        font-size: 0.8rem;
+        padding: 5px 8px;
+    }
+}
+
+/* File: css/editor.css */
+
+/* --- CONVERTER SECTION --- */
+.converter-section {
+    background-color: var(--surface-color);
+    padding: 30px;
+    margin: 30px auto;
+    border-radius: 15px;
+    box-shadow: var(--shadow);
+    max-width: 1200px;
+    width: 95%; /* Chiếm 95% chiều rộng */
+}
+.converter-header {
+    text-align: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+.converter-header h2 {
+    font-size: 1.6rem;
+    color: var(--primary-color-dark);
+    margin: 0 0 10px 0;
+}
+.converter-header h2 i {
+    margin-right: 10px;
+}
+.converter-header p {
+    font-size: 1rem;
+    color: var(--text-medium);
+}
+
+.converter-main {
+    display: flex;
+    gap: 20px;
+}
+.converter-panel {
+    flex: 1;
+    background-color: var(--background-color);
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+}
+.converter-panel h3 {
+    font-size: 1.2rem;
+    color: var(--text-dark);
+    margin-top: 0;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed var(--border-color);
+}
+.converter-textarea {
+    width: 100%;
+    min-height: 250px;
+    flex-grow: 1; /* Chiếm hết không gian còn lại */
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-family: monospace;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    resize: vertical;
+    background-color: var(--surface-color);
+    color: var(--text-dark);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+    margin-bottom: 15px;
+}
+.converter-textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+}
+
+.converter-panel .btn {
+    width: 100%; /* Nút chiếm toàn bộ chiều rộng panel */
+    margin-top: 5px; /* Khoảng cách giữa các nút */
+}
+.converter-panel .btn-primary { background-color: var(--primary-color); color: white; }
+.converter-panel .btn-primary:hover { background-color: var(--primary-color-dark); }
+.converter-panel .btn-secondary { background-color: var(--secondary-color); color: white; }
+.converter-panel .btn-secondary:hover { background-color: var(--secondary-color-dark); }
+.converter-panel .btn-success { background-color: var(--success-color); color: white; }
+.converter-panel .btn-success:hover { background-color: var(--success-color-dark); }
+
+
+/* Responsive cho Converter Section */
+@media (max-width: 768px) {
+    .converter-main {
+        flex-direction: column; /* Xếp chồng cột trên mobile */
+    }
+    .converter-section {
+        padding: 20px;
+        margin: 20px auto;
+        width: 95%;
+    }
+    .converter-panel {
+        padding: 10px;
+    }
+}

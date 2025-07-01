@@ -1,8 +1,6 @@
-// File: js/ex-converter.js (PHIÊN BẢN HOÀN THIỆN 100% - ĐÃ TÍCH HỢP LATEX STRING UTILS)
+// File: js/ex-converter.js (PHIÊN BẢN HOÀN THIỆN 100% - ĐÃ SỬA ĐIỂM CHOICE_TF & ĐÁNH DẤU SỬ DỤNG UTILS)
 
-// Đảm bảo latex-string-utils.js được tải trước file này
-// (trong HTML, script này phải nằm sau script của latex-string-utils.js)
-
+// Đảm bảo latex-string-utils.js được tải trước file này trong HTML!
 
 /**
  * Hàm hỗ trợ để tìm tất cả các cặp ngoặc nhọn độc lập (non-overlapping) trong một chuỗi.
@@ -235,8 +233,13 @@ function convertSingleExBlock(exBlock, questionNumber) {
         if (choicesText.trim() !== '') {
             try {
                 choiceContents = extractCurlyBraceContents(choicesText);
-            } catch (error) {
-                throw new Error(`Lỗi cú pháp ngoặc nhọn trong khối \\choice (hoặc \\choiceTF) của Câu ${questionNumber}: ${error.message}`);
+            }
+            // Không catch lỗi ở đây để nó được ném ra ngoài và hàm gọi (convertExToStandardFormat) xử lý
+            // catch (error) { throw new Error(`Lỗi cú pháp ngoặc nhọn trong khối \\choice (hoặc \\choiceTF) của Câu ${questionNumber}: ${error.message}`); }
+            catch (error) {
+                // Thay vì ném lại lỗi ngay lập tức, ta gắn thông báo lỗi vào convertedText
+                // để hàm convertExToStandardFormat có thể bắt và hiển thị
+                return { convertedText: `Lỗi chuyển đổi: ${error.message} (Câu ${questionNumber})`, key: '', core: '' };
             }
         }
         
@@ -258,8 +261,11 @@ function convertSingleExBlock(exBlock, questionNumber) {
     // Cuối cùng, phần còn lại của contentInsideEx chính là statement
     statement = contentInsideEx.trim(); 
     
-    // [MỚI]: Áp dụng các thay thế LaTeX chung cho statement
-    statement = LatexStringUtils.applyCommonLatexReplacements(statement);
+    // [ĐÁNH DẤU SỬ DỤNG LATEX_STRING_UTILS]: applyCommonLatexReplacements cho statement
+    if (typeof LatexStringUtils !== 'undefined' && LatexStringUtils.applyCommonLatexReplacements) {
+        statement = LatexStringUtils.applyCommonLatexReplacements(statement);
+    }
+
 
     // --- Bước 2: Xây dựng lại định dạng tiêu chuẩn ---
     let standardOutput = `Câu ${questionNumber}: ${statement}`;
@@ -270,9 +276,11 @@ function convertSingleExBlock(exBlock, questionNumber) {
             const label = isChoiceTF ? String.fromCharCode(97 + index) : String.fromCharCode(65 + index);
             const separator = isChoiceTF ? ')' : '.'; 
 
-            // [MỚI]: Áp dụng các thay thế LaTeX chung cho nội dung lựa chọn
             let cleanContent = content.trim().replace(/[\n\r]+/g, ' '); 
-            cleanContent = LatexStringUtils.applyCommonLatexReplacements(cleanContent);
+            // [ĐÁNH DẤU SỬ DỤNG LATEX_STRING_UTILS]: applyCommonLatexReplacements cho nội dung lựa chọn
+            if (typeof LatexStringUtils !== 'undefined' && LatexStringUtils.applyCommonLatexReplacements) {
+                cleanContent = LatexStringUtils.applyCommonLatexReplacements(cleanContent);
+            }
 
             const trueRegex = /\\True/i; 
             
@@ -302,11 +310,12 @@ function convertSingleExBlock(exBlock, questionNumber) {
     } else if (choiceCommandMatch && choiceContents.length > 0) { 
         if (isChoiceTF) { 
             const numMende = choiceContents.length; 
-            if (numMende === 1) extractedCore = '1';
-            else if (numMende === 2) extractedCore = '0.5'; 
-            else if (numMende === 3) extractedCore = '0.5'; 
-            else if (numMende === 4) extractedCore = '1'; 
-            else extractedCore = '0.1'; 
+            // [CẢI TIẾN LOGIC ĐIỂM CHO CHOICETF]: Điểm tổng cố định theo số mệnh đề
+            if (numMende === 1) extractedCore = '0.1,0.25,0.5,1';
+            else if (numMende === 2) extractedCore = '0.1,0.25,0.5,1'; 
+            else if (numMende === 3) extractedCore = '0.1,0.25,0.5,1'; 
+            else if (numMende === 4) extractedCore = '0.1,0.25,0.5,1'; 
+            else extractedCore = '0.1'; // Mặc định 0.1 cho các trường hợp khác
         } else { // Là \choice (MC)
             extractedCore = '0.5'; 
         }
@@ -316,8 +325,10 @@ function convertSingleExBlock(exBlock, questionNumber) {
 
     // Thêm lời giải vào cuối định dạng chuẩn
     if (loigiaiText) {
-        // [MỚI]: Áp dụng các thay thế LaTeX chung cho lời giải
-        loigiaiText = LatexStringUtils.applyCommonLatexReplacements(loigiaiText);
+        // [ĐÁNH DẤU SỬ DỤNG LATEX_STRING_UTILS]: applyCommonLatexReplacements cho lời giải
+        if (typeof LatexStringUtils !== 'undefined' && LatexStringUtils.applyCommonLatexReplacements) {
+            loigiaiText = LatexStringUtils.applyCommonLatexReplacements(loigiaiText);
+        }
         standardOutput += `\n\\begin{loigiai}\n${loigiaiText}\n\\end{loigiai}`;
     }
     
@@ -384,7 +395,8 @@ function convertExToStandardFormat(rawContent) {
         if (part && (part.trim().startsWith('\\begin{ex}') || part.trim().startsWith('\\begin{bt}'))) {
             const result = convertSingleExBlock(part, currentQuestionNumber);
             
-            if (typeof result.convertedText === 'string' && result.convertedText.startsWith('Lỗi chuyển đổi:')) {
+            // [ĐẶC BIỆT] Xử lý lỗi từ convertSingleExBlock: nếu nó trả về đối tượng lỗi, ném lỗi thật sự
+            if (result && typeof result.convertedText === 'string' && result.convertedText.startsWith('Lỗi chuyển đổi:')) {
                 throw new Error(result.convertedText); 
             }
 
@@ -395,9 +407,11 @@ function convertExToStandardFormat(rawContent) {
         }
     });
 
-    // [MỚI]: Xử lý định dạng số trong chuỗi keys trước khi trả về
     let finalKeys = allExtractedKeys.join('|');
-    finalKeys = LatexStringUtils.processKeyNumericFormat(finalKeys); // Gọi từ LatexStringUtils
+    // [ĐÁNH DẤU SỬ DỤNG LATEX_STRING_UTILS]: processKeyNumericFormat cho finalKeys
+    if (typeof LatexStringUtils !== 'undefined' && LatexStringUtils.processKeyNumericFormat) {
+        finalKeys = LatexStringUtils.processKeyNumericFormat(finalKeys); 
+    }
 
     return {
         compiledContent: finalCompiledBlocks.join('\n\n'),

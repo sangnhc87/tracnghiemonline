@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zenith Editor - Soạn Thảo Đề Thi</title>
+
+    <!-- Fonts, Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    
+    <!-- Thư viện bên thứ ba (SweetAlert2 và KaTeX cho review) -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU07EWHeAOgpuTO/lA+K/BIhfEpजगीU0T4goEBCYoWru/gGu4ydfrAN" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+
+    <!-- CSS riêng cho Editor -->
+    <link rel="stylesheet" href="css/editor.css">
+    
+    <!-- Các CSS cần thiết cho việc REVIEW (lấy từ hệ thống thi gốc) -->
+    <!-- Đảm bảo đây là những file CSS định nghĩa styles cho .question, .mc-option, .table-tf-container, v.v. -->
+    <link rel="stylesheet" href="css/quiz-parser.css"> 
+    <link rel="stylesheet" href="css/style.css"> <!-- Nếu style.css chứa các biến và styles chung cho question/mc-option -->
+    
+    <!-- Script quiz-parser.js để hiển thị review -->
+    <script src="js/quiz-parser.js"></script> 
+</head>
+<body>
+    <div id="app-editor">
+        <header class="editor-header">
+            <h1><i class="fas fa-pencil-alt"></i> Zenith Editor</h1>
+            <div class="toolbar" id="editor-toolbar">
+                <button title="Chèn LaTeX Inline ($...$)" onclick="insertTextToEditor('$','$', 'Nội dung LaTeX')"><i class="fas fa-superscript"></i></button>
+                <button title="Chèn LaTeX Block ($$...$$)" onclick="insertTextToEditor('$$','$$', 'Nội dung LaTeX')"><i class="fas fa-square-root-alt"></i></button>
+                <button title="Chèn Placeholder Hình ảnh 1" onclick="insertTextToEditor('sangnhc1/', '', 'ten_file_anh.png')"><i class="fas fa-image"></i>1</button>
+                <button title="Chèn Placeholder Hình ảnh 2" onclick="insertTextToEditor('sangnhc2/', '', 'ten_file_anh.png')"><i class="fas fa-image"></i>2</button>
+                <button title="Chèn Placeholder Hình ảnh 3" onclick="insertTextToEditor('sangnhc3/', '', 'ten_file_anh.png')"><i class="fas fa-image"></i>3</button>
+                <button title="Chèn Placeholder Hình ảnh 4" onclick="insertTextToEditor('sangnhc4/', '', 'ten_file_anh.png')"><i class="fas fa-image"></i>4</button>
+                <button title="Chèn Dấu tách câu hỏi" onclick="insertTextToEditor('\n\n##group-separator##\n\nCâu X: ', 'Nội dung câu hỏi', '')"><i class="fas fa-divide"></i> Câu</button>
+                <button title="Chèn Dấu tách lời giải" onclick="insertTextToEditor('\n##solution\n', '', 'Nội dung lời giải')"><i class="fas fa-lightbulb"></i> Lời giải</button>
+                <button title="Chèn Đáp án A" onclick="insertTextToEditor('\nA. ', '', 'Nội dung đáp án A')"><i class="fas fa-a"></i> A</button>
+                <button title="Chèn Đáp án B" onclick="insertTextToEditor('\nB. ', '', 'Nội dung đáp án B')"><i class="fas fa-b"></i> B</button>
+                <button title="Chèn Đáp án C" onclick="insertTextToEditor('\nC. ', '', 'Nội dung đáp án C')"><i class="fas fa-c"></i> C</button>
+                <button title="Chèn Đáp án D" onclick="insertTextToEditor('\nD. ', '', 'Nội dung đáp án D')"><i class="fas fa-d"></i> D</button>
+            </div>
+            <div class="header-actions">
+                <button id="clear-editor-btn" class="btn btn-secondary"><i class="fas fa-eraser"></i> Xóa tất cả</button>
+            </div>
+        </header>
+
+        <main class="editor-main">
+            <!-- Cột soạn thảo (chiếm 50%) -->
+            <div class="editor-panel input-panel">
+                <textarea id="raw-content-editor" class="raw-content-editor" placeholder="Soạn thảo đề thi tại đây...
+Ví dụ:
+Câu 1: Nội dung câu hỏi đầu tiên.
+A. Đáp án A
+B. Đáp án B
+C. Đáp án C
+D. Đáp án D
+##solution
+Lời giải câu 1
+
+##group-separator##
+
+Câu 2: Nội dung câu hỏi thứ hai có công thức LaTeX: $E=mc^2$
+A. Đáp án A
+B. Đáp án B
+C. hay
+D. TAT
+##options-layout=block
+##shuffle-options=true
+##solution
+Lời giải câu 2 có hình ảnh: sangnhc1/image_name.png
+"></textarea>
+            </div>
+
+            <!-- Cột Review (chiếm 50%) -->
+            <div class="editor-panel review-panel">
+                <!-- ĐÃ BỎ CHỮ "XEM TRƯỚC ĐỀ THI" -->
+                <div id="review-display-area" class="review-display-area">
+                    <p style="text-align: center; color: #888; padding: 20px;">Nội dung xem trước sẽ hiển thị ở đây khi bạn soạn thảo.</p>
+                </div>
+            </div>
+        </main>
+
+        <footer class="editor-footer">
+            <div class="footer-left">
+                Ký tự: <strong id="char-count">0</strong> | Dòng: <strong id="line-count">0</strong> | Câu hỏi: <strong id="question-count">0</strong>
+            </div>
+            <div class="footer-right">
+                <button id="copy-to-clipboard-btn" class="btn btn-success"><i class="fas fa-copy"></i> Sao chép nội dung đề</button>
+                <p class="copy-hint">Paste nội dung này vào ô "Nội dung đề thi" trong form Tạo đề.</p>
+            </div>
+        </footer>
+    </div>
+    
+    <!-- Script chính của Editor -->
+    <script defer src="js/editor.js"></script>
+</body>
+</html>

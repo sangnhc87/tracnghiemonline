@@ -1,0 +1,253 @@
+/* File: css/ex_converter_page.css */
+
+:root {
+    --primary-color: #007bff;
+    --primary-color-dark: #0056b3;
+    --secondary-color: #6c757d;
+    --secondary-color-dark: #5a6268;
+    --success-color: #28a745;
+    --success-color-dark: #218838;
+    --danger-color: #dc3545;
+    --background-color: #f4f7f9;
+    --surface-color: #ffffff;
+    --text-dark: #212529;
+    --text-medium: #495057;
+    --text-light: #6c757d;
+    --border-color: #dee2e6;
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --font-family: 'Be Vietnam Pro', sans-serif;
+
+    /* Màu đặc trưng cho review (từ quiz-parser.css) */
+    --gas-question-number-color: #e44d26; 
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--background-color);
+    color: var(--text-dark);
+    line-height: 1.6;
+    margin: 0;
+    display: flex;
+    min-height: 100vh;
+}
+
+#app-converter {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 1400px; /* Chiều rộng tối đa cho trang */
+    margin: 20px auto;
+    box-shadow: var(--shadow);
+    background-color: var(--surface-color);
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.converter-header {
+    background: var(--primary-color);
+    color: white;
+    padding: 20px 30px;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+.converter-header h1 {
+    font-size: 1.8rem;
+    margin: 0 0 10px 0;
+}
+.converter-header h1 i {
+    margin-right: 10px;
+}
+.converter-header p {
+    font-size: 1rem;
+    margin: 0;
+}
+
+.converter-main-content {
+    display: flex;
+    flex-grow: 1;
+    overflow: hidden;
+    padding: 20px;
+    gap: 20px;
+}
+
+.converter-panel {
+    flex: 1;
+    background-color: var(--background-color);
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+}
+.converter-panel h2 {
+    font-size: 1.4rem;
+    color: var(--primary-color-dark);
+    margin-top: 0;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed var(--border-color);
+}
+.converter-panel h2 i {
+    margin-right: 10px;
+}
+
+.converter-textarea {
+    width: 100%;
+    min-height: 400px; /* Chiều cao tối thiểu */
+    flex-grow: 1;
+    padding: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-family: monospace;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    resize: vertical;
+    background-color: var(--surface-color);
+    color: var(--text-dark);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+    margin-bottom: 15px;
+    transition: all 0.2s;
+}
+.converter-textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+}
+
+.panel-actions {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+.btn { /* Style chung cho các nút */
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+.btn-primary { background-color: var(--primary-color); color: white; }
+.btn-primary:hover { background-color: var(--primary-color-dark); transform: translateY(-2px); }
+.btn-secondary { background-color: var(--secondary-color); color: white; }
+.btn-secondary:hover { background-color: var(--secondary-color-dark); transform: translateY(-2px); }
+.btn-success { background-color: var(--success-color); color: white; }
+.btn-success:hover { background-color: var(--success-color-dark); transform: translateY(-2px); }
+
+/* Review section in Output panel */
+.output-panel .review-title {
+    font-size: 1.2rem;
+    color: var(--text-dark);
+    margin-top: 20px; /* Khoảng cách với textarea */
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed var(--border-color);
+}
+.output-panel .review-title i {
+    margin-right: 8px;
+    color: var(--primary-color);
+}
+
+.review-display-area {
+    min-height: 250px; /* Chiều cao tối thiểu cho review */
+    background-color: var(--background-color);
+    border: 1px dashed var(--border-color);
+    padding: 15px;
+    border-radius: 8px;
+    font-size: 1rem;
+    line-height: 1.7;
+    flex-grow: 1; /* Cho phép review chiếm hết không gian còn lại */
+    overflow-y: auto; /* Thêm thanh cuộn nếu nội dung dài */
+
+    /* Kế thừa các style từ quiz-parser.css và style.css cho .question, .mc-option, v.v. */
+}
+
+/* --- Keys/Cores Display Section --- */
+.keys-cores-display {
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 15px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+.keys-cores-display h3 {
+    font-size: 1.1rem;
+    color: var(--primary-color-dark);
+    margin-top: 0;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed var(--border-color);
+}
+.keys-cores-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.keys-cores-row label {
+    font-weight: 500;
+    color: var(--text-medium);
+    white-space: nowrap;
+    min-width: 50px; 
+}
+.keys-cores-row input[type="text"] {
+    flex-grow: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 0.9rem;
+    background-color: var(--surface-color);
+    color: var(--text-dark);
+    cursor: text; 
+}
+.keys-cores-row .btn-copy {
+    background-color: var(--secondary-color);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border: none;
+    transition: background-color 0.2s;
+    white-space: nowrap;
+}
+.keys-cores-row .btn-copy:hover {
+    background-color: var(--secondary-color-dark);
+}
+
+
+/* Footer */
+.converter-footer {
+    background: var(--surface-color);
+    padding: 15px 30px;
+    text-align: center;
+    color: var(--text-medium);
+    font-size: 0.9rem;
+    border-top: 1px solid var(--border-color);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .converter-main-content {
+        flex-direction: column; /* Xếp cột chồng lên nhau */
+        padding: 15px;
+    }
+    .converter-section {
+        margin: 15px auto;
+        padding: 20px;
+    }
+    .converter-panel {
+        min-height: 300px;
+    }
+    .converter-textarea {
+        min-height: 200px;
+    }
+    .review-display-area {
+        min-height: 200px;
+    }
+}
