@@ -73,7 +73,9 @@
                 <select id="studentSelect"><option value="">-- Chọn tên --</option></select>
             </div>
             <!-- [SỬA ĐỔI] Gọi hàm mới -->
-            <button onclick="startExamWithStorage()" class="btn btn-primary btn-full"><i class="fas fa-play-circle"></i> Bắt đầu thi</button>
+            <!-- <button onclick="startExamWithStorage()" class="btn btn-primary btn-full"><i class="fas fa-play-circle"></i> Bắt đầu thi</button> -->
+             <!-- Sửa lại để gọi hàm đã được hợp nhất trong main.js -->
+<button onclick="startExam()" class="btn btn-primary btn-full"><i class="fas fa-play-circle"></i> Bắt đầu thi</button>
             <p class="form-link">Bạn là giáo viên? <a href="#" onclick="showTeacherLogin()">Đăng nhập tại đây</a></p>
         </div>
 
@@ -140,7 +142,7 @@
                 <h2 id="examFormTitle"></h2>
                 <div class="modal-form-scrollable-area">
                     <!-- [SỬA ĐỔI] Gọi hàm mới -->
-                    <form id="examForm" onsubmit="event.preventDefault(); handleExamFormSubmitWithStorage();">
+                     <form id="examForm" onsubmit="event.preventDefault(); handleExamFormSubmit();"></form>
                         <input type="hidden" id="examId" />
                         <div class="form-group">
                             <label for="examFormType">Loại đề thi:</label>
@@ -218,8 +220,8 @@
     
     <!-- Thứ tự nạp Script quan trọng -->
     <script defer src="js/quiz-parser.js"></script>
-    <script defer src="js/redirect.js"></script> 
+    <!-- <script defer src="js/redirect.js"></script>  -->
     <script defer src="js/main.js"></script>
-    <script defer src="js/storage_handler.js"></script>
+    <!-- <script defer src="js/storage_handler.js"></script> -->
 </body>
 </html>

@@ -5,7 +5,7 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const axios = require("axios");
-
+const cors = require('cors')({origin: true});
 // Khởi tạo Firebase Admin SDK
 admin.initializeApp();
 const db = admin.firestore();
@@ -273,24 +273,38 @@ exports.getClassesForStudent = functions.https.onCall(async (data, context) => {
     return classData;
 });
 
+// File: functions/index.js
+// THAY THẾ TOÀN BỘ HÀM loadExamForStudent
+
 exports.loadExamForStudent = functions.https.onCall(async (data, context) => {
     const { teacherAlias, examCode } = data;
     if (!teacherAlias || !examCode) throw new functions.https.HttpsError("invalid-argument", "Mã giáo viên và Mã đề là bắt buộc.");
     
+    // ... (lấy teacherDoc và examSnapshot giữ nguyên) ...
     const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
     if (teacherSnapshot.empty) throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên.");
-    
     const teacherDoc = teacherSnapshot.docs[0];
     const examSnapshot = await db.collection("exams")
                                  .where("teacherId", "==", teacherDoc.id)
                                  .where("examCode", "==", examCode.trim())
                                  .limit(1).get();
-                                 
     if (examSnapshot.empty) throw new functions.https.HttpsError("not-found", `Không tìm thấy đề thi ${examCode} của giáo viên này.`);
     
-    const examData = examSnapshot.docs[0].data();
+    let examData = examSnapshot.docs[0].data();
     
-    // Trả về tất cả các trường cần thiết cho cả hai luồng
+    // === LOGIC NÂNG CẤP: TỰ LẤY NỘI DUNG TỪ STORAGE ===
+    if (examData.storageVersion === 2 && examData.contentStoragePath) {
+        try {
+            const file = storage.bucket().file(examData.contentStoragePath);
+            const [contentBuffer] = await file.download();
+            examData.content = contentBuffer.toString('utf8');
+        } catch (e) {
+            console.error(`Không thể tải nội dung từ Storage cho đề ${examCode}:`, e.message);
+            throw new functions.https.HttpsError("internal", "Lỗi tải nội dung đề thi từ máy chủ.");
+        }
+    }
+
+    // Trả về dữ liệu đã được bổ sung content
     return {
         examType: examData.examType || 'TEXT',
         timeLimit: examData.timeLimit || 90,
@@ -298,16 +312,10 @@ exports.loadExamForStudent = functions.https.onCall(async (data, context) => {
         cores: examData.cores || [],
         examPdfUrl: examData.examPdfUrl || null,
         solutionPdfUrl: examData.solutionPdfUrl || null,
-        // Dữ liệu cho luồng cũ
-        content: examData.content || '', 
-        // Dữ liệu cho luồng mới
-        contentStoragePath: examData.contentStoragePath || null,
+        content: examData.content || '', // Bây giờ trường này sẽ luôn có dữ liệu nếu là đề Storage
         storageVersion: examData.storageVersion || 1, 
     };
 });
-/**
- * Nhận bài làm của học sinh, chấm điểm và lưu vào CSDL.
- */
 exports.submitExam_GOC = functions.https.onCall(async (data, context) => {
     const { teacherAlias, examCode, studentName, className, answers, isCheating } = data;
     if (!teacherAlias || !examCode || !studentName || !className) throw new functions.https.HttpsError("invalid-argument", "Thiếu thông tin định danh.");
@@ -375,43 +383,58 @@ exports.submitExam_GOC = functions.https.onCall(async (data, context) => {
         detailedResults: detailedResults,
     };
 });
-// ===================================================================
-// ==           HÀM NÂNG CẤP: submitExam                        ==
-// ===================================================================
+// File: functions/index.js
 
 /**
- * [NÂNG CẤP] Nhận bài làm của học sinh, chấm điểm và lưu vào CSDL.
- * Có khả năng chấm câu hỏi TABLE_TF dưới dạng object.
+ * [PHIÊN BẢN HOÀN CHỈNH] Nhận bài làm, chấm điểm, lưu CSDL và trả về đầy đủ dữ liệu.
+ * - Chấm được câu hỏi trắc nghiệm (MC), điền số (Numeric) và bảng Đúng/Sai (TABLE_TF).
+ * - Tự động tải nội dung đề thi từ Storage nếu cần, chỉ trong một lệnh gọi duy nhất.
+ * - Xử lý lỗi mạnh mẽ, đảm bảo client luôn nhận được kết quả.
  */
-exports.submitExam = functions.https.onCall(async (data, context) => {
+exports.submitExam = functions.runWith({ timeoutSeconds: 60, memory: '256MB' }).https.onCall(async (data, context) => {
+    // ---- 1. VALIDATE INPUT ----
     const { teacherAlias, examCode, studentName, className, answers, isCheating } = data;
     if (!teacherAlias || !examCode || !studentName || !className) {
-        throw new functions.https.HttpsError("invalid-argument", "Thiếu thông tin định danh.");
+        throw new functions.https.HttpsError("invalid-argument", "Thiếu thông tin định danh (giáo viên, mã đề, tên hoặc lớp).");
     }
     if (!isCheating && (answers === undefined || answers === null)) {
         throw new functions.https.HttpsError("invalid-argument", "Thiếu dữ liệu câu trả lời.");
     }
 
+    // ---- 2. LẤY DỮ LIỆU TỪ FIRESTORE ----
     const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
-    if (teacherSnapshot.empty) throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên.");
+    if (teacherSnapshot.empty) {
+        throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên với mã này.");
+    }
     const teacherDoc = teacherSnapshot.docs[0];
 
     const examSnapshot = await db.collection("exams").where("teacherId", "==", teacherDoc.id).where("examCode", "==", examCode.trim()).limit(1).get();
-    if (examSnapshot.empty) throw new functions.https.HttpsError("not-found", `Không tìm thấy đề thi ${examCode}.`);
-    const examData = examSnapshot.docs[0].data();
+    if (examSnapshot.empty) {
+        throw new functions.https.HttpsError("not-found", `Không tìm thấy đề thi '${examCode}' của giáo viên này.`);
+    }
     
+    // Dùng 'let' để có thể sửa đổi object này sau đó
+    let examData = examSnapshot.docs[0].data();
+    
+    // ---- 3. XỬ LÝ TRƯỜNG HỢP GIAN LẬN ----
     if (isCheating === true) {
         await db.collection("submissions").add({ 
-            teacherId: teacherDoc.id, timestamp: admin.firestore.FieldValue.serverTimestamp(), 
-            examCode, studentName, className, score: 0, answers: {}, isCheating: true 
+            teacherId: teacherDoc.id, 
+            timestamp: admin.firestore.FieldValue.serverTimestamp(), 
+            examCode, studentName, className, 
+            score: 0, 
+            answers: {}, 
+            isCheating: true 
         });
+        // Trả về dữ liệu trống nhưng vẫn có examData để client biết
         return { score: 0, examData, detailedResults: {} };
     }
 
+    // ---- 4. CHẤM ĐIỂM ----
     const correctKeys = examData.keys || [];
     const cores = examData.cores || [];
-    if (correctKeys.length !== cores.length) {
-        throw new functions.https.HttpsError("internal", "Dữ liệu đề thi bị lỗi: Số lượng đáp án và điểm không khớp.");
+    if (correctKeys.length !== cores.length || correctKeys.length === 0) {
+        throw new functions.https.HttpsError("internal", "Dữ liệu đề thi bị lỗi: Số lượng đáp án và điểm không khớp hoặc rỗng.");
     }
     
     let totalScore = 0;
@@ -421,7 +444,6 @@ exports.submitExam = functions.https.onCall(async (data, context) => {
         const correctAnswer = correctKeys[i];
         const coreValue = parseFloat(cores[i]) || 0;
         const userAnswer = answers[`q${i}`];
-        let questionScore = 0;
         let isCorrect = false;
 
         if (userAnswer !== undefined && userAnswer !== null) {
@@ -433,12 +455,10 @@ exports.submitExam = functions.https.onCall(async (data, context) => {
             } 
             // Xử lý câu TABLE_TF (dạng object)
             else if (typeof userAnswer === 'object' && typeof correctAnswer === 'string') {
-                // Giả định correctAnswer là một chuỗi như 'TFFT'
-                // và userAnswer là một object như {a: 'T', b: 'F', c: 'F', d: 'T'}
-                
+                // Ví dụ: userAnswer = {a:'T', b:'F'}, correctAnswer = 'TF'
                 const sortedUserAnswerKeys = Object.keys(userAnswer).sort();
-                if (sortedUserAnswerKeys.length === correctAnswer.length) {
-                    let constructedAnswerString = sortedUserAnswerKeys.map(key => userAnswer[key]).join('');
+                if (sortedUserAnswerKeys.length > 0 && sortedUserAnswerKeys.length === correctAnswer.length) {
+                    const constructedAnswerString = sortedUserAnswerKeys.map(key => userAnswer[key]).join('');
                     if (constructedAnswerString.toUpperCase() === correctAnswer.toUpperCase()) {
                         isCorrect = true;
                     }
@@ -446,10 +466,7 @@ exports.submitExam = functions.https.onCall(async (data, context) => {
             }
         }
         
-        if (isCorrect) {
-            questionScore = coreValue;
-        }
-
+        const questionScore = isCorrect ? coreValue : 0;
         totalScore += questionScore;
         detailedResults[`q${i}`] = { 
             userAnswer: userAnswer || null, 
@@ -460,24 +477,39 @@ exports.submitExam = functions.https.onCall(async (data, context) => {
 
     const finalScore = parseFloat(totalScore.toFixed(2));
     
+    // ---- 5. LƯU BÀI NỘP VÀO DATABASE ----
     await db.collection("submissions").add({ 
         teacherId: teacherDoc.id, 
         timestamp: admin.firestore.FieldValue.serverTimestamp(), 
         examCode, studentName, className, answers,
         score: finalScore,
-        detailedResults: detailedResults, // Rất quan trọng cho việc thống kê sau này
+        detailedResults: detailedResults,
         isCheating: false 
     });
 
+    // ---- 6. [NÂNG CẤP] TỰ LẤY NỘI DUNG ĐỀ THI TỪ STORAGE NẾU CẦN ----
+    if (examData.storageVersion === 2 && examData.contentStoragePath) {
+        try {
+            console.log(`Đề Storage, đang tải nội dung từ: ${examData.contentStoragePath}`);
+            const file = storage.bucket().file(examData.contentStoragePath);
+            const [contentBuffer] = await file.download();
+            // Gán nội dung trực tiếp vào object examData sẽ được trả về
+            examData.content = contentBuffer.toString('utf8');
+            console.log("Tải nội dung chi tiết thành công.");
+        } catch (e) {
+            console.error(`Không thể tải nội dung từ Storage cho đề ${examCode} trong hàm submitExam:`, e.message);
+            // Gửi một chuỗi lỗi đặc biệt về cho client để nó biết và hiển thị
+            examData.content = `##LỖI## Không thể tải nội dung chi tiết: ${e.message}`;
+        }
+    }
+
+    // ---- 7. TRẢ VỀ KẾT QUẢ HOÀN CHỈNH ----
     return {
         score: finalScore,
-        examData,
+        examData: examData, // examData bây giờ đã được bổ sung 'content' nếu cần
         detailedResults,
     };
 });
-// -------------------------------------------------------------------
-// PHẦN 5: CÁC HÀM TIỆN ÍCH (PROXY LẤY PDF)
-// -------------------------------------------------------------------
 
 exports.getPdfFromGitLab = functions.https.onCall(async (data, context) => {
     const gitlabUrl = data.url;
@@ -860,64 +892,132 @@ exports.updateExamWithStorage = functions.https.onCall(async (data, context) => 
     await examRef.update(updatedExam);
     return { success: true, message: "Đã cập nhật đề thi trên Storage thành công!" };
 });
-
-/**
- * [MỚI] Hàm này sẽ thay thế loadExamForStudent cho các đề thi trên Storage.
- * Tuy nhiên, để đơn giản, chúng ta sẽ tích hợp logic này vào hàm startExam ở client.
- * Hàm này chỉ để tham khảo, hàm loadExamForStudent cũ vẫn được giữ lại.
- */
-exports.getContentUrl = functions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần xác thực.");
-    const { path } = data;
-    if (!path) throw new functions.https.HttpsError("invalid-argument", "Thiếu đường dẫn file.");
-
-    const file = storage.bucket().file(path);
-    const [downloadURL] = await file.getSignedUrl({
-        action: 'read',
-        expires: Date.now() + 15 * 60 * 1000, // URL có hiệu lực 15 phút
-    });
-    return { contentUrl: downloadURL };
-});
-
-
 // File: functions/index.js
+// THAY THẾ HOÀN TOÀN HÀM getContentUrl CŨ BẰNG PHIÊN BẢN NÀY
 
-// ... (toàn bộ code cũ của bạn giữ nguyên) ...
+exports.getContentUrl = functions.runWith({ memory: '256MB' }).https.onCall(async (data, context) => {
+    // Ghi log ngay khi hàm được gọi, trước cả khi check auth
+    console.log("--- getContentUrl CALLED v3 ---");
+    console.log("Data received from client:", JSON.stringify(data));
 
-// ==============================================================
-// ==  [NÂNG CẤP] HÀM KIỂM TRA QUYỀN TRUY CẬP VÀ THỜI GIAN DÙNG THỬ  ==
-// ==============================================================
-exports.checkTeacherAccess = functions.https.onCall(async (data, context) => {
-    // Đảm bảo chỉ người dùng đã đăng nhập mới gọi được hàm này
     if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+        console.error("Authentication check failed. No context.auth.");
+        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần xác thực.");
+    }
+    const uid = context.auth.uid;
+    const { examId } = data;
+
+    console.log(`User [${uid}] is requesting URL for examId [${examId}]`);
+
+    if (!examId) {
+        console.error("Validation failed: examId is missing.");
+        throw new functions.https.HttpsError("invalid-argument", "Thiếu ID đề thi.");
     }
 
-    const userRef = db.collection("users").doc(context.auth.uid);
-    const userDoc = await userRef.get();
+    try {
+        console.log(`Step 1: Accessing Firestore for exam doc: exams/${examId}`);
+        const doc = await db.collection("exams").doc(examId).get();
 
-    if (!userDoc.exists) {
-        throw new functions.https.HttpsError("not-found", "Không tìm thấy hồ sơ người dùng.");
+        if (!doc.exists) {
+            console.error(`Step 2 Error: Exam doc not found at exams/${examId}`);
+            throw new functions.https.HttpsError("not-found", "Không tìm thấy đề thi.");
+        }
+        const examData = doc.data();
+        console.log("Step 2 Success: Found exam doc. TeacherId is", examData.teacherId);
+
+        if (examData.teacherId !== uid) {
+            console.error(`Step 3 Error: Permission denied. Doc owner is ${examData.teacherId}, requester is ${uid}`);
+            throw new functions.https.HttpsError("permission-denied", "Bạn không có quyền truy cập nội dung này.");
+        }
+        console.log("Step 3 Success: User is the owner.");
+
+        const path = examData.contentStoragePath;
+        if (!path) {
+            console.error("Step 4 Error: contentStoragePath is missing in the doc.");
+            throw new functions.https.HttpsError("not-found", "Đề thi này không có nội dung trên Storage.");
+        }
+        console.log(`Step 4 Success: Found storage path: ${path}`);
+        
+        const file = storage.bucket().file(path);
+        console.log("Step 5: Calling file.getSignedUrl(). THIS IS THE CRITICAL STEP.");
+
+        const [downloadURL] = await file.getSignedUrl({
+            action: 'read',
+            expires: Date.now() + 15 * 60 * 1000,
+        });
+
+        console.log("Step 6 Success: Signed URL generated. Returning to client.");
+        return { contentUrl: downloadURL };
+
+    } catch (error) {
+        // GHI LẠI TOÀN BỘ LỖI GỐC
+        console.error("!!! CRITICAL ERROR CAUGHT IN getContentUrl !!!");
+        console.error("Error Code:", error.code);
+        console.error("Error Message:", error.message);
+        console.error("Full Error Object:", JSON.stringify(error, null, 2));
+        
+        throw new functions.https.HttpsError("internal", "Lỗi máy chủ khi lấy URL nội dung. Check a new log.");
     }
+});
+exports.checkTeacherAccess = functions.https.onRequest((req, res) => {
+    // Bọc toàn bộ logic của bạn bằng cors handler
+    cors(req, res, async () => {
+        // Kiểm tra xem người dùng đã đăng nhập chưa bằng cách xác minh ID token từ header
+        if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
+            console.error('No Firebase ID token was passed as a Bearer token in the Authorization header.');
+            res.status(403).send('Unauthorized: Missing authorization token.');
+            return;
+        }
 
-    const userData = userDoc.data();
-    const trialEndDate = userData.trialEndDate; // Đây là một Timestamp object từ Firestore
+        let idToken;
+        if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+            idToken = req.headers.authorization.split('Bearer ')[1];
+        } else {
+            res.status(403).send('Unauthorized: Invalid token format.');
+            return;
+        }
+        
+        try {
+            // Xác thực token và lấy UID
+            const decodedIdToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedIdToken.uid; 
 
-    // Nếu không có thông tin ngày hết hạn, coi như đã hết hạn
-    if (!trialEndDate) {
-        return { hasAccess: false, daysRemaining: 0 };
-    }
+            // --- Bắt đầu logic chính của hàm (giữ nguyên từ code cũ) ---
+            const userRef = db.collection("users").doc(uid);
+            const userDoc = await userRef.get();
 
-    const trialEndDateMillis = trialEndDate.toMillis();
-    const nowMillis = Date.now();
-    
-    // Tính số ngày còn lại (làm tròn lên)
-    const daysRemaining = Math.max(0, Math.ceil((trialEndDateMillis - nowMillis) / (1000 * 60 * 60 * 24)));
+            if (!userDoc.exists) {
+                console.error(`User with UID ${uid} not found in Firestore.`);
+                // Dùng res.json để trả về object lỗi cho client dễ xử lý
+                res.status(404).json({ error: "Không tìm thấy hồ sơ người dùng." });
+                return;
+            }
 
-    return {
-        hasAccess: nowMillis < trialEndDateMillis, // True nếu hôm nay < ngày hết hạn
-        daysRemaining: daysRemaining
-    };
+            const userData = userDoc.data();
+            const trialEndDate = userData.trialEndDate;
+
+            if (!trialEndDate) {
+                // Dùng res.json để client nhận được object
+                res.status(200).json({ hasAccess: false, daysRemaining: 0 });
+                return;
+            }
+
+            const trialEndDateMillis = trialEndDate.toMillis();
+            const nowMillis = Date.now();
+            const daysRemaining = Math.max(0, Math.ceil((trialEndDateMillis - nowMillis) / (1000 * 60 * 60 * 24)));
+
+            // Trả về kết quả thành công dưới dạng JSON
+            res.status(200).json({
+                hasAccess: nowMillis < trialEndDateMillis,
+                daysRemaining: daysRemaining
+            });
+
+        } catch (error) {
+            console.error('Error while verifying Firebase ID token or getting user data:', error);
+            // Dùng res.json để trả về object lỗi
+            res.status(403).json({ error: 'Unauthorized: Invalid token or server error.' });
+        }
+    });
 });
 
 

@@ -55,14 +55,44 @@ auth.onAuthStateChanged(user => {
         pdfExamForm.reset();
         examIdInput.value = '';
     };
-// === THÊM HÀM MỚI NÀY vào pdf-teacher.js ===
-async function checkAccessAndProceed() {
-    showLoading(); // Bạn có thể thêm hàm showLoading/hideLoading vào file này nếu chưa có
-    try {
-        const checkAccessCallable = functions.httpsCallable('checkTeacherAccess');
-        const result = await checkAccessCallable();
-        const accessInfo = result.data;
 
+    // File: public/js/pdf-teacher.js
+
+// === THAY THẾ TOÀN BỘ HÀM checkAccessAndProceed CŨ BẰNG HÀM NÀY ===
+async function checkAccessAndProceed() {
+    showLoading(); 
+    try {
+        const user = auth.currentUser;
+        if (!user) {
+            // Nếu không có user, không cần gọi server, hiển thị lỗi và thoát
+            Swal.fire("Lỗi", "Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.", "error")
+               .then(() => window.location.href = '/');
+            return;
+        }
+        
+        // Bước 1: Lấy ID Token để xác thực
+        const token = await user.getIdToken(true);
+
+        // Bước 2: Dùng `fetch` để gọi HTTP function, kèm theo token
+        const response = await fetch('https://us-central1-sangnhc.cloudfunctions.net/checkTeacherAccess', {
+            method: 'POST', // Phải là POST hoặc GET, tùy cách bạn xử lý ở server
+            headers: {
+                'Authorization': 'Bearer ' + token, // Gửi token trong header
+                'Content-Type': 'application/json'
+            }
+        });
+
+        // Bước 3: Kiểm tra xem phản hồi từ server có OK không
+        if (!response.ok) {
+            // Thử đọc lỗi từ server nếu có
+            const errorData = await response.json().catch(() => ({ message: response.statusText }));
+            throw new Error(errorData.error || errorData.message || `Lỗi server HTTP ${response.status}`);
+        }
+
+        // Bước 4: Chuyển đổi phản hồi thành JSON
+        const accessInfo = await response.json();
+
+        // Bước 5: Logic xử lý quyền truy cập (giữ nguyên như cũ)
         if (accessInfo.hasAccess) {
             // Nếu được phép, chạy các hàm như bình thường
             loadPdfExams();
