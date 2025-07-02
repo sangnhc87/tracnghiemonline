@@ -68,4 +68,4 @@ node_modules/
 # dataconnect generated files
 .dataconnect
 .DS_Store
-public/pdf2link.html
+public/pdf2link.htmlpublic/pdf2link.html
