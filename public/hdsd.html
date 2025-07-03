@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hướng Dẫn Toàn Diện - Hệ Thống Thi Online</title>
+    <!-- Nạp CSS và thư viện -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        /* (Giữ nguyên toàn bộ CSS từ phiên bản trước) */
+        body { background-color: #f8f9fa; }
+        .guide-container { max-width: 900px; margin: 40px auto; padding: 40px; background: #fff; border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); font-family: 'Be Vietnam Pro', sans-serif; color: #34495e; }
+        .guide-container h1, .guide-container h2, .guide-container h3, .guide-container h4 { color: #2c3e50; }
+        .guide-container h1 { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #007bff; font-size: 2rem; }
+        .guide-section { margin-bottom: 40px; }
+        .guide-section h2 { border-bottom: 1px solid #e9ecef; padding-bottom: 10px; margin-bottom: 20px; font-size: 1.6rem; }
+        .guide-section h3 { font-size: 1.25rem; color: #16a085; margin-top: 30px; margin-bottom: 15px; }
+        .guide-section h4 { font-size: 1.1rem; color: #2980b9; margin-top: 20px; margin-bottom: 10px; }
+        .guide-section ul { list-style-type: none; padding-left: 0; }
+        .guide-section li { margin-bottom: 15px; line-height: 1.7; padding-left: 30px; position: relative; }
+        .guide-section li i.fa-li { left: 0; top: 5px; position: absolute; color: #007bff; width: 20px; text-align: center; }
+        code, .syntax { background-color: #e9ecef; padding: 3px 8px; border-radius: 4px; font-family: 'Consolas', 'Courier New', monospace; color: #e83e8c; font-size: 0.95em; }
+        .note { background-color: #e8f7ee; border-left: 5px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 4px; }
+        .warning-note { background-color: #fff3cd; border-left: 5px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px; }
+        .example-code { background: #2d3748; color: #f7fafc; padding: 20px; border-radius: 8px; white-space: pre-wrap; font-family: 'Consolas', 'Courier New', monospace; line-height: 1.5; margin-top: 15px; }
+        .footer-nav { text-align: center; margin-top: 40px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #dee2e6; padding: 12px; text-align: left; }
+        th { background-color: #f8f9fa; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="guide-container">
+        <h1><i class="fas fa-book-open"></i> Hướng Dẫn Toàn Diện</h1>
+
+        <!-- ======================= MỤC LỤC NHANH ======================= -->
+        <div class="guide-section">
+            <h2><i class="fas fa-list-ul"></i> Mục Lục</h2>
+            <ul class="fa-ul">
+                <li><a href="#danh-cho-giao-vien"><i class="fas fa-chalkboard-teacher fa-li"></i>Dành cho Giáo viên</a>
+                    <ul>
+                        <li><a href="#soan-thao-de-text"><i class="fas fa-file-signature fa-li"></i>1. Soạn Thảo Đề Thi Text (Định dạng Chuẩn)</a></li>
+                        <li><a href="#soan-thao-de-pdf"><i class="fas fa-file-pdf fa-li"></i>2. Soạn Thảo Đề Thi PDF</a></li>
+                        <li><a href="#nhap-dap-an"><i class="fas fa-key fa-li"></i>3. Nhập Đáp Án (Keys) và Điểm (Cores)</a></li>
+                        <li><a href="#cong-cu-ho-tro"><i class="fas fa-tools fa-li"></i>4. Các Công Cụ Hỗ Trợ</a></li>
+                    </ul>
+                </li>
+                <li><a href="#danh-cho-hoc-sinh"><i class="fas fa-user-graduate fa-li"></i>Dành cho Học sinh</a></li>
+            </ul>
+        </div>
+
+
+        <!-- ======================= DÀNH CHO GIÁO VIÊN ======================= -->
+        <div class="guide-section" id="danh-cho-giao-vien">
+            <h2><i class="fas fa-chalkboard-teacher"></i> Dành cho Giáo viên</h2>
+            
+            <h3 id="soan-thao-de-text">1. Soạn Thảo Đề Thi Text (Định dạng Chuẩn)</h3>
+            <p>Đây là định dạng mạnh mẽ và linh hoạt nhất. Hãy sử dụng <a href="/editor.html" target="_blank"><strong>Zenith Editor</strong></a> để có trải nghiệm soạn thảo tốt nhất.</p>
+
+            <h4>A. Cấu trúc tổng thể của một đề thi</h4>
+            <p>Một đề thi được tạo thành từ các **khối câu hỏi**. Các khối này được trộn lẫn với nhau khi học sinh làm bài. Có 2 cách để phân tách các khối:</p>
+            <ul class="fa-ul">
+                <li><i class="fas fa-arrows-alt-v fa-li"></i><strong>Phân tách bằng Dòng trống:</strong> Một hoặc nhiều dòng trống sẽ tạo ra một khối câu hỏi mới. Các câu hỏi trong cùng một nhóm (giữa hai thẻ `##group-separator##`) được phân tách bằng cách này.</li>
+                <li><i class="fas fa-random fa-li"></i><strong>Phân tách bằng `##group-separator##`:</strong> Dùng để tạo ra các nhóm câu hỏi lớn. Hệ thống sẽ trộn lẫn các nhóm này với nhau.</li>
+            </ul>
+
+            <h4>B. Soạn thảo từng loại câu hỏi</h4>
+            <div class="note">
+                <strong>Nguyên tắc chung:</strong> Mỗi câu hỏi đều bắt đầu bằng `Câu X:`, theo sau là nội dung. Các phương án bắt đầu bằng `A.`, `B.`... hoặc `a)`, `b)`...
+            </div>
+            
+            <h5><strong>Câu hỏi Trắc nghiệm (MC - Multiple Choice)</strong></h5>
+            <div class="example-code">
+Câu 1: Đâu là thủ đô của Việt Nam?
+A. Thành phố Hồ Chí Minh
+B. Đà Nẵng
+C. Hà Nội
+D. Hải Phòng
+\begin{loigiai}
+nội dung 
+\end{loigiai}
+            </div>
+            
+            <h5><strong>Câu hỏi Bảng Đúng/Sai (Table True/False)</strong></h5>
+            <p>Hệ thống tự nhận diện loại câu hỏi này khi bạn dùng `a)`, `b)`, `c)`... để đánh dấu các mệnh đề.</p>
+            <div class="example-code">
+Câu 2: Xét tính đúng sai của các mệnh đề sau:
+a) Trái Đất quay quanh Mặt Trời.
+b) 1 + 1 = 3.
+c) Nước sôi ở 100 độ C trong điều kiện áp suất tiêu chuẩn.
+d) Mạy tốt bằng 1 người.
+\begin{loigiai}
+nội dung 
+\end{loigiai}
+            </div>
+            
+            <h5><strong>Câu hỏi Điền số (Numeric)</strong></h5>
+            <p>Một khối câu hỏi chỉ có nội dung (`Câu X:...`) mà không có bất kỳ phương án nào sẽ được hiển thị dưới dạng ô điền đáp số.</p>
+            <div class="example-code">
+Câu 3: Tính giá trị của biểu thức $A = 5 \times (4+6) - 10$.
+\begin{loigiai}
+nội dung 
+\end{loigiai}
+            </div>
+
+            <h4>C. Các cú pháp nâng cao</h4>
+            <ul class="fa-ul">
+                <li><i class="fas fa-pen-fancy fa-li"></i><strong>Lời giải:</strong> Đặt cuối mỗi khối câu hỏi.
+                    <div class="example-code">
+... (Nội dung câu hỏi và các phương án) ...
+\begin{loigiai}
+  Nội dung lời giải chi tiết. Hỗ trợ $công thức$ và hình ảnh.
+\end{loigiai}
+                    </div>
+                </li>
+                <li><i class="fas fa-images fa-li"></i><strong>Chèn hình ảnh:</strong> Dùng các placeholder `sangnhc1/`, `sangnhc2/`...
+                    <div class="example-code">Câu 4: Quan sát hình vẽ sau: <img src="sangnhc1/hinh_cau_1.png"></div>
+                </li>
+                <li><i class="fas fa-cogs fa-li"></i><strong>Các thẻ điều khiển:</strong> Đặt trên một dòng riêng bên trong khối câu hỏi.
+                     <table>
+                        <thead><tr><th>Cú pháp</th><th>Chức năng</th></tr></thead>
+                        <tbody>
+                            <tr><td><span class="syntax">##no-shuffle</span></td><td><strong>Không trộn</strong> các phương án. Mặc định là có trộn.</td></tr>
+                            <tr><td><span class="syntax">##1x4</span></td><td>Hiển thị các phương án theo 1 cột, 4 hàng.</td></tr>
+                            <tr><td><span class="syntax">##2x2</span></td><td><strong>(Mặc định)</strong> Hiển thị 2 cột, 2 hàng.</td></tr>
+                            <tr><td><span class="syntax">##4x1</span></td><td>Hiển thị 4 cột, 1 hàng (nằm ngang).</td></tr>
+                        </tbody>
+                    </table>
+                </li>
+            </ul>
+
+            <h3 id="soan-thao-de-pdf">2. Soạn Thảo Đề Thi PDF</h3>
+            <p>Loại đề này đơn giản hơn. Bạn chỉ cần cung cấp link tới file PDF chứa đề thi. Học sinh sẽ làm bài trên một phiếu trả lời trắc nghiệm riêng biệt.</p>
+            
+            <h4>Hướng dẫn lấy link Google Drive hợp lệ</h4>
+            <ol>
+                <li>Upload file PDF lên Google Drive của bạn.</li>
+                <li>Nhấn chuột phải vào file, chọn **Chia sẻ** (Share).</li>
+                <li>Trong mục "Quyền truy cập chung", đổi thành **"Bất kỳ ai có đường liên kết"** (Anyone with the link).</li>
+                <li>Nhấn nút **"Sao chép đường liên kết"** và dán vào ô "Link Đề thi PDF" trong form tạo đề.</li>
+            </ol>
+            <div class="warning-note">
+                <strong>Quan trọng:</strong> Đừng lấy link từ thanh địa chỉ của trình duyệt. Hãy luôn dùng chức năng "Chia sẻ" để lấy link đúng. Hệ thống sẽ tự động xử lý link này để học sinh có thể xem được.
+            </div>
+
+            <h3 id="nhap-dap-an">3. Nhập Đáp Án (Keys) và Điểm (Cores)</h3>
+            <p>Sau khi soạn xong nội dung, bạn cần cung cấp đáp án và thang điểm cho từng câu trong Form tạo/sửa đề. Các đáp án/điểm được phân tách với nhau bằng dấu gạch đứng `|`.</p>
+
+            <h4>A. Cách nhập Đáp án (Keys)</h4>
+            <table>
+                <thead><tr><th>Loại câu hỏi</th><th>Định dạng Key</th><th>Ví dụ</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Trắc nghiệm (MC)</strong></td>
+                        <td>Chữ cái in hoa của đáp án đúng (A, B, C, D).</td>
+                        <td><span class="syntax">C|A|D|B</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Bảng Đúng/Sai (TF)</strong></td>
+                        <td>Một chuỗi ký tự 'T' (Đúng) và 'F' (Sai) liền nhau, tương ứng với các mệnh đề.</td>
+                        <td><span class="syntax">TFTF</span> (cho 4 mệnh đề)</td>
+                    </tr>
+                     <tr>
+                        <td><strong>Điền số (Numeric)</strong></td>
+                        <td>Đáp số chính xác.</td>
+                        <td><span class="syntax">40|3.14|1024</span></td>
+                    </tr>
+                </tbody>
+            </table>
+             <div class="example-code">
+# Ví dụ cho một đề 10 câu gồm 6 MC, 2 TF, 2 Numeric:
+A|D|B|C|C|A|TTFF|FTFT|150|2.5
+             </div>
+
+            <h4>B. Cách nhập Điểm (Cores)</h4>
+            <p>Mỗi câu phải có một thang điểm tương ứng. Đối với câu hỏi có nhiều ý nhỏ (như Bảng Đúng/Sai), bạn có thể gán điểm lũy tiến.</p>
+            <table>
+                <thead><tr><th>Loại câu hỏi</th><th>Định dạng Core</th><th>Ví dụ</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td><strong>MC / Numeric</strong></td>
+                        <td>Một con số duy nhất.</td>
+                        <td><span class="syntax">0.25|0.5|0.25</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Bảng Đúng/Sai (TF)</strong></td>
+                        <td>Các mức điểm phân tách bằng dấu phẩy `,`. Hệ thống sẽ chấm điểm dựa trên số ý đúng.</td>
+                        <td><span class="syntax">0.25,0.5,0.75,1</span></td>
+                    </tr>
+                </tbody>
+            </table>
+            <p>Ví dụ trên có nghĩa là: đúng 1/4 ý được 0.25đ, đúng 2/4 ý được 0.5đ, đúng 3/4 ý được 0.75đ, và đúng cả 4 ý được 1đ.</p>
+
+            <h3 id="cong-cu-ho-tro">4. Các Công Cụ Hỗ Trợ</h3>
+            <ul class="fa-ul">
+                <li><i class="fas fa-pencil-alt fa-li"></i><strong>Zenith Editor:</strong> Trình soạn thảo chuyên dụng giúp bạn tạo đề Text một cách trực quan, có xem trước (live preview) và thanh công cụ hỗ trợ chèn cú pháp nhanh chóng.</li>
+                <li><i class="fas fa-exchange-alt fa-li"></i><strong>Converter Tool:</strong> Công cụ giúp chuyển đổi định dạng đề thi từ cấu trúc LaTeX cũ (`\begin{ex}`) sang định dạng chuẩn một cách tự động, bao gồm cả việc trích xuất Keys và Cores.</li>
+                <li><i class="fas fa-chart-line fa-li"></i><strong>Xem Thống kê:</strong> Phân tích kết quả thi chi tiết theo từng đề, từng lớp với biểu đồ trực quan, phân tích câu hỏi và khả năng xuất ra Excel.</li>
+            </ul>
+        </div>
+        
+        <!-- ======================= DÀNH CHO HỌC SINH ======================= -->
+        <div class="guide-section" id="danh-cho-hoc-sinh">
+             <h2><i class="fas fa-user-graduate"></i> Dành cho Học sinh</h2>
+            <ul class="fa-ul">
+                <li><i class="fas fa-sign-in-alt fa-li"></i><strong>Vào thi:</strong> Điền đủ 4 thông tin: Mã giáo viên, Mã đề thi, Lớp, và chọn đúng Tên của mình.</li>
+                <li><i class="fas fa-clock fa-li"></i><strong>Làm bài:</strong> Luôn chú ý đồng hồ. Bài tự động nộp khi hết giờ.</li>
+                <li><i class="fas fa-exclamation-triangle fa-li"></i><strong>Cảnh báo:</strong> Không chuyển tab/thu nhỏ cửa sổ quá 3 lần, nếu không bài thi sẽ bị nộp với điểm 0.</li>
+                <li><i class="fas fa-save fa-li"></i><strong>Tự động lưu:</strong> Hệ thống sẽ lưu và cho phép khôi phục bài làm nếu gặp sự cố.</li>
+                <li><i class="fas fa-poll fa-li"></i><strong>Xem kết quả:</strong> Xem điểm, đáp án đúng/sai và lời giải chi tiết ngay sau khi nộp bài.</li>
+            </ul>
+        </div>
+
+        <div class="footer-nav">
+             <a href="/" class="btn btn-primary"><i class="fas fa-arrow-left"></i> Quay lại Dashboard Chính</a>
+        </div>
+    </div>
+</body>
+</html>

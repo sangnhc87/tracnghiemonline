@@ -31,6 +31,11 @@
     <script defer src="/__/firebase/9.10.0/firebase-firestore-compat.js"></script>
     <script defer src="/__/firebase/9.10.0/firebase-functions-compat.js"></script>
     <script defer src="/__/firebase/init.js"></script>
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/favicon-16x16.png">
+<link rel="manifest" href="/favicon_io/site.webmanifest">
+
 </head>
 <body>
 
@@ -103,7 +108,7 @@
                 <p><span><i class="fas fa-file-alt"></i> Mã đề</span><strong id="exam-code"></strong></p>
             </div>
             <button onclick="showStudentLoginScreen()" class="btn btn-primary btn-full"><i class="fas fa-home"></i> Quay lại trang chủ</button>
-            <h4 class="details-title">Xem chi tiết bài làm</h4>
+            <!-- <h4 class="details-title">Xem chi tiết bài làm</h4> -->
         </div>
 
         <!-- Dashboard Giáo viên -->
@@ -113,6 +118,10 @@
             <div class="dashboard-main-actions" style="display: flex; gap: 10px; justify-content: center; margin-bottom: 20px;">
                 <a href="/pdf-teacher.html" target="_blank" class="btn btn-info"><i class="fas fa-file-pdf"></i> Quản lý Đề PDF</a>
                 <a href="/stats.html" class="btn btn-primary"><i class="fas fa-chart-line"></i> Xem Thống kê</a>
+                <!-- Các nút mới được thêm vào -->
+    <a href="/hdsd.html" target="_blank" class="btn btn-secondary"><i class="fas fa-book-open"></i> Hướng dẫn</a>
+    <a href="/editor.html" target="_blank" class="btn btn-warning"><i class="fas fa-pencil-alt"></i>Hỗ Trợ Soạn Đề </a>
+    <a href="/ex_converter_page.html" target="_blank" class="btn btn-dark"><i class="fas fa-exchange-alt"></i>Hỗ Trợ Ex_Test Chuyển Đổi</a>
             </div>
             
             <div class="dashboard-sections">
@@ -161,11 +170,11 @@
                         </div>
                         <div class="form-group">
                             <label for="examFormKeys">Đáp án (phân tách bằng |):</label>
-                            <input type="text" id="examFormKeys" required placeholder="A|B|C|D..." />
+                            <input type="text" id="examFormKeys" required placeholder="A|D|D|B|B|B|A|C|D|D|C|A|TFTT|FTFT|FTFF|TTTF|0.15|600|0.25|2.12|210|0.17" />
                         </div>
                         <div class="form-group">
                             <label for="examFormCores">Điểm từng câu (phân tách bằng |):</label>
-                            <input type="text" id="examFormCores" required placeholder="0.2|0.2|0.2|0.2..." />
+                            <input type="text" id="examFormCores" required placeholder="0.25|0.25|0.25|0.25|0.25|0.25|0.25|0.25|0.25|0.25|0.25|0.25|0.25,0.5,0.75,1|0.25,0.5,0.75,1|0.25,0.5,0.75,1|0.25,0.5,0.75,1|0.5|0.5|0.5|0.5|0.5|0.5" />
                         </div>
                         <div id="textExamFields">
                             <div class="form-group">

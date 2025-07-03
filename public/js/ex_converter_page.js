@@ -248,7 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
   Câu 1: Nội dung câu hỏi đầu tiên.
   \\choice
   {NÔI DUNG A}
-  {NÔI DUNG B \\True} % Đáp án B là đúng
+  {\\True NÔI DUNG B } % Đáp án B là đúng
   {NÔI DUNG C}
   {NÔI DUNG D}
   \\loigiai{
@@ -258,7 +258,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 % Đây là một comment khác
 \\begin{ex}
-  \\core{0.75} % Điểm thủ công cho câu này
   Câu 2: Câu hỏi Đúng/Sai.
   \\choiceTF
   {\\True Mệnh đề 1} % Mệnh đề 1 đúng
@@ -270,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 \\end{ex}
 
-\\begin{bt} % Môi trường BT cũ
+\\begin{bt} % Môi trường BT
   Câu 3: Câu hỏi điền số.
   \\shortans{42}
   \\loigiai{

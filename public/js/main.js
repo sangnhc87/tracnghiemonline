@@ -140,7 +140,7 @@ async function updateTeacherUI(user) {
         
         const userInfoHtml = `
             <p style="margin: 5px 0;"><strong>Tài khoản:</strong> ${user.displayName || user.email}</p>
-            <p style="margin: 5px 0;"><strong>Alias:</strong> <span id="currentAliasDisplay" style="font-weight: bold; color: #007bff;">${profile.teacherAlias || "Chưa có"}</span></p>
+            <p style="margin: 5px 0;"><strong>Mã Giáo Viên:</strong> <span id="currentAliasDisplay" style="font-weight: bold; color: #007bff;">${profile.teacherAlias || "Chưa có"}</span></p>
             <p style="margin: 5px 0;"><strong>Trạng thái:</strong> 
                 ${trialDays > 0
                     ? `<span style="color: #28a745; font-weight: bold;">Còn ${trialDays} ngày dùng thử</span>`
