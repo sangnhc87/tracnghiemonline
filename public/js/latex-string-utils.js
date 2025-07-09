@@ -137,7 +137,7 @@ const LatexStringUtils = {
      * @param {string} text - Chuỗi cần xử lý.
      * @returns {string} Chuỗi đã thay thế.
      */
-    replaceDoubleBackslashToBr: function(text) {
+    replaceDoubleBackslashToBrGGG: function(text) {
         if (!text) return text;
 
         // Sử dụng một hàm thay thế để xử lý các đoạn text bên ngoài môi trường toán học.
@@ -148,6 +148,7 @@ const LatexStringUtils = {
         // (\$[\s\S]*?\$)    - Group 2: Khớp $...$
         // ([\s\S]*?)       - Group 3: Khớp bất kỳ văn bản nào không phải toán học (non-greedy)
         const mathAndTextRegex = /(\$\$[\s\S]*?\$\$|\$[\s\S]*?\$)|\B(\\\\)\B|([\s\S])/g;
+        
         // The regex `\B(\\\\)\B` aims to match `\\` only when it's not at a word boundary,
         // which helps avoid matching `\\` within math mode (where it's usually `\\[...]`)
         // However, a more robust way is to split the string into math/non-math blocks.
@@ -179,7 +180,35 @@ const LatexStringUtils = {
 
         return result;
     },
+// File: js/latex-string-utils.js
 
+// ... (Các hàm khác giữ nguyên) ...
+
+    /**
+     * Thay thế '\\' bằng '<br>' nhưng KHÔNG can thiệp vào bên trong MỌI môi trường toán học
+     * ($...$, $$...$$, \(...\), \[...\]). Đây là phiên bản đã sửa lỗi và hoạt động ổn định.
+     * @param {string} text - Chuỗi cần xử lý.
+     * @returns {string} Chuỗi đã thay thế.
+     */
+    replaceDoubleBackslashToBr: function(text) {
+        if (!text) return text;
+        const mathBlocksRegex = /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\$[\s\S]*?\$|\\\([\s\S]*?\\\))/g;
+        const parts = text.split(mathBlocksRegex);
+        const processedParts = parts.map((part, index) => {
+            // Nếu `part` không tồn tại (thường là do split), trả về chuỗi rỗng
+            if (!part) {
+                return '';
+            }
+            if (index % 2 === 0) {
+                // Đây là phần VĂN BẢN, ta có thể an toàn thay thế `\\` bằng `<br>`.
+                return part.replace(/\\\\/g, '<br>');
+            } else {
+                // Đây là phần TOÁN HỌC, ta phải GIỮ NGUYÊN nó.
+                return part;
+            }
+        });
+        return processedParts.join('');
+    },
     /**
      * Áp dụng tất cả các hàm thay thế LaTeX chung.
      * @param {string} text - Chuỗi cần xử lý.

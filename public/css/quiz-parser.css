@@ -338,3 +338,28 @@
     white-space: nowrap; /* Đảm bảo "Câu X:" không bị xuống dòng */
 }
 
+/* File: css/ex_converter_page.css hoặc quiz-parser.css */
+
+/* Style cho đáp án được đánh dấu là đúng trong preview */
+.review-display-area .mc-option.correct-answer-preview {
+    background-color: #d4edda; /* Màu nền xanh lá nhạt */
+    border-color: #28a745;     /* Viền màu xanh lá */
+}
+
+.review-display-area .mc-option.correct-answer-preview .mc-option-label {
+    background-color: #28a745;
+    color: white;
+    border-color: #218838;
+}
+
+.review-display-area .table-tf-radio.selected {
+    border-color: #007bff;
+}
+.review-display-area .table-tf-radio.selected::after {
+    content: '\f00c'; /* Dấu tick */
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    color: #007bff;
+    font-size: 16px;
+    position: absolute;
+}

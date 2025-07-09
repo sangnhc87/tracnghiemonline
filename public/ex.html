@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Công Cụ Chuyển Đổi Định Dạng Đề Thi</title>
+
+    <!-- Fonts, Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    
+    <!-- Thư viện SweetAlert2 cho thông báo -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- KaTeX cho hiển thị công thức toán học trong phần review -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+    <!-- CSS riêng cho trang chuyển đổi -->
+    <link rel="stylesheet" href="css/ex_converter_page.css">
+    
+    <!-- Các CSS cần thiết cho việc REVIEW (lấy từ hệ thống thi gốc) -->
+    <link rel="stylesheet" href="css/quiz-parser.css"> 
+    <link rel="stylesheet" href="css/style.css"> 
+
+    <!-- Script quiz-parser.js để hiển thị review -->
+    <script src="js/quiz-parser.js"></script> 
+    <!-- Script chứa hàm chuyển đổi chính -->
+    <script src="js/ex-converter.js"></script> 
+    <!-- ========================================================== -->
+<!-- PHẦN MỞ RỘNG: CSS & JAVASCRIPT CHO KHO SNIPPET (KHÔNG CAN THIỆP CODE CŨ) -->
+<style>
+    /* CSS cho Dialog Snippet đẳng cấp */
+    .snippet-dialog-custom-class .swal2-html-container {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    .snippet-container {
+        display: flex;
+        height: 50vh; /* Chiều cao dialog */
+        font-family: 'Be Vietnam Pro', sans-serif;
+    }
+    /* Panel bên trái (cây thư mục) */
+    .snippet-tree-panel {
+        width: 220px;
+        background-color: #f8f9fa;
+        border-right: 1px solid #e9ecef;
+        padding: 10px;
+        overflow-y: auto;
+    }
+    .snippet-tree {
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+    }
+    .snippet-tree li {
+        margin-bottom: 2px;
+    }
+    .snippet-tree-item {
+        display: flex;
+        align-items: center;
+        padding: 8px 10px;
+        cursor: pointer;
+        border-radius: 5px;
+        transition: background-color 0.2s, color 0.2s;
+        font-size: 14px;
+        user-select: none;
+    }
+    .snippet-tree-item:hover {
+        background-color: #e9ecef;
+    }
+    .snippet-tree-item.active {
+        background-color: #007bff;
+        color: white;
+    }
+    .snippet-tree-item .tree-icon {
+        width: 25px;
+        text-align: center;
+        margin-right: 8px;
+    }
+
+    /* Panel bên phải (chi tiết) */
+    .snippet-detail-panel {
+        flex-grow: 1;
+        padding: 20px;
+        overflow-y: auto;
+    }
+    .snippet-detail-item {
+        padding: 12px;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .snippet-detail-item:hover {
+        border-color: #007bff;
+        box-shadow: 0 0 0 1px rgba(0, 123, 255, 0.25);
+    }
+    .snippet-detail-item .detail-name {
+        font-weight: 600;
+        font-size: 15px;
+        margin-bottom: 5px;
+        color: #212529;
+        display: flex;
+        align-items: center;
+    }
+     .snippet-detail-item .detail-icon {
+        margin-right: 10px;
+        color: #007bff;
+    }
+    .snippet-detail-item .detail-description {
+        font-size: 13px;
+        color: #6c757d;
+        line-height: 1.4;
+    }
+    /* === ĐỔI MÀU TOÀN BỘ CÔNG THỨC KATEX === */
+.katex {
+    color: magenta !important;
+}
+</style>
+
+<script>
+// Bọc trong một hàm IIFE để tránh xung đột biến toàn cục
+(function() {
+    // Chỉ chạy khi trang đã tải xong
+    document.addEventListener('DOMContentLoaded', function() {
+        const openBtn = document.getElementById('open-snippet-dialog-btn');
+        const editor = document.getElementById('converter-input-area');
+
+        if (!openBtn || !editor) return;
+
+        let snippetData = null; // Cache dữ liệu snippet
+
+        // Hàm chèn snippet vào editor
+        const insertSnippet = (text) => {
+            const start = editor.selectionStart;
+            const end = editor.selectionEnd;
+            editor.value = editor.value.substring(0, start) + text + editor.value.substring(end);
+            editor.selectionStart = editor.selectionEnd = start + text.length;
+            editor.focus();
+            Swal.close();
+        };
+        
+        // Hàm render chi tiết các snippet của một category
+        const renderDetailPanel = (children) => {
+            const detailPanel = document.getElementById('snippet-detail-panel');
+            if (!detailPanel) return;
+            
+            let html = '';
+            children.forEach(item => {
+                html += `
+                    <div class="snippet-detail-item" data-snippet="${escape(item.snippet)}">
+                        <div class="detail-name">
+                            <i class="detail-icon ${item.icon || 'fas fa-code'}"></i>
+                            <span>${item.name}</span>
+                        </div>
+                        <p class="detail-description">${item.description || 'Nhấp để chèn snippet.'}</p>
+                    </div>
+                `;
+            });
+            detailPanel.innerHTML = html;
+
+            // Gán sự kiện click cho các item chi tiết
+            detailPanel.querySelectorAll('.snippet-detail-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    insertSnippet(unescape(el.dataset.snippet));
+                });
+            });
+        };
+
+        // Hàm render cây thư mục bên trái
+        const renderTreePanel = (data) => {
+            const treePanel = document.getElementById('snippet-tree-panel');
+            if (!treePanel) return;
+            
+            let html = '<ul class="snippet-tree">';
+            data.forEach((category, index) => {
+                html += `
+                    <li class="snippet-tree-item" data-index="${index}">
+                        <i class="tree-icon ${category.icon || 'fas fa-folder'}"></i>
+                        <span>${category.name}</span>
+                    </li>
+                `;
+            });
+            html += '</ul>';
+            treePanel.innerHTML = html;
+
+            // Gán sự kiện click cho các category
+            const items = treePanel.querySelectorAll('.snippet-tree-item');
+            items.forEach(item => {
+                item.addEventListener('click', () => {
+                    items.forEach(i => i.classList.remove('active')); // Xóa active ở tất cả
+                    item.classList.add('active'); // Thêm active cho item được click
+                    const categoryIndex = parseInt(item.dataset.index, 10);
+                    renderDetailPanel(data[categoryIndex].children);
+                });
+            });
+
+            // Tự động click vào mục đầu tiên
+            if (items.length > 0) {
+                items[0].click();
+            }
+        };
+
+        // Hàm chính để mở dialog
+        const openSnippetDialog = async () => {
+            // Tải dữ liệu nếu chưa có (cache)
+            if (!snippetData) {
+                try {
+                    const response = await fetch('snippets.json');
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    snippetData = await response.json();
+                } catch (error) {
+                    Swal.fire('Lỗi', 'Không thể tải được file snippets.json. Vui lòng kiểm tra lại.', 'error');
+                    return;
+                }
+            }
+
+            Swal.fire({
+                title: 'Kho Snippet Chuyên Nghiệp',
+                html: `
+                    <div class="snippet-container">
+                        <div id="snippet-tree-panel" class="snippet-tree-panel"></div>
+                        <div id="snippet-detail-panel" class="snippet-detail-panel"></div>
+                    </div>
+                `,
+                width: '80vw',
+                customClass: {
+                    popup: 'snippet-dialog-custom-class'
+                },
+                showConfirmButton: false,
+                showCloseButton: true,
+                didOpen: () => {
+                    renderTreePanel(snippetData);
+                }
+            });
+        };
+
+        openBtn.addEventListener('click', openSnippetDialog);
+    });
+})();
+</script>
+<!-- ========================================================== -->
+</head>
+<body>
+
+    <div id="app-converter">
+        <header class="converter-header">
+            <h1><i class="fas fa-exchange-alt"></i> Công Cụ Chuyển Đổi Định Dạng Đề Thi</h1>
+            <p>Chuyển đổi nội dung đề thi từ định dạng <code>\begin{ex}...\end{ex}</code> sang định dạng chuẩn.</p>
+        </header>
+            <!-- ========================================================== -->
+<!-- PHẦN MỞ RỘNG: THANH CÔNG CỤ SNIPPET (KHÔNG CAN THIỆP CODE CŨ) -->
+<div class="snippet-toolbar" style="padding: 10px 15px; background-color: #f8f9fa; border-bottom: 1px solid #dee2e6; display: flex; align-items: center; gap: 10px;">
+    <button id="open-snippet-dialog-btn" class="btn btn-primary" style="background-color: #007bff; border-color: #007bff;">
+        <i class="fas fa-book-open"></i> Kho Snippet
+    </button>
+    <!-- Bạn có thể thêm các nút khác cho thanh công cụ này trong tương lai -->
+</div>
+<!-- ========================================================== -->
+        <main class="converter-main-content">
+            <!-- Cột Input -->
+            <div class="converter-panel input-panel">
+                <h2><i class="fas fa-file-import"></i> Định dạng `\begin{ex}` (Input)</h2>
+                <textarea id="converter-input-area" class="converter-textarea" placeholder="Dán toàn bộ nội dung đề thi dạng \begin{ex}...\end{ex} vào đây...
+Ví dụ:
+\begin{ex}
+  Câu 1: Nội dung câu hỏi.
+  \choice
+  {NỘI DUNG A}
+  {NỘI DUNG B}
+  {NỘI DUNG C}
+  {NỘI DUNG D}
+  \loigiai{
+    Lời giải.
+  }
+\end{ex}"></textarea>
+                <div class="panel-actions">
+                    <button id="load-file-btn" class="btn btn-secondary"><i class="fas fa-folder-open"></i> Upload File .tex</button>
+                    <button id="convert-btn" class="btn btn-primary"><i class="fas fa-sync-alt"></i> Chuyển đổi</button>
+                    <button id="clear-input-btn" class="btn btn-secondary"><i class="fas fa-eraser"></i> Xóa Input</button>
+                </div>
+                <input type="file" id="file-input-hidden" accept=".tex,.txt" style="display: none;"> <!-- Input file ẩn -->
+            </div>
+
+            <!-- Cột Output và Review -->
+            <div class="converter-panel output-panel">
+                <h2><i class="fas fa-file-export"></i> Định dạng Chuẩn (Output)</h2>
+                <textarea id="converter-output-area" class="converter-textarea" readonly placeholder="Kết quả chuyển đổi sẽ xuất hiện ở đây..."></textarea>
+                <div class="panel-actions">
+                    <button id="copy-output-btn" class="btn btn-success"><i class="fas fa-copy"></i> Sao chép Output</button>
+                    <button id="clear-output-btn" class="btn btn-secondary"><i class="fas fa-eraser"></i> Xóa Output</button>
+                </div>
+                
+                <!-- Khu vực hiển thị Keys và Cores -->
+                <div class="keys-cores-display">
+                    <h3>Đáp án và Điểm (Để copy vào form tạo đề)</h3>
+                    <div class="keys-cores-row">
+                        <label for="extracted-keys">Keys:</label>
+                        <input type="text" id="extracted-keys" readonly placeholder="A|B|C|..." />
+                        <button class="btn btn-copy" onclick="copyToClipboard(document.getElementById('extracted-keys'))" title="Sao chép Keys"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <div class="keys-cores-row">
+                        <label for="extracted-cores">Cores:</label>
+                        <input type="text" id="extracted-cores" readonly placeholder="0.2|0.2|..." />
+                        <button class="btn btn-copy" onclick="copyToClipboard(document.getElementById('extracted-cores'))" title="Sao chép Cores"><i class="fas fa-copy"></i></button>
+                    </div>
+                </div>
+
+                <!-- Khu vực Review -->
+                <h3 class="review-title"><i class="fas fa-eye"></i> Xem trước Output</h3>
+                <div id="review-display-area" class="review-display-area">
+                    <p style="text-align: center; color: #888; padding: 20px;">Nội dung xem trước sẽ hiển thị ở đây.</p>
+                </div>
+            </div>
+        </main>
+
+        <footer class="converter-footer">
+            <p>Sử dụng nội dung đã sao chép từ "Output" để dán vào khung soạn thảo chính hoặc form tạo đề.</p>
+        </footer>
+    </div>
+    <!-- MỚI: Script chứa các tiện ích xử lý chuỗi LaTeX -->
+    <script src="js/latex-string-utils.js"></script> 
+
+    <!-- Script riêng cho trang này -->
+    <script defer src="js/ex_converter_page.js"></script>
+</body>
+</html>

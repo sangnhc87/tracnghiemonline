@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Minimal Uploader Test</title>
+</head>
+<body>
+
+    <h1>Uploader Tối Giản</h1>
+
+    <input type="file" id="myFile">
+    <button id="myBtn">Upload</button>
+
+    <hr>
+
+    <h2>Trạng thái:</h2>
+    <p id="myStatus">Chờ upload...</p>
+
+    <h2>Link kết quả:</h2>
+    <a id="myLink" href="#" target="_blank">Chưa có link</a>
+
+    <script>
+        const myFile = document.getElementById('myFile');
+        const myBtn = document.getElementById('myBtn');
+        const myStatus = document.getElementById('myStatus');
+        const myLink = document.getElementById('myLink');
+
+        myBtn.addEventListener('click', () => {
+            if (!myFile.files[0]) {
+                myStatus.innerText = "Vui lòng chọn một file!";
+                return;
+            }
+
+            myStatus.innerText = "Đang gửi file...";
+            const formData = new FormData();
+            formData.append('file', myFile.files[0]);
+
+            fetch('http://localhost:3000/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Lỗi Server: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log("ĐÃ NHẬN ĐƯỢC DATA:", data); // Dòng này PHẢI xuất hiện trong Console
+                if (data && data.url) {
+                    myStatus.innerText = "Thành công!";
+                    myLink.innerText = data.url;
+                    myLink.href = data.url;
+                } else {
+                    myStatus.innerText = "Lỗi: Phản hồi không chứa URL.";
+                }
+            })
+            .catch(error => {
+                console.error("ĐÃ XẢY RA LỖI:", error); // Nếu có lỗi, dòng này PHẢI xuất hiện
+                myStatus.innerText = "Đã có lỗi xảy ra: " + error.message;
+            });
+        });
+    </script>
+</body>
+</html>

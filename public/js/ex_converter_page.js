@@ -1,4 +1,4 @@
-// File: js/ex_converter_page.js (Phiên bản hoàn chỉnh 100%)
+// File: js/ex_converter_page.js (Phiên bản Nâng cấp - Tô màu đáp án)
 
 // --- DOM Elements ---
 const getEl = (id) => document.getElementById(id);
@@ -14,16 +14,14 @@ let extractedCoresInput;
 let loadFileBtn;
 let fileInputHidden;
 
-// --- Hàm tiện ích cho KaTeX (tái sử dụng) ---
+// --- Hàm tiện ích (không đổi) ---
 function renderKatexInElement(element) {
     if (window.renderMathInElement) {
         try {
             window.renderMathInElement(element, {
                 delimiters: [
-                    {left: '$$', right: '$$', display: true},
-                    {left: '$', right: '$', display: false},
-                    {left: '\\(', right: '\\)', display: false},
-                    {left: '\\[', right: '\\]', display: true}
+                    {left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true}
                 ],
                 throwOnError: false
             });
@@ -31,19 +29,13 @@ function renderKatexInElement(element) {
     }
 }
 
-// --- Hàm tiện ích cho xử lý hình ảnh placeholders (tái sử dụng) ---
 function processImagePlaceholders(text) {
     if (!text || typeof text !== 'string') return text;
-    let processedText = text;
-    processedText = processedText.replace(/sangnhc1\//g, 'https://gitlab.com/nguyensangnhc/pic4web/-/raw/main/Hinh/');
-    processedText = processedText.replace(/sangnhc2\//g, 'https://gitlab.com/nguyensangnhc/tikz4web/-/raw/main/Hinh/');
-    processedText = processedText.replace(/sangnhc3\//g, 'https://gitlab.com/nguyensangnhc/tikz2png/-/raw/main/Hinh/');
-    processedText = processedText.replace(/sangnhc4\//g, 'https://gitlab.com/nguyensangnhc/png2link/-/raw/main/Hinh/');
-    
+    let processedText = text.replace(/sangnhc[1-4]\//g, (match) => `https://gitlab.com/nguyensangnhc/${{'1':'pic4web','2':'tikz4web','3':'tikz2png','4':'png2link'}[match[7]]}/-/raw/main/Hinh/`);
     return processedText;
 }
 
-// --- Logic xử lý chuyển đổi và hiển thị review ---
+// --- Logic xử lý chuyển đổi và hiển thị review (ĐÃ NÂNG CẤP) ---
 let conversionReviewTimeout; 
 
 function performConversionAndRenderReview() {
@@ -53,114 +45,129 @@ function performConversionAndRenderReview() {
         
         extractedKeysInput.value = '';
         extractedCoresInput.value = '';
-        reviewDisplayArea.innerHTML = ''; 
+        reviewDisplayArea.innerHTML = '<p style="text-align: center; color: #888; padding: 20px;">Nội dung xem trước sẽ hiển thị ở đây.</p>';
 
-        if (typeof window.convertExToStandardFormat === 'function') {
-            let conversionResult;
-            try {
-                conversionResult = window.convertExToStandardFormat(inputContent);
-            } catch (error) {
-                converterOutputArea.value = `Lỗi cú pháp: ${error.message}\nVui lòng kiểm tra lại dấu ngoặc {} trong phần input.`;
-                reviewDisplayArea.innerHTML = `<p style="color: red; padding: 10px;">Lỗi cú pháp: ${error.message}</p>`;
-                return; 
-            }
-            
-            converterOutputArea.value = conversionResult.compiledContent;
-            extractedKeysInput.value = conversionResult.keys;
-            extractedCoresInput.value = conversionResult.cores;
-
-            if (typeof window.parseMCQuestion === 'function') { 
-                const questionBlocks = conversionResult.compiledContent.split(/\n\s*\n/).filter(block => block.trim() !== '');
-                
-                if (questionBlocks.length > 0 && questionBlocks[0].trim() !== '') { 
-                    questionBlocks.forEach((block, index) => {
-                        const parsedData = window.parseMCQuestion(block);
-                        
-                        if (parsedData) {
-                            const questionDiv = document.createElement("div");
-                            questionDiv.className = "question"; 
-                            questionDiv.id = `review-q-${index}`; 
-
-                            const statementDiv = document.createElement("div");
-                            statementDiv.className = "question-statement";
-                            
-                            let questionContent = parsedData.statement.replace(/^(Câu\s*\d+\s*[:.]?\s*)/i, '').trim();
-                            const newQuestionTitle = `<span class="question-number-highlight">Câu ${index + 1}:</span>`;
-                            statementDiv.innerHTML = newQuestionTitle + " " + processImagePlaceholders(questionContent);
-                            questionDiv.appendChild(statementDiv);
-
-                            if (parsedData.type === 'MC') {
-                                const optionsContainer = document.createElement('div');
-                                optionsContainer.className = `mc-options mc-layout-${parsedData.layout}`; 
-                                parsedData.options.forEach(opt => {
-                                    const optionDiv = document.createElement("div");
-                                    optionDiv.className = "mc-option"; 
-                                    optionDiv.innerHTML = `<span class="mc-option-label">${opt.label}</span><span class="mc-option-content">${processImagePlaceholders(opt.content)}</span>`;
-                                    optionsContainer.appendChild(optionDiv);
-                                });
-                                questionDiv.appendChild(optionsContainer);
-                            } else if (parsedData.type === 'TABLE_TF') {
-                                const table = document.createElement('table');
-                                table.className = 'table-tf-container'; 
-                                table.innerHTML = `<thead><tr><th>Mệnh đề</th><th>Đúng</th><th>Sai</th></tr></thead><tbody>`;
-                                parsedData.options.forEach(opt => {
-                                    // Đối với review, chỉ cần hiển thị nút, không cần selected
-                                    const tfClassT = 'table-tf-radio'; // Không selected mặc định
-                                    const tfClassF = 'table-tf-radio'; // Không selected mặc định
-                                    
-                                    table.innerHTML += `<tr><td>${opt.label}) ${processImagePlaceholders(opt.content)}</td><td><label class="${tfClassT}"></label></td><td><label class="${tfClassF}"></label></td></tr>`;
-                                });
-                                table.innerHTML += `</tbody></table>`;
-                                questionDiv.appendChild(table);
-                            } else if (parsedData.type === 'NUMERIC') {
-                                const numDiv = document.createElement("div");
-                                numDiv.className = "numeric-option"; 
-                                numDiv.innerHTML = `<input type="text" placeholder="Đáp số: ${parsedData.correctAnswer}" disabled>`; 
-                                questionDiv.appendChild(numDiv);
-                            }
-
-                            if (parsedData.solution && parsedData.solution.trim() !== '') {
-                                const toggleBtn = document.createElement("button");
-                                toggleBtn.className = "toggle-explanation btn"; 
-                                toggleBtn.textContent = "Xem lời giải";
-                                toggleBtn.style.display = 'block'; 
-                                
-                                const expDiv = document.createElement("div");
-                                expDiv.className = "explanation hidden"; 
-                                expDiv.innerHTML = processImagePlaceholders(parsedData.solution);
-
-                                toggleBtn.onclick = (event) => {
-                                    event.stopPropagation(); 
-                                    expDiv.classList.toggle("hidden");
-                                    toggleBtn.textContent = expDiv.classList.contains("hidden") ? "Xem lời giải" : "Ẩn lời giải";
-                                };
-
-                                questionDiv.appendChild(toggleBtn);
-                                questionDiv.appendChild(expDiv);
-                            }
-
-                            reviewDisplayArea.appendChild(questionDiv);
-                        } else {
-                            reviewDisplayArea.innerHTML += `<p style="color: red; padding: 10px;">[Lỗi phân tích một khối câu hỏi] Định dạng không hợp lệ hoặc thiếu nội dung.</p><pre style="white-space: pre-wrap; font-size: 0.8em; color: #555;">${block.substring(0, Math.min(block.length, 200))}...</pre>`;
-                        }
-                    });
-                    renderKatexInElement(reviewDisplayArea);
-                } else {
-                    reviewDisplayArea.innerHTML = '<p style="text-align: center; color: #888; padding: 20px;">Nội dung xem trước sẽ hiển thị ở đây.</p>';
-                }
-            } else {
-                reviewDisplayArea.innerHTML = '<p style="color: red; padding: 20px;">Lỗi: Không tìm thấy quiz-parser.js hoặc hàm parseMCQuestion. Vui lòng kiểm tra console.</p>';
-            }
-        } else {
-            Swal.fire('Lỗi', 'Không tìm thấy hàm chuyển đổi (ex-converter.js). Vui lòng kiểm tra console.', 'error');
+        if (typeof window.convertExToStandardFormat !== 'function') {
+            Swal.fire('Lỗi', 'Không tìm thấy hàm chuyển đổi (ex-converter.js).', 'error');
+            return;
         }
-    }, 500); // Debounce 500ms
+
+        let conversionResult;
+        try {
+            conversionResult = window.convertExToStandardFormat(inputContent);
+        } catch (error) {
+            converterOutputArea.value = `Lỗi cú pháp: ${error.message}\nVui lòng kiểm tra lại cấu trúc input.`;
+            reviewDisplayArea.innerHTML = `<p class="error-message">Lỗi cú pháp: ${error.message}</p>`;
+            return; 
+        }
+        
+        converterOutputArea.value = conversionResult.compiledContent;
+        extractedKeysInput.value = conversionResult.keys;
+        extractedCoresInput.value = conversionResult.cores;
+        
+        // Tách chuỗi keys thành mảng để sử dụng
+        const keysArray = conversionResult.keys.split('|');
+
+        if (typeof window.parseMCQuestion !== 'function') { 
+            reviewDisplayArea.innerHTML = '<p class="error-message">Lỗi: Không tìm thấy quiz-parser.js.</p>';
+            return;
+        }
+
+        const questionBlocks = conversionResult.compiledContent.split(/\n\s*\n/).filter(block => block.trim() !== '');
+        reviewDisplayArea.innerHTML = ''; // Xóa nội dung mặc định
+
+        if (questionBlocks.length > 0 && questionBlocks[0].trim() !== '') { 
+            questionBlocks.forEach((block, index) => {
+                const parsedData = window.parseMCQuestion(block);
+                // Lấy đáp án đúng cho câu hỏi hiện tại
+                const correctKey = keysArray[index] || ''; 
+                
+                if (parsedData) {
+                    const questionDiv = document.createElement("div");
+                    questionDiv.className = "question"; 
+                    questionDiv.id = `review-q-${index}`; 
+
+                    const statementDiv = document.createElement("div");
+                    statementDiv.className = "question-statement";
+                    
+                    let questionContent = parsedData.statement.replace(/^(Câu\s*\d+\s*[:.]?\s*)/i, '').trim();
+                    const newQuestionTitle = `<span class="question-number-highlight">Câu ${index + 1}:</span>`;
+                    statementDiv.innerHTML = newQuestionTitle + " " + processImagePlaceholders(questionContent);
+                    questionDiv.appendChild(statementDiv);
+
+                    // ==========================================================
+                    // ==             LOGIC RENDER ĐÃ NÂNG CẤP Ở ĐÂY           ==
+                    // ==========================================================
+                    if (parsedData.type === 'MC') {
+                        const optionsContainer = document.createElement('div');
+                        optionsContainer.className = `mc-options mc-layout-${parsedData.layout}`; 
+                        parsedData.options.forEach(opt => {
+                            const optionDiv = document.createElement("div");
+                            const isCorrect = correctKey && correctKey.toUpperCase() === opt.label.replace('.', '');
+                            optionDiv.className = isCorrect ? "mc-option correct-answer-preview" : "mc-option";
+                            optionDiv.innerHTML = `<span class="mc-option-label">${opt.label}</span><span class="mc-option-content">${processImagePlaceholders(opt.content)}</span>`;
+                            optionsContainer.appendChild(optionDiv);
+                        });
+                        questionDiv.appendChild(optionsContainer);
+                    } else if (parsedData.type === 'TABLE_TF') {
+                        const table = document.createElement('table');
+                        table.className = 'table-tf-container'; 
+                        table.innerHTML = `<thead><tr><th>Mệnh đề</th><th>Đúng</th><th>Sai</th></tr></thead><tbody>`;
+                        parsedData.options.forEach((opt, idx) => {
+                             if (correctKey && idx < correctKey.length) {
+                                const isCorrectT = correctKey[idx].toUpperCase() === 'T';
+                                const tfClassT = isCorrectT ? 'table-tf-radio selected' : 'table-tf-radio';
+                                const tfClassF = !isCorrectT ? 'table-tf-radio selected' : 'table-tf-radio';
+                                table.innerHTML += `<tr><td>${opt.label}) ${processImagePlaceholders(opt.content)}</td><td><label class="${tfClassT}"></label></td><td><label class="${tfClassF}"></label></td></tr>`;
+                            } else {
+                                table.innerHTML += `<tr><td>${opt.label}) ${processImagePlaceholders(opt.content)}</td><td><label class="table-tf-radio"></label></td><td><label class="table-tf-radio"></label></td></tr>`;
+                            }
+                        });
+                        table.innerHTML += `</tbody></table>`;
+                        questionDiv.appendChild(table);
+                    } else if (parsedData.type === 'NUMERIC') {
+                        const numDiv = document.createElement("div");
+                        numDiv.className = "numeric-option"; 
+                        // Hiển thị đáp án đúng trong placeholder
+                        numDiv.innerHTML = `<input type="text" placeholder="Đáp số: ${correctKey || 'N/A'}" disabled>`; 
+                        questionDiv.appendChild(numDiv);
+                    }
+                    // ==========================================================
+
+                    if (parsedData.solution && parsedData.solution.trim() !== '') {
+                        const toggleBtn = document.createElement("button");
+                        toggleBtn.className = "toggle-explanation btn"; 
+                        toggleBtn.textContent = "Xem lời giải";
+                        toggleBtn.style.display = 'block'; 
+                        
+                        const expDiv = document.createElement("div");
+                        expDiv.className = "explanation hidden"; 
+                        expDiv.innerHTML = processImagePlaceholders(parsedData.solution);
+
+                        toggleBtn.onclick = (event) => {
+                            event.stopPropagation(); 
+                            expDiv.classList.toggle("hidden");
+                            toggleBtn.textContent = expDiv.classList.contains("hidden") ? "Xem lời giải" : "Ẩn lời giải";
+                        };
+
+                        questionDiv.appendChild(toggleBtn);
+                        questionDiv.appendChild(expDiv);
+                    }
+
+                    reviewDisplayArea.appendChild(questionDiv);
+                } else {
+                    reviewDisplayArea.innerHTML += `<p class="error-message">[Lỗi phân tích một khối câu hỏi]</p><pre>${block.substring(0, 200)}...</pre>`;
+                }
+            });
+            renderKatexInElement(reviewDisplayArea);
+        }
+    }, 500); // Debounce
 }
 
 
-// --- Event Listeners ---
+// --- Event Listeners (Không đổi) ---
 document.addEventListener('DOMContentLoaded', () => {
-    // === GÁN CÁC PHẦN TỬ DOM ===
+    // Gán các phần tử DOM
     converterInputArea = getEl("converter-input-area");
     converterOutputArea = getEl("converter-output-area");
     convertBtn = getEl("convert-btn");
@@ -173,31 +180,29 @@ document.addEventListener('DOMContentLoaded', () => {
     loadFileBtn = getEl("load-file-btn");
     fileInputHidden = getEl("file-input-hidden");
 
-
-    // Gán Event Listeners cho Converter
+    // Gán sự kiện
     convertBtn.addEventListener('click', performConversionAndRenderReview); 
     converterInputArea.addEventListener('input', performConversionAndRenderReview); 
 
     copyOutputBtn.addEventListener('click', () => {
         const outputContent = converterOutputArea.value;
         if (outputContent.trim() === '') {
-            Swal.fire('Cảnh báo', 'Không có nội dung để sao chép từ khung Output.', 'warning');
+            Swal.fire('Cảnh báo', 'Không có nội dung để sao chép.', 'warning');
             return;
         }
         navigator.clipboard.writeText(outputContent)
-            .then(() => Swal.fire('Đã sao chép!', 'Nội dung đã chuyển đổi được sao chép vào clipboard.', 'success'))
-            .catch(err => Swal.fire('Lỗi', 'Không thể sao chép nội dung: ' + err, 'error'));
+            .then(() => Swal.fire('Đã sao chép!', 'Nội dung đã chuyển đổi được sao chép.', 'success'))
+            .catch(err => Swal.fire('Lỗi', 'Không thể sao chép: ' + err, 'error'));
     });
 
-    // Hàm tiện ích sao chép chung (dùng cho các nút copy Keys/Cores)
     window.copyToClipboard = (element) => {
         if (!element || !element.value || element.value.trim() === '') {
-            Swal.fire('Cảnh báo', 'Không có nội dung để sao chép!', 'warning');
+            Swal.fire('Cảnh báo', 'Không có nội dung để sao chép.', 'warning');
             return;
         }
         navigator.clipboard.writeText(element.value)
-            .then(() => Swal.fire('Đã sao chép!', 'Nội dung đã sao chép vào clipboard.', 'success'))
-            .catch(err => Swal.fire('Lỗi', 'Không thể sao chép nội dung: ' + err, 'error'));
+            .then(() => Swal.fire('Đã sao chép!', 'Nội dung đã được sao chép.', 'success'))
+            .catch(err => Swal.fire('Lỗi', 'Không thể sao chép: ' + err, 'error'));
     };
 
     clearInputBtn.addEventListener('click', () => {
@@ -207,12 +212,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     clearOutputBtn.addEventListener('click', () => {
         converterOutputArea.value = '';
-        reviewDisplayArea.innerHTML = '<p style="text-align: center; color: #888; padding: 20px;">Nội dung xem trước sẽ hiển thị ở đây.</p>';
+        reviewDisplayArea.innerHTML = '<p style="text-align: center; color: #888;">Nội dung xem trước sẽ hiển thị ở đây.</p>';
         extractedKeysInput.value = '';
         extractedCoresInput.value = '';
     });
 
-    // Xử lý tải file .tex
     loadFileBtn.addEventListener('click', () => {
         fileInputHidden.click(); 
     });
@@ -222,17 +226,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!file) return;
 
         if (!file.name.endsWith('.tex') && !file.name.endsWith('.txt')) {
-            Swal.fire('Lỗi', 'Vui lòng chọn file văn bản (.txt) hoặc file LaTeX (.tex).', 'error');
+            Swal.fire('Lỗi', 'Vui lòng chọn file .tex hoặc .txt.', 'error');
             return;
         }
 
         const reader = new FileReader();
         reader.onload = (e) => {
             let fileContent = e.target.result;
-            
-            // XÓA CÁC DÒNG COMMENT LATEX (%)
             fileContent = fileContent.replace(/^([^\%]*?)(?<!\\)%.*$/gm, '$1').trim();
-
             converterInputArea.value = fileContent; 
             performConversionAndRenderReview(); 
         };
@@ -242,50 +243,35 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.readAsText(file); 
     });
 
-    // Thêm nội dung mẫu và chạy chuyển đổi khi tải trang
+    // Nội dung mẫu khi tải trang
     converterInputArea.value = `\\begin{ex}
-  % Đây là một dòng comment và sẽ bị xóa
-  Câu 1: Nội dung câu hỏi đầu tiên.
+  Câu 1: Thủ đô của Pháp là gì?
   \\choice
-  {NÔI DUNG A}
-  {\\True NÔI DUNG B } % Đáp án B là đúng
-  {NÔI DUNG C}
-  {NÔI DUNG D}
+  {London}
+  {Berlin}
+  {\\True Paris}
+  {Rome}
   \\loigiai{
-    Lời giải câu 1.
+    Paris là thủ đô và là thành phố lớn nhất của Pháp.
   }
 \\end{ex}
 
-% Đây là một comment khác
 \\begin{ex}
-  Câu 2: Câu hỏi Đúng/Sai.
+  Câu 2: Đánh giá các mệnh đề sau.
   \\choiceTF
-  {\\True Mệnh đề 1} % Mệnh đề 1 đúng
-  {Mệnh đề 2}
-  {\\True Mệnh đề 3} % Mệnh đề 3 đúng
-  {Mệnh đề 4}
+  {\\True 2 là số chẵn.}
+  {Trái Đất hình vuông.}
+  {\\True Nước sôi ở 100 độ C.}
+  {Mặt Trời quay quanh Trái Đất.}
   \\loigiai{
     Lời giải câu 2.
   }
 \\end{ex}
 
-\\begin{bt} % Môi trường BT
-  Câu 3: Câu hỏi điền số.
-  \\shortans{42}
-  \\loigiai{
-    Lời giải câu 3.
-  }
+\\begin{bt}
+  Câu 3: Kết quả của 5 x 5 là bao nhiêu?
+  \\shortans{25}
 \\end{bt}
-
-Đây là một đoạn văn bản nằm ngoài môi trường ex/bt.
-Nó cũng sẽ được coi là một câu hỏi nếu bạn muốn.
-
-\\begin{ex}
-  Câu 5: Câu hỏi chỉ có nội dung, không có options/shortans.
-  \\loigiai{
-    Lời giải câu 5.
-  }
-\\end{ex}
 `;
     performConversionAndRenderReview();
 });

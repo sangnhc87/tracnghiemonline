@@ -391,3 +391,185 @@ body {
     font-size: 16px;
     position: absolute;
 }
+
+/* === CSS CHO TRÌNH SOẠN THẢO KHUNG CÂU HỎI MỚI === */
+
+.question-editor-container {
+    height: 100%;
+    overflow-y: auto;
+    padding: 10px;
+    background-color: #f0f2f5;
+}
+
+.question-editor-frame {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: all 0.2s ease-in-out;
+}
+
+.question-editor-frame.collapsed {
+    /* Style khi khung bị thu gọn */
+}
+
+.frame-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+    cursor: pointer;
+}
+
+.frame-title {
+    font-weight: 600;
+    font-size: 1.1em;
+}
+
+.frame-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1em;
+    padding: 5px;
+    margin-left: 8px;
+    color: #6c757d;
+    transition: color 0.2s;
+}
+.frame-actions button:hover {
+    color: #343a40;
+}
+.frame-actions .delete-btn:hover {
+    color: #dc3545;
+}
+.frame-header .collapse-icon {
+    transition: transform 0.2s;
+}
+.collapsed .frame-header .collapse-icon {
+    transform: rotate(-90deg);
+}
+
+.frame-content {
+    padding: 0; /* Không cần padding vì textarea đã có */
+    border-top: none;
+}
+.collapsed .frame-content {
+    display: none;
+}
+
+.frame-content textarea {
+    width: 100%;
+    min-height: 150px;
+    border: none;
+    padding: 15px;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    resize: vertical;
+    outline: none;
+    background-color: #fff;
+    border-radius: 0 0 8px 8px;
+}
+
+.add-question-bar {
+    padding: 15px;
+    border-top: 1px solid #ddd;
+    background-color: #f8f9fa;
+    text-align: center;
+}
+
+/* === CSS MỚI CHO GIAO DIỆN SOẠN THẢO NÂNG CẤP === */
+
+.question-editor-container {
+    height: 100%;
+    overflow-y: auto;
+    padding: 10px;
+    background-color: #f4f5f7; /* Màu nền nhẹ nhàng hơn */
+}
+
+.question-editor-frame {
+    background-color: #fff;
+    border: 1px solid #dfe1e6;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: all 0.2s ease-in-out;
+}
+
+/* [MỚI] Hiệu ứng viền xanh khi focus vào khung */
+.question-editor-frame.is-focused {
+    border-color: #4c9aff;
+    box-shadow: 0 0 0 3px rgba(76, 154, 255, 0.2);
+}
+
+.frame-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background-color: #fafbfc;
+    border-bottom: 1px solid #e9ecef;
+    cursor: pointer;
+}
+
+/* ... các style cũ cho frame-title, frame-actions giữ nguyên ... */
+.frame-title{font-weight:600;font-size:1.1em}.frame-actions button{background:0 0;border:none;cursor:pointer;font-size:1em;padding:5px;margin-left:8px;color:#6c757d;transition:color .2s}.frame-actions button:hover{color:#343a40}.frame-actions .delete-btn:hover{color:#dc3545}.frame-header .collapse-icon{transition:transform .2s}.collapsed .frame-header .collapse-icon{transform:rotate(-90deg)}
+
+.frame-content {
+    padding: 0;
+    border-top: none;
+}
+.collapsed .frame-content {
+    display: none;
+}
+
+/* === NÂNG CẤP FONT, MÀU SẮC, KÍCH THƯỚC CHO TEXTAREA === */
+.frame-content textarea {
+    width: 100%;
+    min-height: 180px;
+    border: none;
+    padding: 15px 20px;
+    /* Font Fira Code mới, nếu không có thì dùng các font monospace khác */
+    font-family: 'Fira Code', 'Courier New', monospace;
+    font-size: 15px;  /* To hơn một chút */
+    line-height: 1.7; /* Tăng khoảng cách dòng cho dễ đọc */
+    resize: vertical;
+    outline: none;
+    background-color: #ffffff;
+    color: #172b4d; /* Màu chữ đậm, đỡ chói hơn màu đen tuyền */
+    border-radius: 0 0 8px 8px;
+}
+
+.add-question-bar {
+    padding: 15px;
+    border-top: 1px solid #ddd;
+    background-color: #f8f9fa;
+    text-align: center;
+    display: flex; /* [MỚI] Sắp xếp các nút */
+    justify-content: center;
+    gap: 15px;
+}
+/* === NÂNG CẤP FONT, MÀU SẮC, KÍCH THƯỚC CHO TEXTAREA === */
+.frame-content textarea {
+    width: 100%;
+    min-height: 180px;
+    border: none;
+    padding: 15px 20px;
+    
+    /* === THAY ĐỔI CHÍNH NẰM Ở ĐÂY === */
+    /* Sử dụng font 'Be Vietnam Pro' giống như bên hiển thị */
+    font-family: 'Be Vietnam Pro', sans-serif; 
+    
+    /* Tinh chỉnh kích thước và màu sắc cho đồng bộ */
+    font-size: 16px;         /* Cho chữ to và dễ đọc hơn một chút */
+    line-height: 1.7;        /* Giữ khoảng cách dòng thoáng đãng */
+    color: #212529;          /* Dùng màu chữ chính của trang */
+    
+    resize: vertical;
+    outline: none;
+    background-color: #ffffff;
+    border-radius: 0 0 8px 8px;
+}

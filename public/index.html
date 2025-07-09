@@ -35,7 +35,50 @@
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/favicon-16x16.png">
 <link rel="manifest" href="/favicon_io/site.webmanifest">
+<style>
+    /* Sử dụng Biến CSS để có thể thay đổi màu KaTeX một cách linh hoạt */
+    :root {
+        --katex-color: #ff00ff; /* Màu mặc định là magenta (dạng HEX) */
+    }
+    .katex {
+        color: var(--katex-color) !important;
+    }
 
+    /* === CSS CHO KHU VỰC ACTIONS GỌN NHẸ === */
+    .dashboard-actions {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 25px;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+    }
+    .color-picker-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    #katex-color-picker {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        width: 30px;
+        height: 30px;
+        background-color: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+    }
+    #katex-color-picker::-webkit-color-swatch {
+        border-radius: 50%;
+        border: 2px solid #ddd;
+    }
+    #katex-color-picker::-moz-color-swatch {
+        border-radius: 50%;
+        border: 2px solid #ddd;
+    }
+</style>
 </head>
 <body>
 
@@ -115,13 +158,14 @@
         <div id="teacherDashboard" class="dashboard-container" style="display:none;">
             <h2>Bảng điều khiển Giáo viên</h2>
             <p>Chào mừng, <span id="teacherDashboardName"></span>!</p>
+           
             <div class="dashboard-main-actions" style="display: flex; gap: 10px; justify-content: center; margin-bottom: 20px;">
                 <a href="/pdf-teacher.html" target="_blank" class="btn btn-info"><i class="fas fa-file-pdf"></i> Quản lý Đề PDF</a>
                 <a href="/stats.html" class="btn btn-primary"><i class="fas fa-chart-line"></i> Xem Thống kê</a>
                 <!-- Các nút mới được thêm vào -->
     <a href="/hdsd.html" target="_blank" class="btn btn-secondary"><i class="fas fa-book-open"></i> Hướng dẫn</a>
-    <a href="/editor.html" target="_blank" class="btn btn-warning"><i class="fas fa-pencil-alt"></i>Hỗ Trợ Soạn Đề </a>
-    <a href="/ex_converter_page.html" target="_blank" class="btn btn-dark"><i class="fas fa-exchange-alt"></i>Hỗ Trợ Ex_Test Chuyển Đổi</a>
+    <a href="/editor_V2.html" target="_blank" class="btn btn-warning"><i class="fas fa-pencil-alt"></i>Hỗ Trợ Word</a>
+    <a href="/ex_V2.html" target="_blank" class="btn btn-dark"><i class="fas fa-exchange-alt"></i>Hỗ Trợ Latex</a>
             </div>
             
             <div class="dashboard-sections">
@@ -140,9 +184,17 @@
                     <div id="submission-list" class="list-group"></div>
                 </div>
             </div>
-            <div class="dashboard-actions">
-                <button onclick="signOut()" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i> Đăng xuất</button>
-            </div>
+           <!-- ĐOẠN CODE MỚI ĐÃ TỐI ƯU -->
+<div class="dashboard-actions">
+    <!-- Nhóm cài đặt màu gọn nhẹ -->
+    <div class="color-picker-group">
+        <label for="katex-color-picker">Màu công thức:</label>
+        <input type="color" id="katex-color-picker" title="Chọn màu cho công thức KaTeX">
+    </div>
+    <a href="/png2link.html" target="_blank" class="btn btn-dark"><i class="fas fa-exchange-alt"></i>Lấy Link Ảnh</a>
+    <!-- Nút Đăng xuất -->
+    <button onclick="signOut()" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i> Đăng xuất</button>
+</div>
         </div>
 
         <!-- Modal Form Đề thi -->
@@ -232,5 +284,33 @@
     <!-- <script defer src="js/redirect.js"></script>  -->
     <script defer src="js/main.js"></script>
     <!-- <script defer src="js/storage_handler.js"></script> -->
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const colorPicker = document.getElementById('katex-color-picker');
+        const KATEK_COLOR_KEY = 'katexUserColor';
+        const DEFAULT_COLOR = '#ff00ff'; // Sửa ở đây
+
+        function applyKatexColor(color) {
+            if (color) {
+                document.documentElement.style.setProperty('--katex-color', color);
+            }
+        }
+
+        const initialColor = localStorage.getItem(KATEK_COLOR_KEY) || DEFAULT_COLOR;
+        applyKatexColor(initialColor);
+
+        if (colorPicker) {
+            colorPicker.value = initialColor;
+        }
+
+        if (colorPicker) {
+            colorPicker.addEventListener('input', (event) => {
+                const newColor = event.target.value;
+                applyKatexColor(newColor);
+                localStorage.setItem(KATEK_COLOR_KEY, newColor);
+            });
+        }
+    });
+    </script>
 </body>
 </html>

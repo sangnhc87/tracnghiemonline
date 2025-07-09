@@ -1,0 +1,80 @@
+[
+  {
+    "name": "Cấu Trúc Câu Hỏi",
+    "icon": "fas fa-file-alt",
+    "children": [
+      {
+        "name": "Câu hỏi trắc nghiệm",
+        "icon": "fas fa-plus-square",
+        "description": "Tạo khung hoàn chỉnh cho một câu hỏi trắc nghiệm với 4 lựa chọn và lời giải.",
+        "snippet": "\\begin{ex}\n  Câu ...: Nội dung câu hỏi.\n  \\choice\n  {*Đáp án đúng}\n  {Phương án 2}\n  {Phương án 3}\n  {Phương án 4}\n  \\loigiai{\n    Nội dung lời giải.\n  }\n\\end{ex}"
+      },
+      {
+        "name": "Câu hỏi Đúng/Sai",
+        "icon": "fas fa-check-double",
+        "description": "Tạo khung câu hỏi dạng Đúng/Sai hoặc chọn 1 trong 2 đáp án.",
+        "snippet": "\\begin{ex}\n  Câu ...: Nội dung câu hỏi.\n  \\choiceTF\n  \\loigiai{\n    Nội dung lời giải.\n  }\n\\end{ex}"
+      },
+      {
+        "name": "Câu hỏi trả lời ngắn",
+        "icon": "fas fa-pencil-alt",
+        "description": "Tạo khung câu hỏi yêu cầu điền đáp án ngắn gọn.",
+        "snippet": "\\begin{ex}\n  Câu ...: Nội dung câu hỏi.\n  \\shortans{$đáp án$}\n  \\loigiai{\n    Nội dung lời giải.\n  }\n\\end{ex}"
+      }
+    ]
+  },
+  {
+    "name": "Hệ PT & Canh Dòng (Chuẩn KaTeX)",
+    "icon": "fas fa-equals",
+    "children": [
+      {
+        "name": "Hệ phương trình (dùng `cases`)",
+        "icon": "fas fa-bars",
+        "description": "Cách chuẩn và đơn giản nhất. Tự động tạo dấu `{` bên trái. Dùng `&` để canh lề.",
+        "snippet": "\\begin{cases}\n  x + y &= 2 \\\\\n  2x - y &= 1\n\\end{cases}"
+      },
+      {
+        "name": "Canh dòng biểu thức (dùng `aligned`)",
+        "icon": "fas fa-align-left",
+        "description": "Canh lề nhiều dòng công thức, không có dấu ngoặc hệ. Rất hữu ích để trình bày các bước giải.",
+        "snippet": "\\begin{aligned}\n  f(x) &= (x+1)^2 \\\\\n       &= x^2 + 2x + 1\n\\end{aligned}"
+      },
+      {
+        "name": "Hệ tùy chỉnh (dùng `array`)",
+        "icon": "fas fa-cogs",
+        "description": "Cách linh hoạt nhất. Dùng `array` kết hợp `\\left` và `\\right` để tạo hệ với mọi loại dấu ngoặc.",
+        "snippet": "\\left\\{\n\\begin{array}{l}\n  x + y - z = 1 \\\\\n  2x - y + z = 2\n\\end{array}\n\\right."
+      }
+    ]
+  },
+  {
+    "name": "Ma Trận & Mảng (Chuẩn KaTeX)",
+    "icon": "fas fa-th",
+    "children": [
+      {
+        "name": "Ma trận ngoặc tròn (pmatrix)",
+        "icon": "fas fa-th",
+        "description": "Môi trường `pmatrix` tự động tạo ma trận với dấu ngoặc tròn `()`.",
+        "snippet": "\\begin{pmatrix}\n  a & b \\\\\n  c & d\n\\end{pmatrix}"
+      },
+      {
+        "name": "Ma trận ngoặc vuông (bmatrix)",
+        "icon": "fas fa-th-large",
+        "description": "Môi trường `bmatrix` tự động tạo ma trận với dấu ngoặc vuông `[]`.",
+        "snippet": "\\begin{bmatrix}\n  a & b \\\\\n  c & d\n\\end{bmatrix}"
+      },
+      {
+        "name": "Định thức (vmatrix)",
+        "icon": "fas fa-grip-lines-vertical",
+        "description": "Môi trường `vmatrix` để tính định thức, tự động tạo dấu `| |`.",
+        "snippet": "\\begin{vmatrix}\n  a & b \\\\\n  c & d\n\\end{vmatrix}"
+      },
+      {
+        "name": "Ma trận bổ sung (dùng `array`)",
+        "icon": "fas fa-table",
+        "description": "Dùng `array` với `[cc|c]` để tạo ma trận bổ sung có đường kẻ dọc.",
+        "snippet": "\\left[\n\\begin{array}{cc|c}\n  1 & 2 & 3 \\\\\n  4 & 5 & 6\n\\end{array}\n\\right]"
+      }
+    ]
+  }
+]

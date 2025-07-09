@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Upload ảnh với ImageKit</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    #preview img { max-width: 100%; margin-top: 10px; }
+    input[type="file"] { margin-top: 10px; }
+    #link { margin-top: 10px; display: block; word-break: break-all; color: blue; }
+    button { margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h2>📤 Upload ảnh lên ImageKit</h2>
+
+  <input type="file" id="fileInput" accept="image/*" />
+  <button onclick="uploadImage()">Tải lên</button>
+
+  <div id="status"></div>
+  <div id="preview"></div>
+  <a id="link" target="_blank"></a>
+
+  <script>
+    const publicKey = "public_Wvk92BGoz19QJ7wJmYRPKgwwBVQ=";
+    const uploadPreset = "YOUR_UPLOAD_PRESET_NAME";
+
+    function uploadImage() {
+      const fileInput = document.getElementById('fileInput');
+      const file = fileInput.files[0];
+      if (!file) return alert("Chọn 1 ảnh trước đã");
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("publicKey", publicKey);
+      formData.append("uploadPreset", uploadPreset);
+
+      document.getElementById('status').innerText = "⏳ Đang tải ảnh...";
+      document.getElementById('preview').innerHTML = "";
+      document.getElementById('link').innerText = "";
+
+      fetch("https://upload.imagekit.io/api/v1/files/upload", {
+        method: "POST",
+        body: formData
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.url) {
+          document.getElementById('status').innerText = "✅ Upload thành công!";
+          document.getElementById('preview').innerHTML = `<img src="${data.url}" alt="Ảnh đã tải">`;
+          document.getElementById('link').innerText = data.url;
+          document.getElementById('link').href = data.url;
+        } else {
+          document.getElementById('status').innerText = "❌ Upload lỗi!";
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        document.getElementById('status').innerText = "❌ Có lỗi xảy ra.";
+      });
+    }
+  </script>
+</body>
+</html>

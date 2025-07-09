@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Professional File Uploader</title>
+  <style>
+    /* CSS không thay đổi, giữ nguyên như cũ */
+    :root { --primary-color: #007bff; --primary-color-light: #e6f2ff; --success-color: #28a745; --error-color: #dc3545; --light-gray: #f8f9fa; --border-color: #dee2e6; --text-color: #343a40; --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    body { font-family: var(--font-family); background-color: var(--light-gray); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+    .uploader-card { background-color: #fff; border-radius: 12px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); padding: 30px; width: 100%; max-width: 550px; text-align: center; }
+    h2 { color: var(--text-color); margin-top: 0; margin-bottom: 10px; font-weight: 600; }
+    .subtitle { color: #6c757d; margin-top: 0; margin-bottom: 25px; }
+    #drop-zone { border: 2px dashed var(--border-color); border-radius: 8px; padding: 40px 20px; cursor: pointer; transition: all 0.2s ease; }
+    #drop-zone.dragover { background-color: var(--primary-color-light); border-color: var(--primary-color); }
+    #drop-zone p { margin: 0; color: #6c757d; }
+    #drop-zone .icon { font-size: 40px; color: var(--primary-color); }
+    #file-input { display: none; }
+    #file-info { margin-top: 20px; background: var(--light-gray); padding: 15px; border-radius: 8px; text-align: left; font-size: 0.9em; display: none; }
+    #file-info p { margin: 5px 0; word-break: break-all; }
+    .progress-container { margin-top: 20px; height: 12px; background-color: var(--border-color); border-radius: 6px; overflow: hidden; display: none; }
+    .progress-bar { width: 0; height: 100%; background-color: var(--primary-color); border-radius: 6px; transition: width 0.2s ease-out; }
+    .btn { margin-top: 20px; padding: 12px 25px; font-size: 16px; font-weight: 600; border: none; border-radius: 5px; cursor: pointer; transition: all 0.2s ease; }
+    .btn-primary { background-color: var(--primary-color); color: #fff; }
+    .btn-primary:hover { background-color: #0056b3; }
+    .btn-primary:disabled { background-color: #a0c7f0; cursor: not-allowed; }
+    .btn-copy { background-color: var(--success-color); color: #fff; }
+    #status { margin-top: 20px; font-weight: 500; min-height: 24px; }
+    .status-success { color: var(--success-color); }
+    .status-error { color: var(--error-color); }
+    #result { margin-top: 15px; text-align: left; display: none;}
+    #result #link { display: block; padding: 12px; background: var(--light-gray); border-radius: 5px; word-break: break-all; color: var(--primary-color); text-decoration: none; margin-bottom: 15px; }
+    #preview img, #preview iframe { width: 100%; max-width: 100%; height: auto; margin-top: 15px; border-radius: 8px; }
+    #preview iframe { height: 500px; }
+  </style>
+</head>
+<body>
+  <div class="uploader-card">
+    <h2>🚀 Professional File Uploader</h2>
+    <p class="subtitle">Tải lên ảnh hoặc file PDF của bạn một cách dễ dàng</p>
+    <div id="drop-zone">
+      <input type="file" id="file-input" accept="image/*,application/pdf" />
+      <div class="icon">📤</div>
+      <p>Kéo và thả file vào đây, hoặc <strong>nhấn để chọn file</strong></p>
+    </div>
+    <div id="file-info"></div>
+    <button id="upload-btn" type="button" class="btn btn-primary" disabled>Tải lên</button>
+    <div class="progress-container"><div class="progress-bar"></div></div>
+    <div id="status"></div>
+    <div id="result">
+        <a id="link" href="#" target="_blank"></a>
+        <div id="preview"></div>
+        <button id="copy-btn" type="button" class="btn btn-copy">📋 Sao chép link</button>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const uploadBtn = document.getElementById('upload-btn');
+        const fileInfoDiv = document.getElementById('file-info');
+        const progressContainer = document.querySelector('.progress-container');
+        const statusDiv = document.getElementById('status');
+        const resultDiv = document.getElementById('result');
+        const previewDiv = document.getElementById('preview');
+        const linkA = document.getElementById('link');
+        const copyBtn = document.getElementById('copy-btn');
+        let selectedFile = null;
+        const UPLOAD_URL = "http://localhost:3000/upload";
+
+        const handleFile = (file) => {
+            selectedFile = file;
+            fileInfoDiv.style.display = 'block';
+            fileInfoDiv.innerHTML = `<p><strong>Tên file:</strong> ${file.name}</p><p><strong>Dung lượng:</strong> ${(file.size / 1024 / 1024).toFixed(2)} MB</p>`;
+            uploadBtn.disabled = false;
+            resetResultUI();
+        };
+
+        const resetResultUI = () => {
+            resultDiv.style.display = 'none';
+        };
+
+        const showSuccess = (data) => {
+            statusDiv.textContent = '✅ Upload thành công!';
+            statusDiv.className = 'status-success';
+            resultDiv.style.display = 'block';
+            previewDiv.innerHTML = selectedFile.type.startsWith('image/') ? `<img src="${data.url}" alt="Preview">` : `<iframe src="${data.url}" title="PDF Preview"></iframe>`;
+            linkA.href = data.url;
+            linkA.textContent = data.url;
+        };
+
+        const showError = (message) => {
+            statusDiv.textContent = `❌ ${message}`;
+            statusDiv.className = 'status-error';
+            resetResultUI();
+        };
+        
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', () => fileInput.files.length && handleFile(fileInput.files[0]));
+        
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
+        
+        // SỬA ĐOẠN NÀY, DÙNG FETCH
+        uploadBtn.addEventListener('click', () => {
+            if (!selectedFile) return;
+            const formData = new FormData();
+            formData.append("file", selectedFile);
+
+            progressContainer.style.display = 'none'; 
+            statusDiv.textContent = '⏳ Đang tải lên...';
+            statusDiv.className = '';
+            uploadBtn.disabled = true;
+
+            fetch(UPLOAD_URL, {
+                method: 'POST',
+                body: formData,
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Lỗi máy chủ: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                uploadBtn.disabled = false;
+                if (data.url) {
+                    showSuccess(data);
+                } else {
+                    showError(data.error || 'Phản hồi không chứa URL.');
+                }
+            })
+            .catch(error => {
+                console.error('Fetch Error:', error);
+                uploadBtn.disabled = false;
+                showError(error.message);
+            });
+        });
+        
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(linkA.href).then(() => alert("✅ Đã sao chép!"), () => alert("❌ Lỗi sao chép."));
+        });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>sangnhc</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        :root {
+            --primary-color: #4F46E5;
+            --primary-hover: #4338CA;
+            --primary-light: #EEF2FF;
+            --secondary-color: #F3F4F6;
+            --border-color: #D1D5DB;
+            --text-color: #1F2937;
+            --text-light: #6B7280;
+            --success-color: #10B981;
+            --white: #FFFFFF;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 2rem 0;
+        }
+
+        .container {
+            width: 95%;
+            max-width: 1400px;
+            margin: 0 auto;
+            background: var(--white);
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px var(--shadow-color);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        h1 {
+            color: var(--text-color);
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin: 0 0 0.5rem 0;
+        }
+        
+        .header p {
+            color: var(--text-light);
+            font-size: 1.125rem;
+            margin: 0;
+        }
+        
+        .header-buttons {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 2rem;
+            margin-bottom: 2.5rem;
+        }
+        
+        .header-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: var(--white);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.2s ease-in-out;
+        }
+        .header-btn:hover {
+            background-color: var(--primary-light);
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1);
+        }
+        .header-btn svg { width: 1.25rem; height: 1.25rem; }
+
+        .upload-area {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 3rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+        .upload-area:hover, .upload-area.dragover {
+            border-color: var(--primary-color);
+            background-color: var(--primary-light);
+        }
+        .upload-area .icon { color: var(--primary-color); }
+        .upload-area p { margin: 0; font-size: 1.1rem; color: var(--text-light); }
+        .upload-area span { font-weight: 600; color: var(--primary-color); }
+        #file-input { display: none; }
+
+        #status { text-align: center; margin: 2rem 0; font-weight: 500; font-size: 1rem; min-height: 24px; transition: color 0.3s; }
+
+        #results-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .result-card {
+            background: var(--white);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.2s ease-in-out;
+        }
+        .result-card:hover {
+             transform: translateY(-5px);
+             box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        }
+        .result-card img { width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 1rem; background-color: var(--secondary-color); }
+        .transform-input { width: 100%; box-sizing: border-box; border: 1px solid var(--border-color); border-radius: 6px; padding: 0.75rem; font-family: 'SF Mono', 'Courier New', monospace; font-size: 0.9rem; margin-bottom: 1rem; transition: border-color 0.2s; }
+        .transform-input:focus { border-color: var(--primary-color); outline: none; box-shadow: 0 0 0 2px var(--primary-light); }
+        .result-card textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--border-color); border-radius: 6px; padding: 0.75rem; font-family: 'SF Mono', 'Courier New', monospace; font-size: 0.85rem; resize: none; margin-bottom: 1rem; background-color: #F9FAFB; }
+        
+        .copy-button {
+            display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; width: 100%; padding: 0.75rem;
+            background-color: var(--primary-color); color: var(--white); border: none; border-radius: 8px;
+            cursor: pointer; font-weight: 600; font-size: 1rem; transition: all 0.2s ease-in-out;
+        }
+        .copy-button:hover { background-color: var(--primary-hover); }
+        .copy-button.copied { background-color: var(--success-color); }
+        .copy-button svg { width: 1.25rem; height: 1.25rem; }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(17, 24, 39, 0.6);
+            display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px);
+            opacity: 0; transition: opacity 0.3s ease;
+        }
+        .modal-overlay.show { display: flex; opacity: 1; }
+        .modal-content {
+            background: var(--white); padding: 2rem; border-radius: 16px; width: 95%; max-width: 700px;
+            max-height: 90vh; overflow-y: auto; transform: scale(0.95); transition: transform 0.3s ease;
+        }
+        .modal-overlay.show .modal-content { transform: scale(1); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        .modal-header h2 { margin: 0; font-size: 1.5rem; }
+        .modal-close { font-size: 1.5rem; font-weight: bold; cursor: pointer; background: none; border: none; color: var(--text-light); transition: color 0.2s; }
+        .modal-close:hover { color: var(--text-color); }
+        .guide-section { margin-bottom: 2rem; }
+        .guide-section h3 { display: flex; align-items: center; gap: 0.75rem; font-size: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 1rem; }
+        .guide-item { display: grid; grid-template-columns: 1fr 2fr; gap: 1rem; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--secondary-color); }
+        .guide-item:last-child { border-bottom: none; }
+        .guide-item .desc p { margin: 0; color: var(--text-light); }
+        .guide-item code { background-color: var(--primary-light); color: var(--primary-color); padding: 0.25rem 0.5rem; border-radius: 4px; font-weight: 500; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>Upload Ảnh Tạo Link</h1>
+            <p>Tải lên, biến đổi và nhận link ảnh một cách chuyên nghiệp.</p>
+            <div class="header-buttons">
+                <button id="guide-btn" class="header-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>
+                    <span>Hướng Dẫn</span>
+                </button>
+                <button id="library-btn" class="header-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>
+                    <span>Mở Kho Ảnh</span>
+                </button>
+            </div>
+        </div>
+
+        <label for="file-input" class="upload-area" id="upload-area">
+            <div class="icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l-3.75 3.75M12 9.75l3.75 3.75M3 17.25V6.75A2.25 2.25 0 015.25 4.5h13.5A2.25 2.25 0 0121 6.75v10.5A2.25 2.25 0 0118.75 19.5H5.25A2.25 2.25 0 013 17.25z" /></svg>
+            </div>
+            <p>Kéo và thả ảnh, hoặc <span>nhấp để chọn file</span>.</p>
+        </label>
+        <input type="file" id="file-input" accept="image/*" multiple>
+
+        <p id="status"></p>
+
+        <div id="results-container"></div>
+    </div>
+    
+    <div class="modal-overlay" id="guide-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Hướng dẫn thuộc tính</h2>
+                <button class="modal-close" id="modal-close-btn">×</button>
+            </div>
+            <div class="guide-section">
+                <h3><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 4.5v15m6-15v15m-10.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125z" /></svg> Kích thước & Cắt cúp</h3>
+                <div class="guide-item"><div class="desc"><p>Chiều rộng</p></div><code>w_400</code></div>
+                <div class="guide-item"><div class="desc"><p>Chiều cao</p></div><code>h_300</code></div>
+                <div class="guide-item"><div class="desc"><p>Cắt lấp đầy khung, giữ tỷ lệ</p></div><code>w_200,h_200,c_fill</code></div>
+                <div class="guide-item"><div class="desc"><p>Tạo thumbnail thông minh</p></div><code>w_150,h_150,c_thumb,g_auto</code></div>
+            </div>
+            <div class="guide-section">
+                <h3><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c.251-.023.501-.034.75-.034 2.485 0 4.5 2.015 4.5 4.5v.25M9.75 3.104c-.251-.023-.501-.034-.75-.034-2.485 0-4.5 2.015-4.5 4.5v.25m13.5 6.126c-.251.023-.501.034-.75.034-2.485 0-4.5-2.015-4.5-4.5v-1.25c0-.621.504-1.125 1.125-1.125H18a1.125 1.125 0 011.125 1.125v1.25c0 2.485-2.015 4.5-4.5 4.5z" /></svg> Tối ưu hóa</h3>
+                <div class="guide-item"><div class="desc"><p>Chất lượng tự động</p></div><code>q_auto</code></div>
+                <div class="guide-item"><div class="desc"><p>Định dạng ảnh tự động (WebP/AVIF)</p></div><code>f_auto</code></div>
+                <div class="guide-item"><div class="desc"><p>Kết hợp tối ưu nhất</p></div><code>q_auto,f_auto</code></div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // === KHÔNG CẦN THAY ĐỔI CÁC GIÁ TRỊ NÀY NỮA ===
+        const CLOUD_NAME = "dfprmep2p";
+        const UPLOAD_PRESET = "up2web"; // <-- NHỚ ĐỔI THÀNH UPLOAD PRESET CỦA BẠN
+
+        // === CÁC BIẾN DOM ===
+        const fileInput = document.getElementById('file-input');
+        const uploadArea = document.getElementById('upload-area');
+        const statusMsg = document.getElementById('status');
+        const resultsContainer = document.getElementById('results-container');
+        const guideBtn = document.getElementById('guide-btn');
+        const libraryBtn = document.getElementById('library-btn');
+        const guideModal = document.getElementById('guide-modal');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+
+        // === ICON SVG CHO NÚT BẤM ===
+        const copyIcon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" /></svg><span>Chép thẻ IMG</span>`;
+        const copiedIcon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><span>Đã chép!</span>`;
+
+        // === CÁC HÀM XỬ LÝ ===
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => uploadArea.addEventListener(eventName, preventDefaults, false));
+        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+        ['dragenter', 'dragover'].forEach(eventName => uploadArea.addEventListener(eventName, () => uploadArea.classList.add('dragover'), false));
+        ['dragleave', 'drop'].forEach(eventName => uploadArea.addEventListener(eventName, () => uploadArea.classList.remove('dragover'), false));
+        uploadArea.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files));
+        fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+        
+        async function handleFiles(files) {
+            if (files.length === 0) return;
+            resultsContainer.innerHTML = '';
+            statusMsg.textContent = `Đang tải lên ${files.length} ảnh...`;
+            statusMsg.style.color = '#F59E0B'; // Amber
+            const uploadPromises = Array.from(files).map(file => uploadFile(file));
+            try {
+                const results = await Promise.allSettled(uploadPromises);
+                statusMsg.textContent = 'Hoàn tất!';
+                statusMsg.style.color = 'var(--success-color)';
+                results.forEach(result => {
+                    if (result.status === 'fulfilled') {
+                        createImageCard(result.value.secure_url);
+                    } else {
+                        console.error('Upload failed:', result.reason);
+                        statusMsg.textContent = 'Có lỗi xảy ra, vui lòng kiểm tra Console (F12).';
+                        statusMsg.style.color = '#EF4444'; // Red
+                    }
+                });
+            } catch (error) {
+                 statusMsg.textContent = 'Lỗi nghiêm trọng khi tải lên.';
+                 statusMsg.style.color = '#EF4444'; // Red
+            }
+        }
+
+        function uploadFile(file) {
+            return new Promise((resolve, reject) => {
+                const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('upload_preset', UPLOAD_PRESET);
+                fetch(url, { method: 'POST', body: formData })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().then(err => { throw new Error(err.error.message); });
+                        }
+                        return response.json();
+                    })
+                    .then(data => resolve(data))
+                    .catch(error => reject(error));
+            });
+        }
+
+        function createImageCard(originalUrl) {
+            const card = document.createElement('div');
+            card.className = 'result-card';
+            card.innerHTML = `<img src="" alt="Đang tải xem trước..."><input type="text" class="transform-input" placeholder="VD: w_400,c_fill,q_auto" value="q_auto,f_auto"><textarea rows="3" readonly></textarea><button class="copy-button">${copyIcon}</button>`;
+            
+            const imgPreview = card.querySelector('img');
+            const transformInput = card.querySelector('.transform-input');
+            const textarea = card.querySelector('textarea');
+            const copyButton = card.querySelector('.copy-button');
+
+            function updateTransformedUrl() {
+                const transforms = transformInput.value.trim().replace(/ /g, ''); // Xóa khoảng trắng
+                let transformedUrl = originalUrl;
+                if (transforms) {
+                    transformedUrl = originalUrl.replace('/upload/', `/upload/${transforms}/`);
+                }
+                const imgTag = `<img src='${transformedUrl}' alt='Uploaded to Cloudinary'>`;
+                textarea.value = imgTag;
+                imgPreview.src = transformedUrl;
+                imgPreview.alt = 'Ảnh xem trước';
+            }
+
+            transformInput.addEventListener('input', updateTransformedUrl);
+            updateTransformedUrl();
+
+            copyButton.addEventListener('click', () => {
+                navigator.clipboard.writeText(textarea.value).then(() => {
+                    copyButton.innerHTML = copiedIcon;
+                    copyButton.classList.add('copied');
+                    setTimeout(() => {
+                        copyButton.innerHTML = copyIcon;
+                        copyButton.classList.remove('copied');
+                    }, 2000);
+                }).catch(err => console.error('Không thể sao chép: ', err));
+            });
+            resultsContainer.appendChild(card);
+        }
+
+        // === XỬ LÝ CÁC NÚT HEADER & MODAL ===
+        libraryBtn.addEventListener('click', () => {
+            const mediaLibraryUrl = `https://console.cloudinary.com/console/c-${CLOUD_NAME.substring(0,8)}/media_library/folders/all`;
+            window.open(mediaLibraryUrl, '_blank');
+        });
+        guideBtn.addEventListener('click', () => guideModal.classList.add('show'));
+        modalCloseBtn.addEventListener('click', () => guideModal.classList.remove('show'));
+        guideModal.addEventListener('click', (e) => {
+            if (e.target === guideModal) { guideModal.classList.remove('show'); }
+        });
+    </script>
+</body>
+</html>

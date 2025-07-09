@@ -20,6 +20,31 @@ const functions = firebase.functions();
 let examData = null, timerInterval = null, classData = {}, currentTeacherId = null;
 const getEl = (id) => document.getElementById(id);
 
+/**
+ * Thay thế '\\' bằng '<br>' nhưng KHÔNG can thiệp vào bên trong MỌI môi trường toán học
+ * ($...$, $$...$$, \(...\), \[...\]).
+ * @param {string} text - Chuỗi cần xử lý.
+ * @returns {string} Chuỗi đã thay thế.
+ */
+function convertLineBreaks(text) {
+    if (!text || typeof text !== 'string') return text;
+
+    const mathBlocksRegex = /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\$[\s\S]*?\$|\\\([\s\S]*?\\\))/g;
+    const parts = text.split(mathBlocksRegex);
+
+    const processedParts = parts.map((part, index) => {
+        if (!part) return '';
+        if (index % 2 === 0) {
+            // Đây là phần không phải toán học, an toàn để thay thế
+            return part.replace(/\\\\/g, '<br>');
+        } else {
+            // Đây là phần toán học, giữ nguyên
+            return part;
+        }
+    });
+    return processedParts.join('');
+}
+// =================================================================
 // --- CÁC HÀM TIỆN ÍCH ---
 function processImagePlaceholders(text) {
     if (!text || typeof text !== 'string') return text;
@@ -822,12 +847,338 @@ function loadQuiz_TuyetVoi(data) {
 // File: public/js/main.js
 // THAY THẾ TOÀN BỘ HÀM loadQuiz CŨ BẰNG HÀM NÀY
 
-function loadQuiz(data) {
+function loadQuiz_DA_DUNGok(data) {
     const quizContainer = getEl("quiz");
     quizContainer.innerHTML = "";
     window.questionMap = []; 
 
     const rawContent = data.content.trim();
+    const questionGroupsRaw = rawContent.split(/\n\s*##group-separator##\s*\n/);
+    
+    let finalShuffledQuestions = [];
+    let originalIndexCounter = 0;
+
+    // --- Logic trộn câu hỏi theo nhóm (giữ nguyên, đã đúng) ---
+    questionGroupsRaw.forEach(groupRaw => {
+        if (!groupRaw.trim()) return;
+        let questionsInGroup = groupRaw.trim().split(/\n\s*\n/).map(block => ({ originalIndex: originalIndexCounter++, block }));
+        finalShuffledQuestions.push(...shuffleArray(questionsInGroup));
+    });
+
+    if (finalShuffledQuestions.length === 0 && rawContent) {
+        let allQuestions = rawContent.split(/\n\s*\n/).map((block, index) => ({ originalIndex: index, block }));
+        finalShuffledQuestions = shuffleArray(allQuestions);
+    }
+    
+    // --- Bắt đầu vòng lặp render giao diện ---
+    finalShuffledQuestions.forEach((questionData, newIndex) => {
+        const questionDiv = document.createElement("div");
+        questionDiv.className = "question";
+        questionDiv.id = `question-${questionData.originalIndex}`;
+        
+        const parsedData = parseMCQuestion(questionData.block);
+
+        if (parsedData) {
+            const statementDiv = document.createElement("div");
+            statementDiv.className = "question-statement";
+
+            const newQuestionTitle = `Câu ${newIndex + 1}:`;
+            let questionContent = parsedData.statement.replace(/^(Câu\s*\d+\s*[:.]?\s*)/i, '').trim();
+            statementDiv.innerHTML = `<span class="question-number-highlight">${newQuestionTitle}</span> ${processImagePlaceholders(questionContent)}`;
+            
+            questionDiv.appendChild(statementDiv);
+
+            // XỬ LÝ CHO CÂU TRẮC NGHIỆM (MC)
+            if (parsedData.type === 'MC') {
+                const optionsContainer = document.createElement('div');
+                optionsContainer.className = `mc-options mc-layout-${parsedData.layout}`;
+                optionsContainer.dataset.questionIndex = questionData.originalIndex;
+
+                // Dùng cờ shouldShuffleOptions từ parser để quyết định có trộn hay không
+                let optionsToRender = parsedData.shouldShuffleOptions ? shuffleArray(parsedData.options) : parsedData.options;
+                const newDisplayLabels = ['A', 'B', 'C', 'D'];
+
+                optionsToRender.forEach((opt, index) => {
+                    const optionDiv = document.createElement("div");
+                    optionDiv.className = "mc-option";
+                    optionDiv.dataset.value = opt.label; // Dùng label gốc để chấm điểm
+                    
+                    const displayLabel = newDisplayLabels[index]; // Dùng label mới để hiển thị
+                    
+                    optionDiv.innerHTML = `<span class="mc-option-label">${displayLabel}</span><span class="mc-option-content">${processImagePlaceholders(opt.content)}</span>`;
+                    
+                    optionDiv.onclick = function() {
+                        selectMCOption(this, questionData.originalIndex);
+                        saveProgress();
+                    };
+                    optionsContainer.appendChild(optionDiv);
+                });
+                questionDiv.appendChild(optionsContainer);
+            } 
+            // ==========================================================
+            // ==       SỬA LỖI CHO CÂU ĐÚNG-SAI (TABLE_TF) Ở ĐÂY       ==
+            // ==     ÁP DỤNG LOGIC TRỘN VÀ GÁN LẠI LABEL TƯƠNG TỰ     ==
+            // ==========================================================
+            else if (parsedData.type === 'TABLE_TF') {
+                // Dùng cờ shouldShuffleOptions từ parser để quyết định có trộn hay không
+                let optionsToRender = parsedData.shouldShuffleOptions ? shuffleArray(parsedData.options) : parsedData.options;
+                const newDisplayLabels = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+
+                const table = document.createElement('table');
+                table.className = 'table-tf-container';
+                table.innerHTML = `<thead><tr><th>Mệnh đề</th><th>Đúng</th><th>Sai</th></tr></thead>`;
+                const tbody = document.createElement('tbody');
+                
+                // Lặp qua mảng đã được xử lý (trộn hoặc không)
+                optionsToRender.forEach((opt, index) => {
+                    // Dùng label GỐC để tạo group name, đảm bảo gửi đúng câu trả lời về server
+                    const groupName = `q${questionData.originalIndex}_sub${opt.label}`; 
+                    
+                    // Dùng label MỚI (a, b, c, ...) để hiển thị
+                    const displayLabel = newDisplayLabels[index];
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td>${displayLabel}) ${processImagePlaceholders(opt.content)}</td><td><label class="table-tf-radio"><input type="radio" name="${groupName}" value="T"></label></td><td><label class="table-tf-radio"><input type="radio" name="${groupName}" value="F"></label></td>`;
+                    tbody.appendChild(row);
+                });
+                
+                table.appendChild(tbody);
+                questionDiv.appendChild(table);
+                table.addEventListener('click', (e) => {
+                    if (e.target.closest('.table-tf-radio')) {
+                        const clickedLabel = e.target.closest('.table-tf-radio');
+                        clickedLabel.closest('tr').querySelectorAll('.table-tf-radio').forEach(l => l.classList.remove('selected'));
+                        clickedLabel.classList.add('selected');
+                        clickedLabel.querySelector('input').checked = true;
+                        saveProgress();
+                    }
+                });
+            } 
+            // ==========================================================
+            // ==                KẾT THÚC PHẦN SỬA LỖI                 ==
+            // ==========================================================
+            else if (parsedData.type === 'NUMERIC') {
+                const numDiv = document.createElement("div");
+                numDiv.className = "numeric-option";
+                const input = document.createElement("input");
+                input.type = "text";
+                input.name = `q${questionData.originalIndex}`;
+                input.placeholder = "Nhập đáp số";
+                input.addEventListener('input', saveProgress);
+                numDiv.appendChild(input);
+                questionDiv.appendChild(numDiv);
+            }
+
+            // Xử lý lời giải (giữ nguyên)
+            if (parsedData.solution && parsedData.solution.trim() !== '') {
+                const toggleBtn = document.createElement("button");
+                toggleBtn.className = "toggle-explanation btn";
+                toggleBtn.textContent = "Xem lời giải";
+                toggleBtn.style.display = 'none';
+                const expDiv = document.createElement("div");
+                expDiv.className = "explanation hidden";
+                expDiv.innerHTML = processImagePlaceholders(parsedData.solution);
+                toggleBtn.onclick = () => {
+                    expDiv.classList.toggle("hidden");
+                    toggleBtn.textContent = expDiv.classList.contains("hidden") ? "Xem lời giải" : "Ẩn lời giải";
+                };
+                questionDiv.appendChild(toggleBtn);
+                questionDiv.appendChild(expDiv);
+            }
+
+        } else {
+            console.error(`Không thể phân tích câu hỏi ${newIndex + 1}:`, questionData.block);
+            const errorDiv = document.createElement("div");
+            errorDiv.className = "question-statement";
+            errorDiv.innerHTML = `<p style="color: red;">Lỗi: Không thể tải câu hỏi này.</p><pre>${questionData.block}</pre>`;
+            questionDiv.appendChild(errorDiv);
+        }
+        
+        quizContainer.appendChild(questionDiv);
+        renderKatexInElement(questionDiv);
+    });
+
+    getEl("quiz").style.display = "block";
+    getEl("gradeBtn").style.display = "inline-flex";
+    setTimeout(restoreProgress, 200);
+}
+// THAY THẾ TOÀN BỘ HÀM loadQuiz CŨ BẰNG HÀM NÀY
+
+function loadQuiz(data) {
+    const quizContainer = getEl("quiz");
+    quizContainer.innerHTML = "";
+    window.questionMap = []; 
+
+    let rawContent = data.content.trim();
+
+    // === CÁC BƯỚC CHUẨN HÓA DỮ LIỆU ĐẦU VÀO (GIỮ NGUYÊN) ===
+    rawContent = rawContent.replace(/\n*(Câu\s*\d+:\s*)/g, '\n\n$1').trim();
+    rawContent = rawContent.replace(/^#(?![#])/gm, '');
+
+    const questionGroupsRaw = rawContent.split(/\n\s*##group-separator##\s*\n/);
+    
+    let finalShuffledQuestions = [];
+    let originalIndexCounter = 0;
+
+    // === LOGIC TRỘN CÂU HỎI (GIỮ NGUYÊN) ===
+    questionGroupsRaw.forEach(groupRaw => {
+        if (!groupRaw.trim()) return;
+        let questionsInGroup = groupRaw.trim().split(/\n\s*\n/).map(block => ({ originalIndex: originalIndexCounter++, block }));
+        finalShuffledQuestions.push(...shuffleArray(questionsInGroup));
+    });
+
+    if (finalShuffledQuestions.length === 0 && rawContent) {
+        let allQuestions = rawContent.split(/\n\s*\n/).map((block, index) => ({ originalIndex: index, block }));
+        finalShuffledQuestions = shuffleArray(allQuestions);
+    }
+    
+    // === VÒNG LẶP RENDER GIAO DIỆN (ĐÃ TÍCH HỢP XỬ LÝ XUỐNG DÒNG) ===
+    finalShuffledQuestions.forEach((questionData, newIndex) => {
+        const questionDiv = document.createElement("div");
+        questionDiv.className = "question";
+        questionDiv.id = `question-${questionData.originalIndex}`;
+        
+        const parsedData = parseMCQuestion(questionData.block);
+
+        if (parsedData) {
+            const statementDiv = document.createElement("div");
+            statementDiv.className = "question-statement";
+
+            const newQuestionTitle = `Câu ${newIndex + 1}:`;
+            let questionContent = parsedData.statement.replace(/^(Câu\s*\d+\s*[:.]?\s*)/i, '').trim();
+
+            // ÁP DỤNG HÀM MỚI Ở ĐÂY
+            statementDiv.innerHTML = `<span class="question-number-highlight">${newQuestionTitle}</span> ${convertLineBreaks(processImagePlaceholders(questionContent))}`;
+            
+            questionDiv.appendChild(statementDiv);
+
+            // XỬ LÝ CHO CÂU TRẮC NGHIỆM (MC)
+            if (parsedData.type === 'MC') {
+                const optionsContainer = document.createElement('div');
+                optionsContainer.className = `mc-options mc-layout-${parsedData.layout}`;
+                optionsContainer.dataset.questionIndex = questionData.originalIndex;
+
+                let optionsToRender = parsedData.shouldShuffleOptions ? shuffleArray(parsedData.options) : parsedData.options;
+                const newDisplayLabels = ['A', 'B', 'C', 'D'];
+
+                optionsToRender.forEach((opt, index) => {
+                    const optionDiv = document.createElement("div");
+                    optionDiv.className = "mc-option";
+                    optionDiv.dataset.value = opt.label;
+                    const displayLabel = newDisplayLabels[index];
+                    
+                    // ÁP DỤNG HÀM MỚI Ở ĐÂY
+                    optionDiv.innerHTML = `<span class="mc-option-label">${displayLabel}</span><span class="mc-option-content">${convertLineBreaks(processImagePlaceholders(opt.content))}</span>`;
+                    
+                    optionDiv.onclick = function() {
+                        selectMCOption(this, questionData.originalIndex);
+                        saveProgress();
+                    };
+                    optionsContainer.appendChild(optionDiv);
+                });
+                questionDiv.appendChild(optionsContainer);
+            } 
+            // XỬ LÝ CHO CÂU ĐÚNG-SAI DẠNG BẢNG (TABLE_TF)
+            else if (parsedData.type === 'TABLE_TF') {
+                let optionsToRender = parsedData.shouldShuffleOptions ? shuffleArray(parsedData.options) : parsedData.options;
+                const newDisplayLabels = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+
+                const table = document.createElement('table');
+                table.className = 'table-tf-container';
+                table.innerHTML = `<thead><tr><th>Mệnh đề</th><th>Đúng</th><th>Sai</th></tr></thead>`;
+                const tbody = document.createElement('tbody');
+                
+                optionsToRender.forEach((opt, index) => {
+                    const groupName = `q${questionData.originalIndex}_sub${opt.label}`; 
+                    const displayLabel = newDisplayLabels[index];
+                    const row = document.createElement('tr');
+
+                    // ÁP DỤNG HÀM MỚI Ở ĐÂY
+                    row.innerHTML = `<td>${displayLabel}) ${convertLineBreaks(processImagePlaceholders(opt.content))}</td><td><label class="table-tf-radio"><input type="radio" name="${groupName}" value="T"></label></td><td><label class="table-tf-radio"><input type="radio" name="${groupName}" value="F"></label></td>`;
+                    
+                    tbody.appendChild(row);
+                });
+                
+                table.appendChild(tbody);
+                questionDiv.appendChild(table);
+                table.addEventListener('click', (e) => {
+                    if (e.target.closest('.table-tf-radio')) {
+                        const clickedLabel = e.target.closest('.table-tf-radio');
+                        clickedLabel.closest('tr').querySelectorAll('.table-tf-radio').forEach(l => l.classList.remove('selected'));
+                        clickedLabel.classList.add('selected');
+                        clickedLabel.querySelector('input').checked = true;
+                        saveProgress();
+                    }
+                });
+            } 
+            // XỬ LÝ CHO CÂU ĐIỀN SỐ (NUMERIC)
+            else if (parsedData.type === 'NUMERIC') {
+                const numDiv = document.createElement("div");
+                numDiv.className = "numeric-option";
+                const input = document.createElement("input");
+                input.type = "text";
+                input.name = `q${questionData.originalIndex}`;
+                input.placeholder = "Nhập đáp số";
+                input.addEventListener('input', saveProgress);
+                numDiv.appendChild(input);
+                questionDiv.appendChild(numDiv);
+            }
+
+            // XỬ LÝ LỜI GIẢI
+            if (parsedData.solution && parsedData.solution.trim() !== '') {
+                const toggleBtn = document.createElement("button");
+                toggleBtn.className = "toggle-explanation btn";
+                toggleBtn.textContent = "Xem lời giải";
+                toggleBtn.style.display = 'none';
+                const expDiv = document.createElement("div");
+                expDiv.className = "explanation hidden";
+
+                // ÁP DỤNG HÀM MỚI Ở ĐÂY
+                expDiv.innerHTML = convertLineBreaks(processImagePlaceholders(parsedData.solution));
+                
+                toggleBtn.onclick = () => {
+                    expDiv.classList.toggle("hidden");
+                    toggleBtn.textContent = expDiv.classList.contains("hidden") ? "Xem lời giải" : "Ẩn lời giải";
+                };
+                questionDiv.appendChild(toggleBtn);
+                questionDiv.appendChild(expDiv);
+            }
+
+        } else {
+            // Xử lý lỗi nếu không phân tích được câu hỏi
+            console.error(`Không thể phân tích câu hỏi ${newIndex + 1}:`, questionData.block);
+            const errorDiv = document.createElement("div");
+            errorDiv.className = "question-statement";
+            errorDiv.innerHTML = `<p style="color: red;">Lỗi: Không thể tải câu hỏi này.</p><pre>${questionData.block}</pre>`;
+            questionDiv.appendChild(errorDiv);
+        }
+        
+        quizContainer.appendChild(questionDiv);
+        renderKatexInElement(questionDiv);
+    });
+
+    // === HIỂN THỊ GIAO DIỆN VÀ KHÔI PHỤC TIẾN TRÌNH (GIỮ NGUYÊN) ===
+    getEl("quiz").style.display = "block";
+    getEl("gradeBtn").style.display = "inline-flex";
+    setTimeout(restoreProgress, 200);
+}
+function loadQuiz_NangCap_XuongDong(data) {
+    const quizContainer = getEl("quiz");
+    quizContainer.innerHTML = "";
+    window.questionMap = []; 
+
+    let rawContent = data.content.trim();
+
+    // =================================================================
+    // CÁC BƯỚC CHUẨN HÓA DỮ LIỆU ĐẦU VÀO (ĐÃ ĐÚNG)
+    // =================================================================
+    
+    // 1. Tự động thêm dòng trống giữa các câu
+    rawContent = rawContent.replace(/\n*(Câu\s*\d+:\s*)/g, '\n\n$1').trim();
+    
+    // 2. Tự động làm sạch các dấu '#' đánh dấu đáp án bị sót lại
+    rawContent = rawContent.replace(/^#(?![#])/gm, '');
+
     const questionGroupsRaw = rawContent.split(/\n\s*##group-separator##\s*\n/);
     
     let finalShuffledQuestions = [];
