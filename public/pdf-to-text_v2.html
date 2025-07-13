@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI LaTeX Editor Pro</title>
+    <!-- THÊM GOOGLE FONTS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- THÊM THƯ VIỆN SWEETALERT2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="pdf.css">
+    <link rel="stylesheet" href="pdf2.css">
+</head>
+
+<body>
+    <!-- ===== HEADER BAR ===== -->
+    <div class="header-bar">
+        <div class="header-controls">
+            <label for="file-input" class="button">
+                <span class="icon">📷</span> Tải Ảnh/PDF
+            </label>
+            <input id="file-input" type="file" accept="image/png,image/jpeg,application/pdf" style="display: none;">
+            
+            <!-- THÊM CHECKBOX MỚI Ở ĐÂY -->
+            <div class="checkbox-wrapper">
+                <input type="checkbox" id="include-solution-checkbox" checked>
+                <label for="include-solution-checkbox">AI Giải</label>
+            </div>
+            <!-- THÊM CHECKBOX CHO VIỆC XUẤT PDF -->
+            <div class="checkbox-wrapper export-option">
+                <input type="checkbox" id="export-solution-checkbox" checked>
+                <label for="export-solution-checkbox">In kèm lời giải</label>
+            </div>
+            <!-- THÊM NÚT XUẤT PDF TẠI ĐÂY -->
+            <button id="export-pdf-btn" class="button export-button">
+                <span class="icon">🖨️</span> Xuất PDF
+            </button>
+            <span id="status-message">Sẵn sàng</span>
+        </div>
+        <div class="header-info">
+            <span id="question-counter"></span>
+            <button id="theme-toggle" class="button theme-button">
+                <span class="icon">🌙</span>
+            </button>
+        </div>
+    </div>
+    
+    <!-- ===== MAIN CONTENT ===== -->
+    <div class="main-container">
+        <div id="editor-container" class="panel"></div>
+        <div id="render-container" class="panel"></div>
+    </div>
+    
+    <!-- ===== FIND/REPLACE BAR ===== -->
+    <div id="find-replace-bar">
+        <input type="text" id="find-input" placeholder="Tìm kiếm...">
+        <input type="text" id="replace-input" placeholder="Thay thế bằng...">
+        <button id="replace-all-btn" class="button">Thay thế tất cả</button>
+        <button id="clear-draft-btn" class="button clear-button">
+            <span class="icon">🗑️</span> Xóa bản nháp
+        </button>
+    </div>
+
+    <!-- ======================== -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
+    <script src="pdf-latex.js"></script> 
+    <script src="pdftotext_v2.js" type="module"></script>
+</body>
+</html>

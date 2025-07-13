@@ -1,0 +1,177 @@
+/* --- CSS Variables for Theming --- */
+:root {
+    --bg-color: #ffffff;
+    --text-color: #333;
+    --panel-bg: #f3f3f3;
+    --panel-border: #ddd;
+    --primary-color: #007acc;
+    --primary-hover: #005a9e;
+    --link-color: #4a90e2;
+    --solution-bg: #f9f9f9;
+    --correct-answer: #28a745;
+}
+
+body.dark-mode {
+    --bg-color: #1e1e1e;
+    --text-color: #ccc;
+    --panel-bg: #252526;
+    --panel-border: #333;
+    --primary-color: #007acc;
+    --primary-hover: #009cff;
+    --link-color: #69b3ff;
+    --solution-bg: #2a2d2e;
+    --correct-answer: #4dcc70;
+}
+
+/* --- Global & Layout --- */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    color: var(--text-color);
+    background-color: var(--bg-color);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* --- Header Bar --- */
+.header-bar {
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    background-color: var(--panel-bg);
+    border-bottom: 1px solid var(--panel-border);
+    flex-shrink: 0;
+}
+
+.header-controls, .header-info {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s;
+}
+.button:hover {
+    background-color: var(--primary-hover);
+}
+.theme-button {
+    padding: 8px 10px;
+}
+
+#status-message {
+    color: var(--text-color);
+    opacity: 0.8;
+    font-style: italic;
+}
+#question-counter {
+    font-weight: bold;
+    background-color: rgba(128, 128, 128, 0.2);
+    padding: 5px 10px;
+    border-radius: 5px;
+}
+
+/* --- Main Container & Panels --- */
+.main-container {
+    display: flex;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.panel {
+    flex: 1;
+    overflow: auto;
+    box-sizing: border-box;
+}
+
+#editor-container {
+    border-right: 1px solid var(--panel-border);
+}
+
+#render-container {
+    padding: 20px;
+}
+
+/* --- Find/Replace Bar --- */
+#find-replace-bar {
+    height: 50px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 20px;
+    background-color: var(--panel-bg);
+    border-top: 1px solid var(--panel-border);
+    flex-shrink: 0;
+}
+#find-replace-bar input {
+    flex-grow: 1;
+    padding: 8px;
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+
+/* --- Render Content Styles --- */
+.question-block {
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--panel-border);
+}
+.question-title strong { color: var(--primary-color); }
+.options-list { list-style-type: none; padding-left: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;}
+.options-list li { padding-left: 25px; position: relative; }
+.options-list li::before { content: attr(data-option); position: absolute; left: 0; font-weight: bold; }
+.options-list li.correct-answer { color: var(--correct-answer); font-weight: bold; }
+.options-list li.correct-answer::before { content: attr(data-option) ""; color: var(--correct-answer); }
+.solution-link { display: inline-block; margin-top: 10px; padding: 5px 10px; background-color: transparent; border: 1px solid var(--link-color); color: var(--link-color); border-radius: 4px; cursor: pointer; text-decoration: none; }
+.solution-link:before { content: '▶ '; transition: transform 0.2s ease-in-out; display: inline-block; }
+.solution-link.expanded:before { transform: rotate(90deg); }
+.solution-content { display: none; margin-top: 10px; padding: 15px; background-color: var(--solution-bg); border-left: 3px solid var(--link-color); border-radius: 4px; line-height: 1.8; }
+.error-text { color: #ff4d4d; font-weight: bold; }
+.clear-button {
+    background-color: #d9534f; /* Màu đỏ */
+}
+.clear-button:hover {
+    background-color: #c9302c;
+}
+/* KaTeX styling */
+.katex {
+    font-size: 1.1em !important;
+}
+.katex * {
+    color: magenta !important;
+}
+/* Trong file pdf.css, thêm vào cuối */
+.checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    cursor: pointer;
+    user-select: none;
+}
+.checkbox-wrapper input[type="checkbox"] {
+    cursor: pointer;
+}
+.checkbox-wrapper label {
+    cursor: pointer;
+    color: var(--text-color);
+}

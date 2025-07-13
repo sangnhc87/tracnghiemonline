@@ -68,43 +68,31 @@ const LatexStringUtils = {
      * @returns {string} Chuỗi HTML table.
      */
     replaceTabularToHtmlTable: function(text) {
-    if (!text) return text;
+        if (!text) return text;
+// TẠM THỜI KHÔNG LÀM GÌ
+    return text;
+        return text.replace(/\\begin\{tabular\}\s*(\{.*?\}\s*)?([\s\S]*?)\\end\{tabular\}/gi, (match, alignmentSpec, tableContent) => {
+            let htmlTable = '<table>';
+            const rows = tableContent.split('\\\\').map(row => row.trim()).filter(row => row !== '');
 
-    const tabularRegex = /\\begin\{tabular\}(\{[^}]*\})?([\s\S]*?)\\end\{tabular\}/g;
-
-    return text.replace(tabularRegex, (match, alignmentSpec, tableContent) => {
-        let htmlTable = '<table border="1" style="margin: auto;">\n';
-
-        // Xóa \hline
-        tableContent = tableContent.replace(/\\hline/g, '');
-
-        // Tách dòng bởi \\\\
-        const rows = tableContent.split(/\\\\/);
-
-        rows.forEach(row => {
-            row = row.trim();
-            if (!row) return;
-
-            htmlTable += '  <tr>';
-            const cols = row.split('&');
-            cols.forEach(col => {
-                col = col.replace(/\\centering|\\raggedright|\\raggedleft/g, '').trim();
-
-                // Nếu có hàm xử lý lệnh LaTeX trong ô thì gọi
-                if (typeof LatexStringUtils !== 'undefined' && LatexStringUtils.applyCommonLatexReplacements) {
-                    col = LatexStringUtils.applyCommonLatexReplacements(col);
-                }
-
-                htmlTable += `<td style="text-align: center; padding: 4px;">${col}</td>`;
+            rows.forEach(row => {
+                row = row.replace(/\\hline/g, '').trim(); // Loại bỏ \hline
+                const cols = row.split('&').map(col => col.trim());
+                
+                htmlTable += '<tr>';
+                cols.forEach(col => {
+                    col = col.replace(/\\centering|\\raggedright|\\raggedleft/g, '').trim();
+                    // Gọi lại applyCommonLatexReplacements để xử lý các lệnh khác trong ô
+                    col = LatexStringUtils.applyCommonLatexReplacements(col); 
+                    htmlTable += `<td>${col}</td>`;
+                });
+                htmlTable += '</tr>';
             });
-            htmlTable += '</tr>\n';
+
+            htmlTable += '</table>';
+            return htmlTable;
         });
-
-        htmlTable += '</table>';
-        return htmlTable;
-    });
-},
-
+    },
 
     /**
      * Chuyển đổi môi trường \begin{itemize}/\begin{enumerate} thành HTML <ul>/<ol>.
@@ -152,8 +140,25 @@ const LatexStringUtils = {
      */
     replaceDoubleBackslashToBrGGG: function(text) {
         if (!text) return text;
+
+        // Sử dụng một hàm thay thế để xử lý các đoạn text bên ngoài môi trường toán học.
+        // Regex: Tìm các khối toán học $...$ hoặc $$...$$
+        // hoặc tìm các đoạn text bên ngoài toán học.
+        // \\s*?        - bất kỳ khoảng trắng nào (non-greedy)
+        // (\$\$[\s\S]*?\$\$) - Group 1: Khớp $$...$$
+        // (\$[\s\S]*?\$)    - Group 2: Khớp $...$
+        // ([\s\S]*?)       - Group 3: Khớp bất kỳ văn bản nào không phải toán học (non-greedy)
+        const mathAndTextRegex = /(\$\$[\s\S]*?\$\$|\$[\s\S]*?\$)|\B(\\\\)\B|([\s\S])/g;
+        
+        // The regex `\B(\\\\)\B` aims to match `\\` only when it's not at a word boundary,
+        // which helps avoid matching `\\` within math mode (where it's usually `\\[...]`)
+        // However, a more robust way is to split the string into math/non-math blocks.
+
         let result = '';
         let lastIndex = 0;
+
+        // Chia chuỗi thành các phần toán học và không phải toán học
+        // Regex: match `$$...$$` OR `$..$` OR `\\(`..`\\)` OR `\\[`..`\\]`
         const fullMathBlockRegex = /(\$\$[\s\S]*?\$\$|\$[\s\S]*?\$\\|\\[[\s\S]*?\\]|\\\([\s\S]*?\\\))/g;
         let match;
         
@@ -177,8 +182,30 @@ const LatexStringUtils = {
         return result;
     },
 // File: js/latex-string-utils.js
+replaceDoubleBackslashToBr: function(text) {
+    if (!text) return text;
 
-// ... (Các hàm khác giữ nguyên) ...
+    // Regex nhận diện:
+    // - khối TOÁN: $$...$$, \[...\], $...$, \(...\)
+    // - khối TABULAR: \begin{tabular}...\end{tabular}
+    const blockRegex = /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)|\$[\s\S]*?\$|\\begin\{tabular\}[\s\S]*?\\end\{tabular\})/g;
+
+    const parts = text.split(blockRegex);
+
+    const processedParts = parts.map((part, index) => {
+        if (!part) return '';
+
+        if (index % 2 === 0) {
+            // Phần văn bản ngoài toán học và ngoài tabular => thay
+            return part.replace(/\\\\/g, '<br>');
+        } else {
+            // Giữ nguyên khối toán học và tabular
+            return part;
+        }
+    });
+
+    return processedParts.join('');
+},
 
     /**
      * Thay thế '\\' bằng '<br>' nhưng KHÔNG can thiệp vào bên trong MỌI môi trường toán học
@@ -186,12 +213,9 @@ const LatexStringUtils = {
      * @param {string} text - Chuỗi cần xử lý.
      * @returns {string} Chuỗi đã thay thế.
      */
-    replaceDoubleBackslashToBr: function(text) {
+    replaceDoubleBackslashToBrGGGGGGGG: function(text) {
         if (!text) return text;
-        // const mathBlocksRegex = /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\$[\s\S]*?\$|\\\([\s\S]*?\\\))/g;
-        // - khối tabular: \begin{tabular}...\end{tabular}
-        const mathBlocksRegex = /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)|\$[\s\S]*?\$|\\begin\{tabular\}[\s\S]*?\\end\{tabular\})/g;
-
+        const mathBlocksRegex = /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\$[\s\S]*?\$|\\\([\s\S]*?\\\))/g;
         const parts = text.split(mathBlocksRegex);
         const processedParts = parts.map((part, index) => {
             // Nếu `part` không tồn tại (thường là do split), trả về chuỗi rỗng

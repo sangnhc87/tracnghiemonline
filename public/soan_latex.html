@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Công Cụ Soạn Thảo Đề Thi Thông Minh</title>
+
+    <!-- Thư viện và Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+    <!-- CSS đã được chuyển đổi sang đường dẫn tĩnh -->
+    <link rel="stylesheet" href="soanthao/ex_converter_page.css">
+    <link rel="stylesheet" href="soanthao/quiz-parser.css"> 
+    <link rel="stylesheet" href="soanthao/style.css"> 
+
+    <!-- CSS tùy chỉnh và nâng cấp -->
+    <style>
+        /* CSS cho Dialog Snippet */
+        .snippet-dialog-custom-class .swal2-html-container { padding: 0 !important; margin: 0 !important; }
+        .snippet-container { display: flex; height: 60vh; font-family: 'Be Vietnam Pro', sans-serif; }
+        .snippet-tree-panel { width: 240px; background-color: #f8f9fa; border-right: 1px solid #e9ecef; padding: 10px; overflow-y: auto; }
+        .snippet-tree { list-style-type: none; padding: 0; margin: 0; }
+        .snippet-tree-item { display: flex; align-items: center; padding: 8px 12px; cursor: pointer; border-radius: 6px; transition: all 0.2s; font-size: 14px; user-select: none; }
+        .snippet-tree-item:hover { background-color: #e9ecef; }
+        .snippet-tree-item.active { background-color: #0d6efd; color: white; box-shadow: 0 2px 8px rgba(13, 110, 253, 0.3); }
+        .snippet-tree-item .tree-icon { width: 25px; text-align: center; margin-right: 8px; }
+
+        .snippet-detail-panel { flex-grow: 1; padding: 20px; overflow-y: auto; }
+        .snippet-detail-item { padding: 12px; border: 1px solid transparent; border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; }
+        .snippet-detail-item:hover { border-color: #0d6efd; box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.1); background-color: #f8f9fa; }
+        .snippet-detail-item .detail-name { font-weight: 600; font-size: 15px; margin-bottom: 5px; color: #212529; display: flex; align-items: center; }
+        .snippet-detail-item .detail-icon { margin-right: 10px; color: #0d6efd; }
+        .snippet-detail-item .detail-description { font-size: 13px; color: #6c757d; line-height: 1.4; }
+
+        /* CSS cho các khung soạn thảo */
+        .question-editor-container { flex-grow: 1; overflow-y: auto; padding: 10px; background-color: #f4f5f7; border: 1px solid #dee2e6; border-radius: 8px; margin-bottom: 15px; }
+        .question-editor-frame { background-color: #fff; border: 1px solid #dfe1e6; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s ease-in-out; }
+        .question-editor-frame.is-focused { border-color: #4c9aff; box-shadow: 0 0 0 3px rgba(76, 154, 255, 0.2); }
+        .frame-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background-color: #fafbfc; border-bottom: 1px solid #e9ecef; cursor: pointer; }
+        .frame-title { font-weight: 600; font-size: 1.1em; }
+        .frame-actions button { background: none; border: none; cursor: pointer; font-size: 1em; padding: 5px; margin-left: 8px; color: #6c757d; transition: color 0.2s; }
+        .frame-actions button:hover { color: #343a40; }
+        .frame-content { padding: 0; border-top: none; }
+        .frame-content .question-textarea { width: 100%; min-height: 180px; border: none; padding: 15px 20px; font-family: 'Be Vietnam Pro', sans-serif; font-size: 16px; line-height: 1.7; resize: vertical; outline: none; background-color: #ffffff; color: #172b4d; border-radius: 0 0 8px 8px; }
+        
+        /* Bố cục chính */
+        #app-converter { display: flex; flex-direction: column; width: 100%; max-width: 1800px; margin: 0 auto; min-height: 100vh; }
+        .converter-main-content { display: flex; flex-direction: column; padding: 20px; gap: 20px; flex-grow: 1; }
+        .top-row, .bottom-row { display: flex; gap: 20px; }
+        .top-row { min-height: 65vh; }
+        .converter-panel { flex: 1; background-color: #fff; border-radius: 8px; border: 1px solid #ccc; box-shadow: 0 2px 8px rgba(0,0,0,0.07); display: flex; flex-direction: column; }
+        .converter-panel h2, .converter-panel h3 { font-size: 1.1rem; padding: 12px 15px; margin: 0; border-bottom: 1px solid #dee2e6; flex-shrink: 0; }
+        .review-panel { max-height: 80vh; }
+        .review-display-area { padding: 25px; background-color: #f8f9fa; overflow-y: auto; flex-grow: 1; }
+
+        /* Style ảnh và highlight câu hỏi */
+        .question-statement img, .explanation img { display: block; max-width: 100%; height: auto; margin-top: 1em; margin-bottom: 1em; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .img-center { margin-left: auto; margin-right: auto; }
+        .img-right { margin-left: 1.5em; margin-right: 0; max-width: 50%; float: right; }
+        .img-left { margin-left: 0; margin-right: 1.5em; max-width: 50%; float: left; }
+        .question-statement::after, .explanation::after { content: ""; display: table; clear: both; }
+        .katex { color: magenta !important; }
+        .question-number-highlight { font-weight: 700; color: #0d6efd; background-color: #e7f1ff; padding: 2px 8px; border-radius: 4px; margin-right: 8px; }
+    </style>
+</head>
+<body>
+    <div id="app-converter">
+        <header class="converter-header">
+            <h1><i class="fas fa-magic"></i> Công Cụ Soạn Thảo Đề Thi Thông Minh</h1>
+            <p>Tự động hóa việc chuyển đổi và xử lý hình ảnh TikZ trực tiếp khi tải lên.</p>
+            <!-- === THÊM KHỐI CODE NÀY VÀO === -->
+    <div id="auth-status" style="margin-top: 15px; padding: 10px; background-color: #e9ecef; border-radius: 8px; text-align: center;">
+        <span id="user-info">Đang kiểm tra trạng thái đăng nhập...</span>
+        <button id="auth-btn" style="display: none; margin-left: 15px;" class="btn btn-secondary">Đăng nhập</button>
+    </div>
+    <!-- === KẾT THÚC KHỐI CODE THÊM VÀO === -->
+        </header>
+
+        <main class="converter-main-content">
+            <div class="top-row">
+                <div class="converter-panel input-panel">
+                    <h2><i class="fas fa-file-import"></i> Soạn Thảo</h2>
+                    <div class="input-panel-toolbar">
+                        <!-- <button id="open-snippet-dialog-btn" class="btn btn-primary"><i class="fas fa-book-open"></i> Kho Snippet</button> -->
+                        <button id="save-to-cloud-btn" class="btn btn-success">
+        <i class="fas fa-cloud-upload-alt"></i> Lưu lên Cloud</button>
+                    </div>
+                    <div id="question-editor-container" class="question-editor-container">
+                        <!-- Script sẽ điền các khung soạn thảo vào đây -->
+                    </div>
+                    <div class="input-panel-actions">
+                        <button id="add-question-btn" class="btn btn-primary"><i class="fas fa-plus"></i> Thêm câu hỏi</button>
+                        <button id="load-file-btn" class="btn btn-secondary"><i class="fas fa-folder"></i> Tex Ko TikZ</button>
+                        <button id="load-and-process-tikz-btn" class="btn btn-primary" style="background-color: #10B981; border-color: #059669;">
+                            <i class="fas fa-magic"></i> Tải Có TikZ
+                        </button>
+                        <button id="clear-input-btn" class="btn btn-danger"><i class="fas fa-trash-alt"></i> Xóa tất cả</button>
+                    </div>
+                    <input type="file" id="file-input-hidden" accept=".tex,.txt" style="display: none;">
+                </div>
+                <div class="converter-panel output-panel">
+                    <h2><i class="fas fa-file-export"></i> Kết Quả Chuyển Đổi</h2>
+                    <div class="panel-actions" style="justify-content: flex-end; margin-bottom: 15px;">
+                        <button id="copy-output-btn" class="btn btn-primary"><i class="fas fa-copy"></i> Sao chép</button>
+                    </div>
+                    <textarea id="converter-output-area" class="converter-textarea" placeholder="Kết quả chuyển đổi sẽ xuất hiện ở đây..."></textarea>
+                    <div class="keys-cores-display">
+                        <h3>Đáp án và Điểm</h3>
+                        <div class="keys-cores-row">
+                            <label for="extracted-keys">Keys:</label>
+                            <input type="text" id="extracted-keys" readonly />
+                            <button id="copy-keys-btn" class="btn btn-copy" title="Sao chép Keys"><i class="fas fa-copy"></i></button>
+                        </div>
+                        <div class="keys-cores-row">
+                            <label for="extracted-cores">Cores:</label>
+                            <input type="text" id="extracted-cores" readonly />
+                            <button id="copy-cores-btn" class="btn btn-copy" title="Sao chép Cores"><i class="fas fa-copy"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bottom-row">
+                <div class="converter-panel review-panel">
+                    <h3><i class="fas fa-eye"></i> Xem Trước Giao Diện Học Sinh</h3>
+                    <div id="review-display-area" class="review-display-area">
+                        <p style="text-align: center; color: #888;">Nội dung xem trước sẽ hiển thị ở đây.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Firebase SDK (Rất quan trọng) -->
+    <script defer src="/__/firebase/9.10.0/firebase-app-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-auth-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-functions-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-storage-compat.js"></script>
+    <script defer src="/__/firebase/init.js"></script>
+    <!-- THÊM DÒNG NÀY -->
+    <script defer src="js/auth-manager.js"></script>
+    <!-- Các script của ứng dụng soạn thảo -->
+     
+    <script src="js/latex-string-utils.js"></script> 
+    <script src="soanthao/quiz-parser.js"></script> 
+    <script src="soanthao/ex-converter.js"></script> 
+    <script src="soanthao/text-preprocessor.js"></script>
+    <script defer src="soanthao/ex_converter_page_V3.js"></script>
+
+    <script src="js/soan.js"></script> 
+
+
+</body>
+</html>

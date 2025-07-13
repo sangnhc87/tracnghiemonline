@@ -8,6 +8,14 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
+<!-- KaTeX CSS + JS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body);"></script>
+  <!-- Marked.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
 
     <style>
         /* (Giữ nguyên toàn bộ CSS từ phiên bản trước) */
@@ -66,7 +74,105 @@
                 <li><i class="fas fa-arrows-alt-v fa-li"></i><strong>Phân tách bằng Dòng trống:</strong> Một hoặc nhiều dòng trống sẽ tạo ra một khối câu hỏi mới. Các câu hỏi trong cùng một nhóm (giữa hai thẻ `##group-separator##`) được phân tách bằng cách này.</li>
                 <li><i class="fas fa-random fa-li"></i><strong>Phân tách bằng `##group-separator##`:</strong> Dùng để tạo ra các nhóm câu hỏi lớn. Hệ thống sẽ trộn lẫn các nhóm này với nhau.</li>
             </ul>
+            <div class="example-code">
+                Câu 1: [Mặc định] Câu hỏi này sẽ luôn ở vị trí số 1 nếu không có ##group-separator##. Các đáp án A, B, C, D của nó sẽ bị xáo trộn.
+A. Đáp án A của câu 1
+B. Đáp án B của câu 1
+C. Đáp án C của câu 1
+D. Đáp án D của câu 1
+\begin{loigiai}
+Đây là lời giải cho Câu 1, nó sẽ luôn đi kèm với Câu 1.
+\end{loigiai}
 
+Câu 2: [Không trộn đáp án] Câu hỏi này sẽ luôn ở vị trí số 2. Các đáp án A, B, C, D sẽ giữ nguyên thứ tự vì có chỉ thị ##no-shuffle.
+##no-shuffle
+A. Đáp án A (luôn ở vị trí đầu tiên)
+B. Đáp án B (luôn ở vị trí thứ hai)
+C. Đáp án C (luôn ở vị trí thứ ba)
+D. Đáp án D (luôn ở vị trí thứ tư)
+\begin{loigiai}
+Lời giải cho câu 2.
+\end{loigiai}
+
+Câu 3: [Câu T-F] Các mệnh đề a, b, c, d của câu này sẽ được trộn ngẫu nhiên.
+a) Mệnh đề A của câu 3.
+b) Mệnh đề B của câu 3.
+c) Mệnh đề C của câu 3.
+d) Mệnh đề D của câu 3.
+
+##group-separator##
+
+Câu 4: [Nhóm 2] Câu này thuộc nhóm 2. Vị trí của nó sẽ được trộn với Câu 5. Các đáp án A, B, C, D của nó cũng sẽ được trộn.
+##4x1
+A. Đáp án A của câu 4 (layout 4x1)
+B. Đáp án B của câu 4
+#C. Đáp án C của câu 4 (Đáp án Đúng - C)
+D. Đáp án D của câu 4
+
+Câu 5: [Nhóm 2] Câu này thuộc nhóm 2. Vị trí của nó sẽ được trộn với Câu 4. Các mệnh đề a,b,c,d của nó sẽ được trộn.
+a) Mệnh đề a của câu 5
+#b) Mệnh đề b của câu 5 (Đáp án Đúng - b)
+#c) Mệnh đề c của câu 5 (Đáp án Đúng - c)
+d) Mệnh đề d của câu 5
+\begin{loigiai}
+Lời giải của câu 5 sẽ luôn đi theo nó.
+\end{loigiai}
+
+##group-separator##
+
+Câu 6: [Nhóm 3 - Câu duy nhất] Câu hỏi này thuộc nhóm 3. Vì chỉ có một mình nó trong nhóm, vị trí của nó sẽ không đổi (so với các câu trong nhóm 3). Các đáp án của nó vẫn sẽ được trộn.
+A. Đáp án A của câu 6
+#B. Đáp án B của câu 6 (Đáp án Đúng - B)
+C. Đáp án C của câu 6
+D. Đáp án D của câu 6
+
+##group-separator##
+
+Câu 7: [Nhóm 4 - T-F không trộn] Câu này thuộc nhóm 4, vị trí sẽ được trộn với câu 8. Nhưng các mệnh đề a, b, c sẽ giữ nguyên thứ tự.
+##no-shuffle
+a) Mệnh đề a của câu 7 (luôn là a)
+b) Mệnh đề b của câu 7 (luôn là b)
+c) Mệnh đề c của câu 7 (luôn là c)
+d) Mệnh đề d của câu 7 (luôn là d)
+\begin{loigiai}
+Lời giải của câu 7.
+\end{loigiai}
+
+Câu 8: [Nhóm 4] Câu hỏi này thuộc nhóm 4, vị trí sẽ được trộn với câu 7.
+A. Đáp án A của câu 8
+B. Đáp án B của câu 8
+C. Đáp án C của câu 8
+D. Đáp án D của câu 8
+\begin{loigiai}
+Lời giải của câu 8.
+\end{loigiai}
+
+Câu 9: [Câu điền số] Dạng câu này không có lựa chọn nên sẽ không bị ảnh hưởng bởi các tùy chọn trộn đáp án. Nó vẫn sẽ bị trộn vị trí nếu nằm trong một nhóm.
+Giá trị của $2^3$ là bao nhiêu?
+#8
+\begin{loigiai}
+Lời giải của câu 9.
+\end{loigiai}
+            </div>
+            <div class="example-code">
+Câu 1, 2, 3       <-- Tất cả thuộc Nhóm 1
+
+##group-separator##
+
+Câu 4, 5          <-- Tất cả thuộc Nhóm 2
+
+##group-separator##
+
+Câu 6             <-- Thuộc Nhóm 3 (chỉ có 1 câu)
+
+##group-separator##
+
+Câu 7, 8          <-- Tất cả thuộc Nhóm 4
+
+##group-separator##
+
+Câu 9             <-- Thuộc Nhóm 5 (chỉ có 1 câu)
+             </div>
             <h4>B. Soạn thảo từng loại câu hỏi</h4>
             <div class="note">
                 <strong>Nguyên tắc chung:</strong> Mỗi câu hỏi đều bắt đầu bằng `Câu X:`, theo sau là nội dung. Các phương án bắt đầu bằng `A.`, `B.`... hoặc `a)`, `b)`...
@@ -218,5 +324,215 @@ A|D|B|C|C|A|TTFF|FTFT|150|2.5
              <a href="/" class="btn btn-primary"><i class="fas fa-arrow-left"></i> Quay lại Dashboard Chính</a>
         </div>
     </div>
+
+<!-- KaTeX + Marked -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+
+<style>
+  #chatbot-toggle {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #007bff;
+    color: white;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    font-size: 24px;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    z-index: 9999;
+  }
+
+  #chatbot-box {
+    display: none;
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    width: 600px;
+    max-height: 700px;
+    overflow-y: auto;
+    background: var(--bg, #fff);
+    border: 1px solid #ccc;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    padding: 15px;
+    z-index: 9999;
+    transition: all 0.3s ease;
+    color: var(--text, #000);
+  }
+
+  #chatbot-box h3 {
+    margin: 0 0 10px;
+    font-size: 18px;
+    color: var(--accent, #007bff);
+  }
+
+  #faq-search {
+    width: 100%;
+    padding: 5px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+  }
+
+  .faq-item {
+    border-bottom: 1px solid #ddd;
+    padding: 5px 0;
+  }
+
+  .faq-question {
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .faq-answer {
+    display: none;
+    margin-top: 5px;
+  }
+
+  .theme-switch {
+    cursor: pointer;
+    font-size: 14px;
+    text-align: right;
+    margin-bottom: 5px;
+    color: var(--accent, #007bff);
+  }
+  /* Tùy biến thanh cuộn */
+#chatbot-box::-webkit-scrollbar {
+  width: 8px;
+}
+#chatbot-box::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.05);
+  border-radius: 4px;
+}
+#chatbot-box::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.3);
+  border-radius: 4px;
+}
+#chatbot-box::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.5);
+}
+.katex {
+  color: magenta !important;
+}
+
+</style>
+
+<button id="chatbot-toggle" aria-label="Hỏi đáp">💬</button>
+
+<div id="chatbot-box">
+  <div class="theme-switch" id="theme-toggle">🌙 Chế độ tối</div>
+  <h3>Hỏi đáp nhanh</h3>
+  <input type="text" id="faq-search" placeholder="Tìm kiếm...">
+  <div id="faq-container"><div>🔄 Đang tải dữ liệu...</div></div>
+</div>
+
+<script>
+  // Tối/sáng
+  let darkMode = false;
+  document.getElementById("theme-toggle").onclick = () => {
+    darkMode = !darkMode;
+    if (darkMode) {
+      document.getElementById("chatbot-box").style.setProperty('--bg', '#333');
+      document.getElementById("chatbot-box").style.setProperty('--text', '#eee');
+      document.getElementById("chatbot-box").style.setProperty('--accent', '#f0c000');
+      document.getElementById("theme-toggle").textContent = "☀️ Chế độ sáng";
+    } else {
+      document.getElementById("chatbot-box").style.setProperty('--bg', '#fff');
+      document.getElementById("chatbot-box").style.setProperty('--text', '#000');
+      document.getElementById("chatbot-box").style.setProperty('--accent', '#007bff');
+      document.getElementById("theme-toggle").textContent = "🌙 Chế độ tối";
+    }
+  };
+
+  // Mở/tắt hộp thoại
+  document.getElementById("chatbot-toggle").onclick = () => {
+    const box = document.getElementById("chatbot-box");
+    box.style.display = (box.style.display === "none" || box.style.display === "") ? "block" : "none";
+  };
+
+  // Fetch JSON và sinh câu hỏi
+//   let faqData = [];
+//   fetch("faq.json")
+//     .then(response => response.json())
+//     .then(data => {
+//       faqData = data;
+//       renderFAQ(data);
+//     })
+//     .catch(error => {
+//       document.getElementById("faq-container").innerHTML = "<div style='color:red'>Không tải được dữ liệu FAQ.</div>";
+//       console.error("Lỗi tải FAQ:", error);
+//     });
+// Fetch YAML và parse
+let faqData = [];
+fetch("faq.yaml")
+  .then(response => response.text())
+  .then(yamlText => {
+    faqData = jsyaml.load(yamlText);
+    renderFAQ(faqData);
+  })
+  .catch(error => {
+    document.getElementById("faq-container").innerHTML = "<div style='color:red'>Không tải được dữ liệu YAML.</div>";
+    console.error("YAML error:", error);
+  });
+
+
+  function renderFAQ(data) {
+    const container = document.getElementById("faq-container");
+    container.innerHTML = "";
+    data.forEach((item, index) => {
+      const div = document.createElement("div");
+      div.className = "faq-item";
+      div.innerHTML = `
+        <div class="faq-question">${item.question}<span>➕</span></div>
+        <div class="faq-answer"></div>
+      `;
+      // Render markdown & KaTeX khi mở
+      div.querySelector(".faq-question").onclick = function () {
+        const ans = div.querySelector(".faq-answer");
+        const icon = this.querySelector("span");
+        if (ans.style.display === "block") {
+          ans.style.display = "none";
+          icon.textContent = "➕";
+        } else {
+          ans.innerHTML = marked.parse(item.answer);
+        renderMathInElement(ans, {
+        delimiters: [
+            {left: "$$", right: "$$", display: true},
+            {left: "$", right: "$", display: false},
+            {left: "\\(", right: "\\)", display: false},
+            {left: "\\[", right: "\\]", display: true}
+        ],
+        throwOnError: false
+        });
+
+          renderMathInElement(ans);
+          ans.style.display = "block";
+          icon.textContent = "➖";
+        }
+      };
+      container.appendChild(div);
+    });
+  }
+
+  // Tìm kiếm câu hỏi
+  document.getElementById("faq-search").addEventListener("input", function() {
+    const q = this.value.toLowerCase();
+    const filtered = faqData.filter(item => item.question.toLowerCase().includes(q));
+    renderFAQ(filtered);
+  });
+</script>
+
+
+
 </body>
 </html>

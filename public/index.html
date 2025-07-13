@@ -160,12 +160,13 @@
             <p>Chào mừng, <span id="teacherDashboardName"></span>!</p>
            
             <div class="dashboard-main-actions" style="display: flex; gap: 10px; justify-content: center; margin-bottom: 20px;">
-                <a href="/pdf-teacher.html" target="_blank" class="btn btn-info"><i class="fas fa-file-pdf"></i> Quản lý Đề PDF</a>
-                <a href="/stats.html" class="btn btn-primary"><i class="fas fa-chart-line"></i> Xem Thống kê</a>
+                <a href="/pdf-teacher.html" target="_blank" class="btn btn-info"><i class="fas fa-file-pdf"></i>Kho Đề PDF</a>
+                <a href="/stats.html" class="btn btn-primary"><i class="fas fa-chart-line"></i>Thống Kê</a>
                 <!-- Các nút mới được thêm vào -->
-    <a href="/hdsd.html" target="_blank" class="btn btn-secondary"><i class="fas fa-book-open"></i> Hướng dẫn</a>
-    <a href="/editor_V2.html" target="_blank" class="btn btn-warning"><i class="fas fa-pencil-alt"></i>Hỗ Trợ Word</a>
-    <a href="/ex_V2.html" target="_blank" class="btn btn-dark"><i class="fas fa-exchange-alt"></i>Hỗ Trợ Latex</a>
+    <a href="/hdsd.html" target="_blank" class="btn btn-secondary"><i class="fas fa-book-open"></i>Hướng dẫn</a>
+    <a href="/editor_V2.html" target="_blank" class="btn btn-warning"><i class="fas fa-pencil-alt"></i>Soạn Word</a>
+    <a href="/soan_latex.html" target="_blank" class="btn btn-dark"><i class="fas fa-exchange-alt"></i>Soạn Latex 1</a>
+    <a href="/soan_latex_io.html" target="_blank" class="btn btn-dark"><i class="fas fa-exchange-alt"></i>Soạn Latex 2</a>
             </div>
             
             <div class="dashboard-sections">
@@ -191,6 +192,7 @@
         <label for="katex-color-picker">Màu công thức:</label>
         <input type="color" id="katex-color-picker" title="Chọn màu cho công thức KaTeX">
     </div>
+    <a href="/bank_V1_2025.html" target="_blank" class="btn btn-dark"><i class="fas fa-exchange-alt"></i>Mở Ngân Hàng Câu Hỏi</a>
     <a href="/png2link.html" target="_blank" class="btn btn-dark"><i class="fas fa-exchange-alt"></i>Lấy Link Ảnh</a>
     <!-- Nút Đăng xuất -->
     <button onclick="signOut()" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i> Đăng xuất</button>
@@ -282,6 +284,7 @@
     <!-- Thứ tự nạp Script quan trọng -->
     <script defer src="js/quiz-parser.js"></script>
     <!-- <script defer src="js/redirect.js"></script>  -->
+    <script defer src="js/auth-manager.js"></script>
     <script defer src="js/main.js"></script>
     <!-- <script defer src="js/storage_handler.js"></script> -->
     <script>

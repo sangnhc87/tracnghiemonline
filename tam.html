@@ -1,230 +1,45 @@
 <!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hệ thống Thi Online</title>
-    
-    <!-- Fonts, Icons -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css" integrity="sha512-xh6O/CkQoPOWDdYTDqeRdPCVd1SpvCA9XXcUnZS2FmJNp1coAFzvtCN9BmamE+4aHK8yyUHUSCcJHgXloTyT2A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    
-    <!-- CSS -->
-    <link rel="stylesheet" href="css/style.css" />
-    <link rel="stylesheet" href="css/quiz-parser.css" /> 
-    
-    <!-- Thư viện bên thứ ba -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU07EWHeAOgpuTO/lA+K/BIhfEpजगीU0T4goEBCYoWru/gGu4ydfrAN" crossorigin="anonymous">
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    
-    <!-- THƯ VIỆN PDF.JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
-
-    <!-- Firebase -->
-    <script defer src="/__/firebase/9.10.0/firebase-app-compat.js"></script>
-    <script defer src="/__/firebase/9.10.0/firebase-auth-compat.js"></script>
-    <script defer src="/__/firebase/9.10.0/firebase-firestore-compat.js"></script>
-    <script defer src="/__/firebase/9.10.0/firebase-functions-compat.js"></script>
-    <script defer src="/__/firebase/init.js"></script>
-</head>
+<html>
 <body>
+<div id="out"></div>
+<script>
+function processTabularToHTML(text) {
+    const tabularRegex = /\\begin\{tabular\}(\{[^}]*\})?([\s\S]*?)\\end\{tabular\}/g;
 
-    <div id="app">
-        <!-- Màn hình Đăng nhập Giáo viên -->
-        <div id="teacherLogin" class="container card" style="display: none;">
-            <h2>Chào mừng Giáo viên</h2>
-            <div id="teacherInfo" style="display: none;"></div>
-            <button onclick="signInWithGoogle()" class="btn btn-google"><i class="fab fa-google"></i> Đăng nhập với Google</button>
-            <div id="teacherActions" style="display: none; flex-direction: column; gap: 10px;">
-                <label for="teacherAliasInput">Mã Alias của bạn:</label>
-                <input type="text" id="teacherAliasInput" placeholder="Ví dụ: sangmath" />
-                <button onclick="updateTeacherAlias()" class="btn btn-primary">Cập nhật Alias</button>
-                <button onclick="showTeacherDashboard()" class="btn btn-secondary"><i class="fas fa-tasks"></i> Vào trang quản lý</button>
-                <button onclick="signOut()" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i> Đăng xuất</button>
-                <p class="form-link"><a href="#" onclick="showStudentLoginScreen()">Quay lại trang học sinh</a></p>
-            </div>
-        </div>
+    return text.replace(tabularRegex, (match, alignment, content) => {
+        let html = '<table border="1">\n';
+        // Loại \hline
+        content = content.replace(/\\hline/g, '');
+        // Tách dòng bằng \\\\
+        const rows = content.split(/\\\\/);
 
-        <!-- Màn hình Đăng nhập Học sinh (Trang chủ) -->
-        <div id="loginScreen" class="container card">
-            <h2>Vào thi</h2>
-            <div class="form-group">
-                <label for="teacherAlias">Mã Giáo viên (Alias):</label>
-                <input type="text" id="teacherAlias" placeholder="Nhập mã Alias của giáo viên" />
-            </div>
-            <div class="form-group">
-                <label for="examCode">Mã đề thi:</label>
-                <input type="text" id="examCode" placeholder="Nhập mã đề (VD: T001)" />
-            </div>
-            <div class="form-group">
-                <label for="classSelect">Chọn Lớp:</label>
-                <select id="classSelect"><option value="">-- Chọn lớp --</option></select>
-            </div>
-            <div class="form-group">
-                <label for="studentSelect">Chọn Họ tên:</label>
-                <select id="studentSelect"><option value="">-- Chọn tên --</option></select>
-            </div>
-            <!-- [SỬA ĐỔI] Gọi hàm mới để xử lý cả đề cũ và đề mới trên Storage -->
-            <button onclick="startExamWithStorage()" class="btn btn-primary btn-full"><i class="fas fa-play-circle"></i> Bắt đầu thi</button>
-            <p class="form-link">Bạn là giáo viên? <a href="#" onclick="showTeacherLogin()">Đăng nhập tại đây</a></p>
-        </div>
+        for (let rawRow of rows) {
+            let row = rawRow.trim();
+            if (!row) continue;
+            html += '  <tr>';
+            const cells = row.split(/&/);
+            for (let rawCell of cells) {
+                let cell = rawCell.trim();
+                html += `<td>${cell}</td>`;
+            }
+            html += '</tr>\n';
+        }
+        html += '</table>';
+        return html;
+    });
+}
 
-        <!-- Các thành phần ẩn/hiện -->
-        <div id="loading" class="loading-overlay" style="display:none;">
-            <div class="spinner"></div>
-            <p>Đang tải...</p>
-        </div>
-        <div id="timer-container" class="timer-container" style="display:none;"><div id="timer"></div></div>
-        
-        <!-- Vùng làm bài thi -->
-        <div id="quiz" class="quiz-container" style="display:none;"></div>
-        <button id="gradeBtn" style="display:none;" class="btn btn-success btn-full" onclick="gradeQuiz()"><i class="fas fa-check-circle"></i> Chấm điểm & Nộp bài</button>
-        
-        <!-- Màn hình kết quả -->
-        <div id="result-container" class="container card" style="display:none;">
-            <h2>Kết quả bài thi</h2>
-            <div class="score-box">
-                <span class="score-label">Điểm của bạn</span>
-                <span id="score">0.00</span>
-            </div>
-            <div class="info-group">
-                <p><span><i class="fas fa-user"></i> Họ tên</span><strong id="student-name"></strong></p>
-                <p><span><i class="fas fa-chalkboard-user"></i> Lớp</span><strong id="student-class"></strong></p>
-                <p><span><i class="fas fa-file-alt"></i> Mã đề</span><strong id="exam-code"></strong></p>
-            </div>
-            <button onclick="showStudentLoginScreen()" class="btn btn-primary btn-full"><i class="fas fa-home"></i> Quay lại trang chủ</button>
-            <h4 class="details-title">Xem chi tiết bài làm</h4>
-        </div>
+const latex = `
+\\begin{tabular}{|l|c|c|}
+\\hline
+Quãng đường & $[2,5;3,0)$ & $[3,0;3,5)$ \\\\
+\\hline
+Số ngày & $3$ & $6$ \\\\
+\\hline
+\\end{tabular}
+`;
 
-        <!-- Dashboard Giáo viên -->
-        <div id="teacherDashboard" class="dashboard-container" style="display:none;">
-            <h2>Bảng điều khiển Giáo viên</h2>
-            <p>Chào mừng, <span id="teacherDashboardName"></span>!</p>
-            <div class="dashboard-main-actions" style="display: flex; gap: 10px; justify-content: center; margin-bottom: 20px;">
-                <a href="/pdf-teacher.html" target="_blank" class="btn btn-info"><i class="fas fa-file-pdf"></i> Quản lý Đề PDF</a>
-                <a href="/stats.html" class="btn btn-primary"><i class="fas fa-chart-line"></i> Xem Thống kê</a>
-            </div>
-            
-            <div class="dashboard-sections">
-                <div class="dashboard-section">
-                    <h3>Quản lý Đề thi</h3>
-                    <button class="btn btn-primary" onclick="showExamForm()"><i class="fas fa-plus-circle"></i> Thêm đề thi</button>
-                    <div id="exam-list" class="list-group"></div>
-                </div>
-                <div class="dashboard-section">
-                    <h3>Quản lý Lớp học</h3>
-                    <button class="btn btn-primary" onclick="showClassForm()"><i class="fas fa-plus-circle"></i> Thêm lớp học</button>
-                    <div id="class-list" class="list-group"></div>
-                </div>
-                <div class="dashboard-section">
-                    <h3>Bài nộp gần đây</h3>
-                    <div id="submission-list" class="list-group"></div>
-                </div>
-            </div>
-            <div class="dashboard-actions">
-                <button onclick="signOut()" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i> Đăng xuất</button>
-            </div>
-        </div>
-
-        <!-- Modal Form Đề thi -->
-        <div id="examFormModal" class="modal-backdrop" style="display: none;">
-            <div class="modal-content card">
-                <h2 id="examFormTitle"></h2>
-                <div class="modal-form-scrollable-area">
-                    <!-- [SỬA ĐỔI] Gọi hàm mới để xử lý cả lưu vào Firestore và Storage -->
-                    <form id="examForm" onsubmit="event.preventDefault(); handleExamFormSubmitWithStorage();">
-                        <input type="hidden" id="examId" />
-                        
-                        <div class="form-group">
-                            <label for="examFormType">Loại đề thi:</label>
-                            <select id="examFormType" onchange="toggleExamFormFields()">
-                                <option value="TEXT" selected>Đề dạng Văn bản (Soạn trực tiếp)</option>
-                                <option value="PDF">Đề dạng PDF (Từ link)</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="examFormCode">Mã đề thi:</label>
-                            <input type="text" id="examFormCode" required placeholder="Đề TEXT: T... | Đề PDF: PDF-..." />
-                        </div>
-                        <div class="form-group">
-                            <label for="examFormTime">Thời gian làm bài (phút):</label>
-                            <input type="number" id="examFormTime" value="90" min="1" required />
-                        </div>
-                        <div class="form-group">
-                            <label for="examFormKeys">Đáp án (phân tách bằng |):</label>
-                            <input type="text" id="examFormKeys" required placeholder="A|B|C|D..." />
-                        </div>
-                        <div class="form-group">
-                            <label for="examFormCores">Điểm từng câu (phân tách bằng |):</label>
-                            <input type="text" id="examFormCores" required placeholder="0.2|0.2|0.2|0.2..." />
-                        </div>
-                        
-                        <!-- Vùng cho đề TEXT -->
-                        <div id="textExamFields">
-                            <div class="form-group">
-                                <label for="examFormContent">Nội dung đề thi (Soạn trực tiếp):</label>
-                                <textarea id="examFormContent" rows="15" required placeholder="Soạn nội dung và đáp án chi tiết vào đây..."></textarea>
-                            </div>
-                            <!-- [THÊM MỚI] Checkbox để chọn lưu vào Storage -->
-                            <div class="form-group form-check" style="display: flex; align-items: center; gap: 10px;">
-                                <input type="checkbox" class="form-check-input" id="useStorageCheckbox" style="width: auto; height: auto;">
-                                <label class="form-check-label" for="useStorageCheckbox" style="margin-bottom: 0;">
-                                    Lưu nội dung lên Storage (Tối ưu cho đề dài)
-                                </label>
-                            </div>
-                        </div>
-
-                        <!-- Vùng cho đề PDF -->
-                        <div id="pdfExamFields" style="display:none;">
-                            <div class="form-group">
-                                <label for="examFormPdfUrl">Link Đề thi PDF:</label>
-                                <input type="text" id="examFormPdfUrl" placeholder="Dán link đến file PDF của đề thi" />
-                                <small>Link phải cho phép truy cập công khai. Ví dụ từ Google Drive, Dropbox.</small>
-                            </div>
-                            <div class="form-group">
-                                <label for="examFormSolutionUrl">Link Lời giải PDF (tùy chọn):</label>
-                                <input type="text" id="examFormSolutionUrl" placeholder="Dán link đến file PDF của lời giải" />
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-actions">
-                    <button type="submit" form="examForm" class="btn btn-primary"><i class="fas fa-save"></i> Lưu</button>
-                    <button type="button" onclick="hideExamForm()" class="btn btn-secondary"><i class="fas fa-times-circle"></i> Hủy</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal Form Lớp học -->
-        <div id="classFormModal" class="modal-backdrop" style="display: none;">
-            <div class="modal-content card">
-                <h2 id="classFormTitle"></h2>
-                <div class="modal-form-scrollable-area">
-                    <form id="classForm" onsubmit="event.preventDefault(); handleClassFormSubmit();">
-                        <input type="hidden" id="classId" />
-                        <div class="form-group"><label for="classFormName">Tên lớp:</label><input type="text" id="classFormName" required placeholder="Ví dụ: 10A1" /></div>
-                        <div class="form-group"><label for="classFormStudents">Danh sách học sinh (mỗi tên một dòng):</label><textarea id="classFormStudents" rows="10" placeholder="Nguyễn Văn A\nTrần Thị B..."></textarea></div>
-                    </form>
-                </div>
-                <div class="modal-actions">
-                    <button type="submit" form="classForm" class="btn btn-primary"><i class="fas fa-save"></i> Lưu</button>
-                    <button type="button" onclick="hideClassForm()" class="btn btn-secondary"><i class="fas fa-times-circle"></i> Hủy</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-     <!-- Thứ tự nạp Script quan trọng -->
-    <script defer src="js/quiz-parser.js"></script>
-    <script defer src="js/redirect.js"></script> 
-    <script defer src="js/main.js"></script>
-    <script defer src="js/storage_handler.js"></script>
-
+document.getElementById('out').innerHTML = processTabularToHTML(latex);
+</script>
 </body>
 </html>

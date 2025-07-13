@@ -1,117 +1,93 @@
 
-// File: public/js/quiz-parser.js (PHIÊN BẢN HOÀN CHỈNH TỐT NHẤT)
-
-/**
- * Phân tích một khối văn bản thành một object câu hỏi có cấu trúc.
- * Hỗ trợ các loại: MC, TABLE_TF, NUMERIC.
- * Hỗ trợ các chỉ thị: ##2x2, ##1x4, ##4x1, ##no-shuffle.
- * Tự động tách lời giải và xử lý lựa chọn/mệnh đề đa dòng.
- *
- * @param {string} questionBlock - Khối văn bản chứa một câu hỏi duy nhất.
- * @returns {object|null} - Object câu hỏi hoặc null nếu không thể phân tích.
- */
-
 function parseMCQuestion(questionBlock) {
+    // Kiểm tra đầu vào cơ bản
     if (typeof questionBlock !== 'string' || !questionBlock.trim()) {
         return null;
     }
 
-    // 1. Tách lời giải ra trước (quan trọng)
+    // 1. Tách lời giải ra trước tiên để không ảnh hưởng đến logic phân tích
     let solution = '';
     const loigiaiRegex = /\\begin\{loigiai\}([\s\S]*?)\\end\{loigiai\}/i;
     const matchSolution = questionBlock.match(loigiaiRegex);
     if (matchSolution) {
         solution = matchSolution[1].trim();
+        // Cập nhật lại khối câu hỏi sau khi đã tách lời giải
         questionBlock = questionBlock.replace(loigiaiRegex, '').trim();
     }
 
-    // 2. Khởi tạo
+    // 2. Khởi tạo các biến để lưu trữ kết quả
     const lines = questionBlock.trim().split('\n');
-    let statementLines = [];
+    let statement = '';
     const options = [];
-    let questionType = null;
-    let layoutHint = '2x2';
-    let shouldShuffleOptions = true;
+    let questionType = null; // Sẽ được xác định trong quá trình lặp
+    let layoutHint = '2x2'; // Mặc định là layout 2x2
+    let shouldShuffleOptions = true; // Mặc định là luôn trộn đáp án
 
-    // 3. Regex để nhận dạng
-    const mcOptionRegex = /^\s*([A-D])\.\s+([\s\S]*)/;        // A. Nội dung
-    const tableTfOptionRegex = /^\s*([a-h])\)\s+([\s\S]*)/;   // a) Nội dung
-    const directiveRegex = /^##(1x4|2x2|4x1|no-shuffle)\s*$/i;
+    // 3. Định nghĩa các biểu thức chính quy (Regular Expressions) để nhận dạng
+    const mcOptionRegex = /^([A-D])\.\s*(.*)/;        // Ví dụ: "A. Đáp án 1"
+    const tableTfOptionRegex = /^([a-h])\)\s*(.*)/;   // Ví dụ: "a) Mệnh đề 1" (hỗ trợ đến h)
+    // [MỚI] Gộp các chỉ thị vào một regex duy nhất
+    const directiveRegex = /^##(1x4|2x2|4x1|no-shuffle)$/i;
 
-    // 4. Phân tích thông minh hơn để xử lý lựa chọn đa dòng
-    let currentOption = null;
-
-    for (const line of lines) {
+    // 4. Lặp qua từng dòng để phân tích
+    lines.forEach(line => {
         const trimmedLine = line.trim();
-        
+
+        // Kiểm tra xem dòng có phải là một chỉ thị không
         const directiveMatch = trimmedLine.match(directiveRegex);
         if (directiveMatch) {
             const directive = directiveMatch[1].toLowerCase();
             if (directive === 'no-shuffle') {
-                shouldShuffleOptions = false;
+                shouldShuffleOptions = false; // Nếu gặp ##no-shuffle, đặt cờ không trộn
             } else {
-                layoutHint = directive;
+                layoutHint = directive; // Nếu là chỉ thị layout, cập nhật layout
             }
-            continue;
+            return; // Dòng này là chỉ thị, không xử lý tiếp
         }
 
-        // Dùng `line` thay vì `trimmedLine` để giữ nguyên các thụt đầu dòng
-        const mcMatch = line.match(mcOptionRegex);
-        const tableTfMatch = line.match(tableTfOptionRegex);
+        // Kiểm tra xem dòng có phải là một lựa chọn không
+        const mcMatch = trimmedLine.match(mcOptionRegex);
+        const tableTfMatch = trimmedLine.match(tableTfOptionRegex);
 
-        let isNewOption = false;
         if (mcMatch) {
-            if (currentOption) options.push(currentOption); // Lưu lựa chọn cũ
             questionType = 'MC';
-            currentOption = { label: mcMatch[1], content: mcMatch[2].trim() };
-            isNewOption = true;
+            options.push({ label: mcMatch[1], content: mcMatch[2].trim() });
         } else if (tableTfMatch) {
-            if (currentOption) options.push(currentOption); // Lưu lựa chọn cũ
             questionType = 'TABLE_TF';
-            currentOption = { label: tableTfMatch[1], content: tableTfMatch[2].trim() };
-            isNewOption = true;
+            options.push({ label: tableTfMatch[1], content: tableTfMatch[2].trim() });
+        } else {
+            // Nếu không phải chỉ thị, không phải lựa chọn, thì nó là một phần của câu hỏi
+            statement += line + '\n';
         }
+    });
 
-        if (!isNewOption) {
-            if (currentOption) {
-                // Nếu đang trong một lựa chọn, GỘP dòng này vào nội dung của nó
-                currentOption.content += '\n' + line;
-            } else {
-                // Nếu không, nó thuộc về đề bài
-                statementLines.push(line);
-            }
-        }
-    }
+    statement = statement.trim();
 
-    // Đừng quên lưu lựa chọn cuối cùng sau vòng lặp
-    if (currentOption) {
-        options.push(currentOption);
-    }
-    
-    // Trim lại content của các option một lần cuối
-    options.forEach(opt => opt.content = opt.content.trim());
-
-    const statement = statementLines.join('\n').trim();
-
-    // 5. Xác định loại câu hỏi cuối cùng
+    // 5. Xác định loại câu hỏi cuối cùng nếu chưa rõ
     if (!questionType) {
+        // Nếu không tìm thấy lựa chọn nào nhưng có nội dung câu hỏi, coi đó là câu điền số
         if (statement) {
             questionType = 'NUMERIC';
         } else {
-            console.warn("Could not parse question block (empty):", questionBlock);
+            // Không có nội dung, không có lựa chọn -> khối không hợp lệ
+            console.warn("Could not parse question block:", questionBlock);
             return null;
         }
     }
-    
+
+    // 6. Bọc "Câu N." bằng thẻ span để có thể style riêng
+    // statement = statement.replace(/^(Câu\s*\d+\s*[:.]?\s*)/i, `<span class="statement-q-num">$&</span>`);
+
+    // 7. Trả về object kết quả hoàn chỉnh
     return {
-        statement,
-        options,
-        solution,
+        statement: statement,
+        options: options, // Có thể là mảng rỗng nếu là câu NUMERIC
+        solution: solution,
         layout: layoutHint,
         type: questionType,
-        shouldShuffleOptions,
+        shouldShuffleOptions: shouldShuffleOptions // **QUAN TRỌNG**: Thuộc tính mới
     };
-    }
+}
 // File: js/quiz-parser.js
 
 function parseMCQuestionGGGG(questionBlock) {

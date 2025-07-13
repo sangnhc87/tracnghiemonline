@@ -1,0 +1,111 @@
+- question: "🔐 Làm sao để dùng bản Vip?"
+  answer: |
+    Ủng hộ duy trì hệ thống, phí sử dụng là $200k$/năm.
+- question: "? Chi phí dùng web thế nào?"
+  answer: |     
+    Hiện tại web là miễn phí (6 tháng). Giáo viên dùng chỉ cần gmail.
+- question: "? 1 câu trắc nghiệm chuẩn gõ thế nào?"
+  answer: |
+    $\text{Câu}~ 1$:      
+    nội dung câu hỏi    
+    A. Đáp án A     
+    B. Đáp án B     
+    C. Đáp án C     
+    D. Đáp án D     
+    \begin{loigiai}   
+    Đây là lời giải cho Câu 1, nó sẽ luôn đi kèm với Câu 1.     
+    \end{loigiai}   
+    $\text{Câu}~ 2$:       
+    nội dung câu hỏi      
+    #A. Đáp án A (đây là đáp án đúng)   
+    B. Đáp án B     
+    C. Đáp án C     
+    D. Đáp án D     
+    \begin{loigiai}   
+    Đây là lời giải cho Câu 2, nó sẽ luôn đi kèm với Câu 2.   
+    \end{loigiai}   
+- question: "? 1 câu trắc nghiệm Đúng-Sai chuẩn gõ thế nào?"
+  answer: |   
+    $\text{Câu}~ 1$:        
+    nội dung câu hỏi.     
+    a) Đáp án A        
+    b) Đáp án B       
+    c) Đáp án C       
+    d) Đáp án D       
+    \begin{loigiai}     
+    Đây là lời giải cho Câu 1, nó sẽ luôn đi kèm với Câu 1.     
+    \end{loigiai}   
+    $\text{Câu}~ 2$:        
+    nội dung câu hỏi    
+    #a) Đáp án A (đây là đáp án đúng)   
+    b) Đáp án B     
+    c) Đáp án C     
+    d) Đáp án D     
+    \begin{loigiai}   
+    Đây là lời giải cho Câu 2, nó sẽ luôn đi kèm với Câu 2. 
+    \end{loigiai} 
+- question: "? 1 câu trả lời ngắn chuẩn gõ thế nào?"
+  answer: |   
+    $\text{Câu}~ 1$:    
+    nội dung câu hỏi, kết quả tính 2x3 bằng 
+    #6  
+    \begin{loigiai}   
+    Đây là lời giải cho Câu 1, nó sẽ luôn đi kèm với Câu 1. 
+    \end{loigiai}   
+    $$
+    x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
+    $$
+- question: "? Nếu tôi muốn câu đó không trộn"
+  answer: | 
+    Bạn thêm ##no-shufle vào trước \begin{loigiai} thì câu đó sẽ ko trộn  
+    Câu 2:  
+    nội dung câu hỏi  
+    #A. Đáp án A (đây là đáp án đúng) 
+    B. Đáp án B   
+    C. Đáp án C   
+    D. Đáp án D   
+    ##no-shufle 
+    \begin{loigiai}   
+    Đây là lời giải cho Câu 1, nó sẽ luôn đi kèm với Câu 1.     
+    \end{loigiai}   
+    Câu 2:    
+    nội dung câu hỏi  
+    #a) Đáp án A (đây là đáp án đúng) 
+    b) Đáp án B   
+    c) Đáp án C     
+    d) Đáp án D     
+    ##no-shufle     
+    \begin{loigiai}     
+    Đây là lời giải cho Câu 2, nó sẽ luôn đi kèm với Câu 2.   
+    \end{loigiai}   
+
+- question: "? Trộn theo nhóm thì sao?"
+  answer: |   
+    Chỉ cần thêm $##group-separator##$ vào cuối nhóm là được. Ví dụ        
+    Câu 1, 2, 3       <-- Tất cả thuộc Nhóm 1   
+    ##group-separator##   
+    Câu 4, 5          <-- Tất cả thuộc Nhóm 2   
+    ##group-separator##   
+    Câu 6             <-- Thuộc Nhóm 3 (chỉ có 1 câu)   
+- question: "? Soạn latex thì sao?"
+  answer: |   
+    Nếu soạn theo chuẩn gói ex_test thì được hỗ trợ rất tốt.    
+    Nếu soạn word thì gõ toán như như trong latex - hỗ trợ rất tốt.  
+- question: "? Các tuỳ chọn phương án trắc nghiệm"
+  answer: |     
+    $##4x1$: 4 phương án A. B. C. D. thành 4 dòng 1 cột   
+    $##2x2$: 4 phương án A. B. C. D. thành 2 dòng 2 cột   
+    $##1x4$: 4 phương án A. B. C. D. thành 1 dòng 4 cột   
+    Mặc định đang dùng $##2x2$  
+- question: "? Mã giáo viên làm gì?"
+  answer: |     
+    Mã giáo viên như key bí mật - giáo viên gửi cho học sinh lớp mình biết để vào làm bài thi.
+- question: "? Tổng quan chức năng web làm được gì?"
+  answer: |     
+    Hỗ trợ $3$ loại đề:    
+      - PDF   
+      - Word có ảnh, toán dạng equation.      
+      - Latex soạn theo chuẩn ex_test có hỗ trợ code tikz.    
+- question: "? Đề word có mathtype thì sao?"
+  answer: |     
+    Hệ thống không hỗ trợ mathtype, Thầy Cô vui long dùng chức năng $Toogle Tex$ của mathtype rẫ toàn bộ Mathtype ra code sau đó upload lên hệ thống là được.

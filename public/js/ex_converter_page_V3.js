@@ -1,5 +1,3 @@
-// File: js/ex_converter_page.js
-// PHIÊN BẢN HOÀN THIỆN - AUTO RENDER & REAL-TIME PREVIEW
 
 document.addEventListener('DOMContentLoaded', () => {
 // BƯỚC 1: Định nghĩa hàm trợ giúp `getEl` TRƯỚC TIÊN.

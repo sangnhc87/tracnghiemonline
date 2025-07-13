@@ -1,0 +1,22 @@
+[
+  {
+    "question": "🔐 Làm sao để đăng nhập?",
+    "answer": "Bạn nhấn nút **Đăng nhập** góc trên và nhập thông tin.\n\nCần hỗ trợ thêm? Gửi email đến [support@example.com](mailto:support@example.com)."
+  },
+  {
+    "question": "❓ Một câu trắc nghiệm chuẩn gõ thế nào",
+    "answer": "Nhấn *Quên mật khẩu* và làm theo hướng dẫn khôi phục qua email."
+  },
+  {
+    "question": "📄 Làm sao tải tài liệu?",
+    "answer": "Trong trang tài liệu, nhấn nút `Tải xuống` bên dưới tiêu đề."
+  },
+  {
+    "question": "💬 Làm sao liên hệ hỗ trợ?",
+    "answer": "Email: support@example.com  \nHotline: 0123-456-789"
+  },
+  {
+    "question": "∑ Công thức toán học",
+    "answer": "Công thức: $$x = {-b \\pm \\sqrt{b^2 - 4ac} \\over 2a}$$"
+  }
+]

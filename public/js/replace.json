@@ -1,0 +1,53 @@
+{
+  "simpleReplacements": {
+    "\\vec": "\\overrightarrow",
+    "\\bar": "\\overline",
+     "xyz": "xxzzyy",
+    "<table>": "<table border=\"1\">",
+    "\\lq\\lq": " ` ` ",
+    "\\rq\\rq": " ' ' ",
+    "\\itemch": "\\item ",
+    "{itemchoice": "{itemize",
+    "\\begin{eqnarray*}":"\\[\\begin{array}{rcl}",
+    "\\end{eqnarray*}":"\\end{array}\\]",
+    "\\noindent":"<br>",
+    "\\allowdisplaybreaks":" ",
+     "[thm]":" "
+  },
+  "commandReplacements": {
+    "heva": {
+      "start": "\\begin{cases}",
+      "end": "\\end{cases}"
+    },
+    "hoac": {
+      "start": "\\left[\\begin{array}{l}",
+      "end": "\\end{array}\\right."
+    },
+    "gachchan": {
+      "start": "\\underline{",
+      "end": "}"
+    }
+  },
+  "environmentReplacements": {
+    "eqnarrayy*": {
+      "target": "aligned",
+      "fixContent": true
+    },
+    "mymatrix": {
+      "target": "pmatrix",
+      "fixContent": false
+    }
+  },
+  "regexReplacements": [
+     {
+      "find": "\\\\tagEX\\s*\\{(.*?)\\}",
+      "replace": "($1)",
+      "flags": "g"
+    },
+    {
+      "find": "\\\\immini(\\[.*?\\])?\\s*\\{",
+      "replace": "",
+      "flags": "g"
+    }
+  ]
+}

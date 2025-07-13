@@ -1,11 +1,11 @@
-// ===================================================================
-// ==   FIREBASE FUNCTIONS - PHIÊN BẢN HOÀN CHỈNH & ỔN ĐỊNH        ==
-// ===================================================================
-
+// --- BƯỚC 1: KHAI BÁO CÁC MODULE CHÍNH ---
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const axios = require("axios");
 const cors = require('cors')({origin: true});
+const { GoogleAuth } = require('google-auth-library');
+const FormData = require('form-data');
+
 // Khởi tạo Firebase Admin SDK
 admin.initializeApp();
 const db = admin.firestore();
@@ -13,7 +13,90 @@ const db = admin.firestore();
 // -------------------------------------------------------------------
 // PHẦN 1: CÁC HÀM XÁC THỰC VÀ QUẢN LÝ USER (GIÁO VIÊN)
 // -------------------------------------------------------------------
+// Thêm các hàm này vào functions/index.js
 
+// Đảm bảo bạn có các khai báo này ở đầu file
+// const admin = require("firebase-admin");
+// const { getStorage } = require("firebase-admin/storage");
+// const db = admin.firestore();
+// const storage = getStorage();
+
+/**
+ * [MỚI] Lấy danh sách URL tải về cho TẤT CẢ các file JSON
+ * trong thư mục backup của người dùng.
+ */
+exports.getListOfBankFiles = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+    }
+    const { uid } = context.auth.token;
+    const backupFolderPath = `question_bank_backups/${uid}/`;
+
+    try {
+        const [files] = await storage.bucket().getFiles({ prefix: backupFolderPath });
+
+        if (files.length === 0) {
+            return { files: [] }; // Trả về mảng rỗng nếu không có file
+        }
+
+        const signedUrlPromises = files.map(file => {
+            // Bỏ qua nếu là thư mục rỗng (tên kết thúc bằng /)
+            if (file.name.endsWith('/')) return null;
+
+            return file.getSignedUrl({
+                action: 'read',
+                expires: Date.now() + 10 * 60 * 1000, // URL có hiệu lực 10 phút
+            }).then(([url]) => ({ name: file.name, url }));
+        });
+
+        const results = (await Promise.all(signedUrlPromises)).filter(Boolean); // Lọc bỏ các giá trị null
+
+        console.log(`User ${uid}: Tìm thấy ${results.length} file ngân hàng.`);
+        return { files: results };
+
+    } catch (error) {
+        console.error(`User ${uid}: Lỗi khi lấy danh sách file:`, error);
+        throw new functions.https.HttpsError("internal", "Không thể lấy danh sách file từ Cloud.");
+    }
+});
+
+
+/**
+ * [MỚI] Nhận file JSON tổng hợp, upload nó, và xóa tất cả các file lẻ cũ.
+ */
+exports.consolidateBank = functions.runWith({memory: '1GB', timeoutSeconds: 300}).https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+    }
+    const { uid } = context.auth.token;
+    const { consolidatedContent } = data; // Client gửi nội dung file JSON tổng hợp
+
+    if (!consolidatedContent) {
+        throw new functions.https.HttpsError("invalid-argument", "Thiếu nội dung tổng hợp.");
+    }
+
+    const backupFolderPath = `question_bank_backups/${uid}/`;
+    const consolidatedFilePath = `${backupFolderPath}bank_consolidated_${Date.now()}.json`;
+
+    try {
+        // Bước 1: Xóa tất cả các file cũ trong thư mục
+        console.log(`User ${uid}: Bắt đầu hợp nhất. Đang xóa các file cũ trong ${backupFolderPath}...`);
+        await storage.bucket().deleteFiles({ prefix: backupFolderPath });
+        console.log(`User ${uid}: Đã xóa xong các file cũ.`);
+
+        // Bước 2: Upload file tổng hợp mới
+        console.log(`User ${uid}: Đang upload file tổng hợp mới: ${consolidatedFilePath}`);
+        const file = storage.bucket().file(consolidatedFilePath);
+        await file.save(consolidatedContent, { contentType: 'application/json; charset=utf-8' });
+        console.log(`User ${uid}: Upload file tổng hợp thành công.`);
+
+        return { success: true, message: "Đã hợp nhất và cập nhật ngân hàng câu hỏi thành công!" };
+
+    } catch (error) {
+        console.error(`User ${uid}: Lỗi khi hợp nhất ngân hàng:`, error);
+        throw new functions.https.HttpsError("internal", "Lỗi máy chủ khi hợp nhất ngân hàng câu hỏi.");
+    }
+});
 /**
  * Được gọi khi giáo viên đăng nhập lần đầu hoặc các lần sau.
  * Nếu là lần đầu, tạo một record user mới với thời gian dùng thử.
@@ -890,7 +973,7 @@ exports.updateExamWithStorage = functions.https.onCall(async (data, context) => 
 
     // 4. Cập nhật Firestore
     await examRef.update(updatedExam);
-    return { success: true, message: "Đã cập nhật đề thi trên Storage thành công!" };
+    return { success: true, message: "Đã cập nhật đề thi trên kho của bạn!" };
 });
 // File: functions/index.js
 // THAY THẾ HOÀN TOÀN HÀM getContentUrl CŨ BẰNG PHIÊN BẢN NÀY
@@ -1097,4 +1180,165 @@ exports.adminUpdateUserTrialDate = functions.https.onCall(async (data, context) 
         console.error("Lỗi cập nhật ngày hết hạn:", error);
         throw new functions.https.HttpsError("internal", `Không thể cập nhật ngày hết hạn: ${error.message}`);
     }
+});
+
+// ===================================================================
+// ==   PROXY FUNCTION ĐỂ GỌI ĐÚNG ENDPOINT XỬ LÝ TIKZ             ==
+// ===================================================================
+
+exports.processTikzProxy = functions.runWith({ timeoutSeconds: 300, memory: '1GB' }).https.onCall(async (data, context) => {
+    // Tạm thời bỏ qua xác thực để dễ debug
+    /*
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+    }
+    */
+
+    const { fileContent } = data;
+    if (!fileContent) {
+        throw new functions.https.HttpsError("invalid-argument", "Thiếu nội dung file TikZ (fileContent).");
+    }
+
+    const CLOUD_RUN_URL = functions.config().converter.url;
+    if (!CLOUD_RUN_URL) {
+        console.error("Lỗi cấu hình: Biến môi trường 'converter.url' chưa được thiết lập.");
+        throw new functions.https.HttpsError("internal", "URL dịch vụ chuyển đổi chưa được cấu hình phía server.");
+    }
+    
+    // SỬA LẠI ĐÚNG ENDPOINT Ở ĐÂY
+    const endpoint = `${CLOUD_RUN_URL}/process-tex-file`; 
+    console.log(`Proxying TikZ request to: ${endpoint}`);
+
+    try {
+        const form = new FormData();
+        form.append('file', Buffer.from(fileContent), {
+            filename: 'temp_tikz_batch.tex',
+            contentType: 'text/plain',
+        });
+        
+        const response = await axios.post(endpoint, form, {
+            headers: form.getHeaders(),
+            timeout: 290000 
+        });
+
+        return response.data;
+
+    } catch (error) {
+        console.error("Lỗi khi gọi dịch vụ TikZ Proxy:", error.response ? JSON.stringify(error.response.data) : error.message);
+        const errorMessage = error.response?.data?.error || 'Lỗi không xác định khi giao tiếp với dịch vụ xử lý TikZ.';
+        throw new functions.https.HttpsError("internal", errorMessage);
+    }
+});
+
+// File: functions/index.js
+
+// ... (các hàm cũ và hàm processTikzProxy cho Cloud Run) ...
+
+// ===================================================================
+// ==   [MỚI] PROXY FUNCTION ĐỂ GỌI DỊCH VỤ TIKZ (FLY.IO)          ==
+// ===================================================================
+
+/**
+ * [Proxy an toàn] Gọi đến dịch vụ xử lý TikZ trên Fly.io.
+ */
+exports.processTikzFlyioProxy = functions.runWith({ timeoutSeconds: 300, memory: '1GB' }).https.onCall(async (data, context) => {
+    // Tạm thời bỏ qua xác thực để dễ debug.
+    /*
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần xác thực.");
+    }
+    */
+
+    const { fileContent } = data;
+    if (!fileContent) {
+        throw new functions.https.HttpsError("invalid-argument", "Thiếu nội dung file TikZ (fileContent).");
+    }
+
+    // Lấy URL của dịch vụ Fly.io từ biến môi trường đã cấu hình
+    const FLYIO_URL = functions.config().flyio.url;
+    if (!FLYIO_URL) {
+        console.error("Lỗi cấu hình: Biến môi trường 'flyio.url' chưa được thiết lập.");
+        throw new functions.https.HttpsError("internal", "URL dịch vụ Fly.io chưa được cấu hình phía server.");
+    }
+    
+    // Endpoint cụ thể trên dịch vụ Fly.io của bạn
+    const endpoint = `${FLYIO_URL}/process-tex-file`; 
+    console.log(`Proxying TikZ request to Fly.io: ${endpoint}`);
+
+    try {
+        const form = new FormData();
+        form.append('file', Buffer.from(fileContent), {
+            filename: 'temp_tikz_batch_flyio.tex',
+            contentType: 'text/plain',
+        });
+        
+        const response = await axios.post(endpoint, form, {
+            headers: form.getHeaders(),
+            timeout: 290000
+        });
+
+        return response.data;
+
+    } catch (error) {
+        console.error("Lỗi khi gọi dịch vụ TikZ trên Fly.io:", error.response ? JSON.stringify(error.response.data) : error.message);
+        const errorMessage = error.response?.data?.error || 'Lỗi không xác định khi giao tiếp với dịch vụ xử lý TikZ trên Fly.io.';
+        throw new functions.https.HttpsError("internal", errorMessage);
+    }
+});
+
+
+// ===================================================================
+// ==   CÁC HÀM SAO LƯU & PHỤC HỒI NGÂN HÀNG CÂU HỎI (TỐI GIẢN)    ==
+// ===================================================================
+
+exports.getBankBackupUrl = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần xác thực.");
+    }
+    const { uid } = context.auth.token;
+    const metaRef = db.collection("userBankMetadata").doc(uid);
+    const metaDoc = await metaRef.get();
+
+    if (!metaDoc.exists || !metaDoc.data().backupFilePath) {
+        throw new functions.https.HttpsError("not-found", "Không tìm thấy bản sao lưu nào trên Cloud.");
+    }
+
+    const backupPath = metaDoc.data().backupFilePath;
+    const file = storage.bucket().file(backupPath);
+    
+    const [url] = await file.getSignedUrl({
+        action: 'read',
+        expires: Date.now() + 5 * 60 * 1000, // URL có hiệu lực 5 phút
+    });
+
+    return { 
+        downloadUrl: url,
+        lastModified: metaDoc.data().lastModified 
+    };
+});
+
+/**
+ * [Cho soanthao.html] Hoàn tất quá trình sao lưu.
+ * Client sẽ upload file lên Storage trước, sau đó gọi hàm này để ghi lại timestamp.
+ */
+exports.finalizeBankBackup = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
+    }
+    const { uid } = context.auth.token;
+    const { filePath } = data;
+
+    // Kiểm tra quyền sở hữu file
+    if (!filePath || !filePath.startsWith(`question_bank_backups/${uid}/`)) {
+         throw new functions.https.HttpsError("permission-denied", "Đường dẫn file sao lưu không hợp lệ.");
+    }
+
+    const metaRef = db.collection("userBankMetadata").doc(uid);
+    await metaRef.set({
+        teacherId: uid, // Giữ lại để tiện truy vấn nếu cần
+        backupFilePath: filePath,
+        lastModified: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    return { success: true, message: "Đã cập nhật thông tin sao lưu." };
 });

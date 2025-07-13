@@ -1,0 +1,59 @@
+/* Trong file pdf.css */
+
+/* --- Font chữ và Style cơ bản --- */
+body {
+    /* Sử dụng font Roboto cho toàn trang */
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    /* ... các thuộc tính khác giữ nguyên ... */
+}
+
+/* Style cho checkbox mới */
+.export-option {
+    border-left: 1px solid var(--panel-border);
+    margin-left: 10px;
+    padding-left: 20px;
+}
+
+/* === Tối ưu cho việc xuất PDF (Phiên bản nâng cấp) === */
+
+/* Tiêu đề cho file PDF */
+.pdf-title {
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 20px;
+    border-bottom: 2px solid black;
+    padding-bottom: 10px;
+}
+
+/* Class này sẽ được thêm vào khi xuất PDF */
+.exporting-to-pdf {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    font-family: 'Times New Roman', serif; /* Dùng font cổ điển cho PDF */
+    width: 210mm; /* Giả lập chiều rộng của trang A4 */
+    padding: 10mm;
+    box-sizing: border-box;
+}
+
+/* Căn đều hai bên cho nội dung câu hỏi */
+.exporting-to-pdf .question-title {
+    text-align: justify;
+}
+
+/* Logic hiển thị/ẩn lời giải */
+.exporting-to-pdf.exporting-with-solution .solution-content {
+    display: block !important;
+}
+.exporting-to-pdf.exporting-with-solution .solution-link {
+    display: none !important;
+}
+.exporting-to-pdf.exporting-without-solution .solution-content,
+.exporting-to-pdf.exporting-without-solution .solution-link {
+    display: none !important;
+}
+
+.question-block {
+    page-break-inside: avoid;
+}
+

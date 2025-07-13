@@ -1,0 +1,1099 @@
+/* public/css/style.css - Phiên bản Hoàn Thiện - Đã Sửa Lỗi Responsive */
+
+/* --- 1. CSS Custom Properties (Variables) --- */
+:root {
+  /* Colors (Firebase defaults) */
+  --primary-color: #007bff; 
+  --primary-color-dark: #0056b3;
+  --secondary-color: #6c757d; 
+  --secondary-color-dark: #5a6268;
+  --success-color: #28a745;
+  --success-color-light: #d4edda; 
+  --danger-color: #dc3545;
+  --danger-color-light: #f8d7da; 
+  --warning-color: #ffc107;
+  --info-color: #17a2b8;
+  --info-color-light: #d1ecf1; 
+
+  /* Text & Backgrounds */
+  --text-color-dark: #212529; 
+  --text-color-medium: #495057; 
+  --text-color-light: #6c757d; 
+  --white: #ffffff;
+  --off-white: #f8f9fa; 
+  --background-light: #fafafa;
+  --surface-color: var(--white);
+  --border-color: #e9ecef;
+
+  /* New/Overriding colors inspired by GAS style */
+  --gas-primary-blue: #007BFF;
+  --gas-primary-blue-dark: #0056b3;
+  --gas-main-button-gradient-start: #5c6bc0;
+  --gas-main-button-gradient-end: #3949ab;
+  --gas-mc-selected-green: #4CAF50;
+  --gas-tf-true-blue: #2196F3;
+  --gas-tf-false-red: #F44336;
+  --gas-question-number-color: #e44d26;
+  --gas-question-statement-bg: #eef;
+  --gas-correct-highlight-magenta: magenta;
+
+  /* Result screen specific colors */
+  --gas-result-bg-gradient-start: #f0f9ff; 
+  --gas-result-bg-gradient-end: #e0f7fa;   
+  --gas-result-score-color: #00796b;
+  --gas-result-text-color: #004d40;
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-xxl: 48px;
+
+  /* Typography */
+  --font-family: 'Be Vietnam Pro', sans-serif;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.5rem;
+  --font-size-xxl: 2rem;
+  --font-size-xxxl: 2.5rem;
+  --line-height-base: 1.6;
+
+  /* Borders & Shadows */
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  --border-radius-xl: 16px;
+  --border-radius-xxl: 20px;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15);
+  --shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.12);
+  --shadow-gas-light: 0 4px 6px rgba(0, 0, 0, 0.1); 
+  --shadow-gas-strong: 0 12px 25px rgba(0, 0, 0, 0.15); 
+  --shadow-gas-inner: inset 0 0 8px rgba(0, 0, 0, 0.1);
+
+  /* Transitions */
+  --transition-speed-fast: 0.15s;
+  --transition-speed-normal: 0.3s;
+  --transition-ease: ease-out;
+}
+
+/* --- 2. Base & Reset Styles --- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-family);
+  background-color: var(--background-light);
+  color: var(--text-color-dark);
+  line-height: var(--line-height-base);
+  font-size: var(--font-size-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  padding: var(--spacing-xl) var(--spacing-md);
+}
+#app {
+  width: 95%;
+  max-width: 1400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xl);
+}
+
+/* --- 3. General Components --- */
+.container.card {
+  max-width: 500px;
+  width: 100%;
+  padding: var(--spacing-xxl) var(--spacing-xl);
+  text-align: center;
+  background-color: var(--surface-color);
+  border-radius: var(--border-radius-xxl);
+  box-shadow: var(--shadow-gas-strong);
+  border: none;
+  transition: transform var(--transition-speed-normal) var(--transition-ease), 
+              box-shadow var(--transition-speed-normal) var(--transition-ease);
+}
+.container.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+}
+.card {
+  background-color: var(--surface-color);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-sm); 
+  border: 1px solid var(--border-color);
+  padding: var(--spacing-lg); 
+}
+h2 {
+  font-size: var(--font-size-xxl); 
+  font-weight: 700;
+  color: var(--text-color-dark);
+  margin-top: 0;
+  margin-bottom: var(--spacing-xl);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+}
+h3 {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--text-color-dark);
+  margin-top: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+}
+h4 {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--text-color-medium);
+  margin-top: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+}
+
+/* --- Form Elements --- */
+.form-group { margin-bottom: var(--spacing-lg); text-align: left; }
+label {
+  display: block;
+  margin-bottom: var(--spacing-sm);
+  font-weight: 600;
+  font-size: var(--font-size-base);
+  color: var(--text-color-medium);
+}
+input[type="text"], input[type="number"], select, textarea {
+  width: 100%;
+  padding: var(--spacing-md);
+  font-size: var(--font-size-base);
+  font-family: inherit;
+  border: 1px solid #ddd;
+  border-radius: var(--border-radius-md);
+  background-color: var(--white);
+  color: var(--text-color-dark);
+  transition: border-color var(--transition-speed-fast) var(--transition-ease),
+              box-shadow var(--transition-speed-fast) var(--transition-ease);
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--gas-main-button-gradient-start); 
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+  outline: none; 
+}
+textarea { resize: vertical; min-height: 100px; }
+.form-group small {
+  display: block;
+  margin-top: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  color: var(--text-color-light);
+}
+.form-link { font-size: var(--font-size-sm); margin-top: var(--spacing-lg); text-align: center; }
+.form-link a {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color var(--transition-speed-fast) var(--transition-ease),
+              text-decoration var(--transition-speed-fast) var(--transition-ease);
+}
+.form-link a:hover { text-decoration: underline; color: var(--primary-color-dark); }
+
+/* --- 4. Buttons --- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  border: none;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  text-decoration: none;
+  line-height: 1.5;
+  transition: all var(--transition-speed-normal) var(--transition-ease);
+  box-shadow: var(--shadow-gas-light);
+}
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+.btn:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-gas-light);
+}
+.btn-full {
+  width: 100%;
+  margin-top: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  font-size: var(--font-size-lg);
+}
+.btn-primary { background-color: var(--primary-color); color: var(--white); }
+.btn-primary:hover { background-color: var(--primary-color-dark); }
+#loginScreen .btn-primary, #gradeBtn.btn-success.btn-full {
+  background: linear-gradient(45deg, var(--gas-main-button-gradient-start), var(--gas-main-button-gradient-end));
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
+#loginScreen .btn-primary:hover, #gradeBtn.btn-success.btn-full:hover {
+  background: linear-gradient(45deg, var(--gas-main-button-gradient-end), var(--gas-main-button-gradient-start));
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+.btn-secondary { background-color: var(--secondary-color); color: var(--white); }
+.btn-secondary:hover { background-color: var(--secondary-color-dark); }
+.btn-danger { background-color: var(--danger-color); color: var(--white); }
+.btn-danger:hover { background-color: #c82333; }
+.btn-success { background-color: var(--success-color); color: var(--white); }
+.btn-success:hover { background-color: #218838; }
+.btn-google { background-color: #4285F4; color: var(--white); }
+.btn-google:hover { background-color: #357ae8; }
+
+/* --- 5. Specific Screen Styles --- */
+#teacherLogin, #loginScreen { display: flex; flex-direction: column; gap: var(--spacing-lg); }
+#teacherInfo {
+  margin: var(--spacing-md) 0;
+  padding: var(--spacing-md);
+  font-size: var(--font-size-sm);
+  background-color: var(--info-color-light);
+  border: 1px solid var(--info-color);
+  color: #004085;
+  border-radius: var(--border-radius-md);
+  text-align: left;
+}
+#teacherInfo p { margin-bottom: var(--spacing-sm); }
+#teacherInfo p:last-child { margin-bottom: 0; }
+
+.loading-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background-color: rgba(255, 255, 255, 0.9);
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  z-index: 9999;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  transition: opacity var(--transition-speed-normal) var(--transition-ease);
+}
+.spinner {
+  width: 60px; height: 60px;
+  border: 6px solid rgba(0, 123, 255, 0.2);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+.loading-overlay p {
+  margin-top: var(--spacing-lg);
+  font-weight: 500;
+  color: var(--primary-color);
+  font-size: var(--font-size-lg);
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.timer-container {
+  position: sticky; top: 0; width: 100%;
+  background-color: rgba(255, 255, 255, 0.98);
+  padding: var(--spacing-md) var(--spacing-xl);
+  text-align: center; z-index: 100;
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+  margin-bottom: var(--spacing-lg);
+}
+#timer { font-size: var(--font-size-lg); font-weight: 700; color: var(--danger-color); letter-spacing: 0.5px; }
+.quiz-container {
+  width: 100%; max-width: 100%; margin: 0 auto;
+  padding: var(--spacing-xl);
+  background-color: var(--surface-color);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-md);
+}
+.question {
+  margin-bottom: var(--spacing-xxl);
+  padding: var(--spacing-sm);
+  border: 1px solid #ddd;
+  border-radius: var(--border-radius-lg);
+  background-color: var(--white);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  position: relative;
+}
+.question:last-child { margin-bottom: 0; }
+.question-number {
+  color: var(--gas-question-number-color);
+  font-size: 22px; 
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+  text-align: center;
+  margin-bottom: var(--spacing-md);
+}
+.question-statement {
+  font-size: var(--font-size-lg);
+  line-height: 1.7;
+  margin-bottom: var(--spacing-md);
+  color: var(--text-color-dark);
+  background-color: var(--gas-question-statement-bg);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius-md);
+  border: 1px dashed #999;
+  box-shadow: var(--shadow-gas-inner);
+}
+.question-statement img, .explanation img {
+  max-width: 100%; height: auto; display: block;
+  margin: var(--spacing-md) auto;
+  border-radius: var(--border-radius-sm);
+  box-shadow: var(--shadow-sm);
+  object-fit: contain;
+}
+.question-statement .katex-display { margin: 1em 0 !important; padding: 0; }
+.katex { font-size: 1.1em; }
+
+/* Multiple Choice & True/False Options */
+/* Multiple Choice & True/False Options */
+.mc-options, .tf-options-container { /* tf-options-container is the new wrapper for TF boxes */
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm); /* GIẢM KHOẢNG CÁCH */
+  margin-top: var(--spacing-md);
+  justify-content: center; /* Center options */
+}
+
+.mc-option, .tf-box { /* tf-box is the container for T/F buttons */
+  /* width: 100px; 
+  height: 45px;  */
+  border: 2px solid #ccc; 
+  border-radius: var(--border-radius-md); /* Giảm bo góc cho hợp với kích thước mới */
+  background-color: #f5f5f5;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 16px; /* THAY ĐỔI: Giảm từ 20px xuống 16px */
+  font-weight: bold;
+  color: #555;
+  cursor: pointer;
+  transition: transform var(--transition-speed-normal) var(--transition-ease), 
+              border-color var(--transition-speed-normal) var(--transition-ease),
+              background-color var(--transition-speed-normal) var(--transition-ease);
+  user-select: none;
+  position: relative;
+}
+.mc-option:hover, .tf-box:hover, .numeric-option:hover { transform: scale(1.05); border-color: #999; }
+.mc-option.selected {
+  background-color: var(--gas-mc-selected-green);
+  color: var(--white);
+  border-color: var(--gas-mc-selected-green);
+  box-shadow: 0 0 10px rgba(76,175,80,0.6);
+}
+.tf-btn {
+  flex: 1; display: flex; justify-content: center; align-items: center;
+  font-size: 16px; font-weight: bold; cursor: pointer;
+  transition: transform var(--transition-speed-normal) var(--transition-ease), 
+              background-color var(--transition-speed-normal) var(--transition-ease);
+}
+.tf-btn input { display: none; }
+.tf-btn.selected.T { background-color: var(--gas-tf-true-blue); color: var(--white); box-shadow: none; }
+.tf-btn.selected.F { background-color: var(--gas-tf-false-red); color: var(--white); box-shadow: none; }
+.numeric-option {
+  width: 200px; height: 60px;
+  border: 2px solid #ccc;
+  border-radius: var(--border-radius-lg);
+  background-color: #f5f5f5;
+  display: flex; justify-content: center; align-items: center;
+  margin: var(--spacing-md) auto 0;
+  position: relative;
+}
+.numeric-option input[type="text"] {
+  width: 90%; height: 80%; text-align: center;
+  font-size: 20px; border: none; background: transparent;
+  outline: none; color: var(--text-color-dark);
+  font-family: inherit; font-weight: bold;
+}
+.correct-answer-highlight { 
+  border-color: var(--gas-correct-highlight-magenta) !important;
+  box-shadow: 0 0 10px rgba(255, 0, 255, 0.6) !important;
+}
+.incorrect-answer-highlight {
+  background-color: var(--danger-color-light) !important;
+  border-color: var(--danger-color) !important;
+  box-shadow: 0 0 5px rgba(220, 53, 69, 0.4) !important;
+  color: var(--text-color-dark) !important;
+}
+.correct-answer-value { 
+  font-size: var(--font-size-sm); font-weight: bold;
+  color: var(--gas-correct-highlight-magenta);
+  position: absolute; bottom: 5px; left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.tf-grade {
+  margin-top: var(--spacing-sm); text-align: center;
+  font-size: var(--font-size-base); font-weight: bold;
+  color: var(--text-color-dark);
+}
+.toggle-explanation {
+  display: block; margin: var(--spacing-md) auto; 
+  background-color: var(--gas-primary-blue);
+  color: var(--white);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-size: var(--font-size-base);
+  border-radius: var(--border-radius-md);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+.toggle-explanation:hover { background-color: var(--gas-primary-blue-dark); transform: translateY(-2px); }
+.explanation {
+  margin-top: var(--spacing-md); padding: var(--spacing-lg); 
+  border: 1px solid #ccc; border-radius: var(--border-radius-lg); 
+  background-color: #f9f9f9; 
+  font-size: var(--font-size-base); color: #555;
+  line-height: 1.6; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: background-color var(--transition-speed-normal) var(--transition-ease);
+}
+.explanation:hover { background-color: #f0f0f0; } 
+.explanation.hidden { display: none; } 
+#gradeBtn {
+  display: block; margin: var(--spacing-xxl) auto; 
+  padding: var(--spacing-lg) var(--spacing-xl); 
+  font-size: var(--font-size-lg); font-weight: bold;
+  color: var(--white); border: none;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  transition: all var(--transition-speed-normal) var(--transition-ease);
+  box-shadow: var(--shadow-gas-light);
+}
+#gradeBtn:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2); }
+#gradeBtn i { margin-right: var(--spacing-sm); }
+#result-container {
+  max-width: 600px; margin: var(--spacing-xxl) auto;
+  background: linear-gradient(135deg, var(--gas-result-bg-gradient-start), var(--gas-result-bg-gradient-end)); 
+  border-radius: var(--border-radius-xl); 
+  box-shadow: 0 8px 16px rgba(0,0,0,0.15); 
+  padding: var(--spacing-xxl); text-align: center;
+}
+#result-container h2 {
+  color: var(--gas-result-score-color); 
+  margin-bottom: var(--spacing-lg);
+  font-size: var(--font-size-xxxl); 
+  text-transform: none; letter-spacing: normal;
+}
+#result-container p {
+  font-size: var(--font-size-lg);
+  color: var(--gas-result-text-color); 
+  margin: var(--spacing-sm) 0;
+}
+#result-container p strong { color: var(--text-color-dark); } 
+#result-container #score { /* Score text styling */
+  font-size: var(--font-size-xxxl); font-weight: bold;
+  color: var(--gas-result-score-color);
+  margin-top: var(--spacing-md);
+}
+#result-container .btn-primary { 
+  margin-top: var(--spacing-xl);
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: var(--font-size-base);
+  background: var(--gas-primary-blue); 
+}
+#result-container .btn-primary:hover { background: var(--gas-primary-blue-dark); }
+
+/* --- 6. Teacher Dashboard Styles --- */
+.dashboard-container {
+  width: 100%; max-width: 1200px; padding: var(--spacing-xl);
+  background-color: var(--surface-color);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-md);
+}
+.dashboard-container h2 {
+  margin-bottom: var(--spacing-lg); color: var(--primary-color);
+  text-transform: none; letter-spacing: normal;
+}
+.dashboard-container p { font-size: var(--font-size-lg); margin-bottom: var(--spacing-sm); color: var(--text-color-medium); }
+.dashboard-sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+  gap: var(--spacing-xl);
+  margin-top: var(--spacing-xxl);
+}
+.dashboard-section {
+  background-color: var(--surface-color);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-sm); 
+  border: 1px solid var(--border-color);
+  padding: var(--spacing-lg);
+  display: flex; flex-direction: column; 
+}
+.dashboard-section h3 {
+  text-align: center; color: var(--primary-color);
+  margin-top: 0; margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 2px solid var(--primary-color);
+  font-size: var(--font-size-lg);
+}
+.dashboard-section .btn { width: 100%; margin-bottom: var(--spacing-lg); }
+.list-group {
+  max-height: 450px; overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  background-color: var(--off-white); 
+  flex-grow: 1; 
+}
+.list-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+  transition: background-color var(--transition-speed-fast) var(--transition-ease),
+              box-shadow var(--transition-speed-fast) var(--transition-ease);
+}
+.list-item:last-child { border-bottom: none; }
+.list-item:hover { background-color: #e9f5ff; box-shadow: var(--shadow-sm); }
+.list-item-content { flex-grow: 1; margin-right: var(--spacing-md); overflow: hidden; }
+.list-item-title {
+  font-weight: 600; color: var(--text-color-dark);
+  font-size: var(--font-size-base);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+}
+.list-item-details { font-size: var(--font-size-sm); color: var(--text-color-light); margin-top: var(--spacing-xs); }
+.list-item-actions { display: flex; gap: var(--spacing-sm); }
+.list-item-actions button {
+  background: none; border: none; cursor: pointer;
+  font-size: var(--font-size-lg); color: var(--text-color-light); 
+  transition: color var(--transition-speed-fast) var(--transition-ease),
+              background-color var(--transition-speed-fast) var(--transition-ease),
+              transform var(--transition-speed-fast) var(--transition-ease);
+  padding: var(--spacing-sm);
+  border-radius: 50%; 
+}
+.list-item-actions button:hover { transform: translateY(-1px); background-color: var(--off-white); }
+.list-item-actions .edit-btn:hover { color: var(--primary-color); background-color: rgba(0, 123, 255, 0.1); }
+.list-item-actions button:last-child:hover { color: var(--danger-color); background-color: rgba(220, 53, 69, 0.1); }
+.dashboard-actions {
+  display: flex; justify-content: flex-end; 
+  gap: var(--spacing-md); margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
+}
+
+/* --- 7. Modals (Exam Form, Class Form) --- */
+.modal-backdrop {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background-color: rgba(0,0,0,0.6); z-index: 1500; 
+  display: flex; justify-content: center; align-items: center;
+  padding: var(--spacing-md);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  animation: fadeIn var(--transition-speed-normal) var(--transition-ease);
+}
+.modal-content {
+  background-color: var(--surface-color);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+  width: 100%; max-width: 800px; max-height: 95vh; 
+  display: flex; flex-direction: column; 
+  padding: var(--spacing-xl); 
+  animation: slideIn var(--transition-speed-normal) var(--transition-ease);
+}
+.modal-content h2 {
+  margin-bottom: var(--spacing-lg); font-size: var(--font-size-xl);
+  color: var(--primary-color-dark);
+  text-transform: uppercase; letter-spacing: 1.2px;
+}
+.modal-form-scrollable-area {
+  flex-grow: 1; overflow-y: auto; 
+  padding-right: var(--spacing-sm); 
+  padding-bottom: var(--spacing-md); 
+}
+.modal-form-scrollable-area::-webkit-scrollbar { width: 8px; }
+.modal-form-scrollable-area::-webkit-scrollbar-track { background: var(--off-white); border-radius: 10px; }
+.modal-form-scrollable-area::-webkit-scrollbar-thumb {
+  background: var(--border-color); border-radius: 10px;
+  border: 2px solid var(--off-white); 
+}
+.modal-form-scrollable-area::-webkit-scrollbar-thumb:hover { background: var(--secondary-color); }
+.modal-actions {
+  display: flex; justify-content: flex-end; 
+  gap: var(--spacing-md); margin-top: var(--spacing-xl);
+  border-top: 1px solid var(--border-color);
+  padding-top: var(--spacing-lg); flex-shrink: 0; 
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+  gap: var(--spacing-md) var(--spacing-lg);
+}
+.form-grid .full-width { grid-column: 1 / -1; }
+
+/* --- 8. Animations --- */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideIn { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* --- 9. Responsive Adjustments --- */
+/*
+   Đây là phần responsive cũ của bạn.
+   Nó vẫn có một số quy tắc hữu ích, nhưng phần xử lý
+   các nút lựa chọn chưa triệt để. Chúng ta sẽ ghi đè
+   lên nó bằng một khối responsive mới và mạnh hơn ở dưới.
+*/
+@media (max-width: 992px) { 
+  #app { padding: var(--spacing-lg); }
+  .dashboard-container { padding: var(--spacing-lg); }
+  .dashboard-sections { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .quiz-container { padding: var(--spacing-xl); }
+  .modal-content { max-width: 90%; }
+}
+@media (max-width: 768px) { 
+  body { padding: var(--spacing-md); align-items: flex-start; }
+  .container.card { padding: var(--spacing-lg) var(--spacing-md); }
+  h2 { font-size: var(--font-size-xl); }
+  h3 { font-size: var(--font-size-lg); }
+  .btn { padding: var(--spacing-sm) var(--spacing-md); font-size: var(--font-size-sm); }
+  .dashboard-sections { grid-template-columns: 1fr; }
+  .form-grid { grid-template-columns: 1fr; gap: var(--spacing-md); }
+  .dashboard-actions, .modal-actions { flex-direction: column; gap: var(--spacing-sm); }
+  .dashboard-actions .btn, .modal-actions .btn { width: 100%; }
+  .list-item { flex-direction: column; align-items: flex-start; gap: var(--spacing-sm); }
+  .list-item-actions { width: 100%; justify-content: flex-end; }
+  .timer-container { padding: var(--spacing-sm) var(--spacing-md); max-width: 100%; border-radius: 0; }
+  #timer { font-size: var(--font-size-base); }
+}
+@media (max-width: 480px) { 
+  .container.card, .dashboard-container, .quiz-container, .modal-content { padding: var(--spacing-md); }
+  h2 { font-size: 1.35rem; }
+}
+
+/* CSS cho phần hiển thị kết quả đúng/sai chi tiết */
+.answer-feedback {
+    margin-top: var(--spacing-md); padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--border-radius-sm); font-size: var(--font-size-sm);
+    line-height: 1.4; font-weight: 500;
+}
+.answer-feedback.correct { background-color: var(--success-color-light); color: #155724; border: 1px solid var(--success-color); }
+.answer-feedback.incorrect { background-color: var(--danger-color-light); color: #721c24; border: 1px solid var(--danger-color); }
+.answer-feedback .score-earned { font-weight: 600; color: #0e722a; }
+/* =================================================================== */
+/* ==      NÂNG CẤP RESPONSIVE CHO CÁC NÚT LỰA CHỌN (SỬA LỖI)    == */
+/* =================================================================== */
+
+/* 
+ * Các quy tắc CSS này sẽ ghi đè lên style gốc khi màn hình nhỏ lại
+ * để đảm bảo các nút lựa chọn hiển thị đúng trên điện thoại.
+*/
+
+/* Áp dụng cho màn hình từ Tablet chiều dọc trở xuống (<= 768px) */
+@media (max-width: 768px) {
+  
+  /* --- ĐIỀU CHỈNH CỐT LÕI CHO CÁC NÚT LỰA CHỌN --- */
+  
+  /* 
+   * 1. Bắt buộc các nút nằm trên 1 hàng, không cho phép xuống dòng.
+   * Đây là thay đổi quan trọng nhất để giải quyết yêu cầu "gọn 1 hàng".
+  */
+  .mc-options,
+  .tf-options-container {
+    flex-wrap: nowrap !important; /* QUAN TRỌNG: Ngăn các nút rớt xuống hàng mới */
+    gap: var(--spacing-sm) !important;
+  }
+
+  /* 
+   * 2. Biến các nút từ kích thước cố định thành linh hoạt, tự co dãn.
+  */
+  .mc-option,
+  .tf-box {
+    flex: 1;          /* Cho phép các nút co dãn để chia đều không gian */
+    min-width: 0;     /* Cho phép nút co lại nhỏ hơn cả nội dung bên trong nếu cần */
+    
+    width: auto;      /* Bỏ kích thước cố định cũ */
+    height: 45px;     /* Giảm chiều cao cho gọn gàng */
+    font-size: 16px;  /* Giảm cỡ chữ */
+    padding: 0 var(--spacing-xs); /* Thêm một chút đệm ngang */
+  }
+
+  .tf-btn {
+    font-size: 16px; /* Đảm bảo chữ T/F cũng nhỏ lại */
+  }
+  
+  /* Ô nhập số sẽ chiếm cả hàng cho dễ nhập liệu */
+  .numeric-option {
+    width: 100%;
+    max-width: 250px;
+    height: 45px;
+  }
+}
+
+/* Áp dụng cho màn hình điện thoại rất nhỏ (<= 480px) */
+@media (max-width: 480px) {
+  
+  /* Giảm kích thước nút hơn nữa trên màn hình hẹp nhất */
+  .mc-option,
+  .tf-box {
+    height: 40px;
+    font-size: 14px;
+  }
+  .tf-btn {
+    font-size: 14px;
+  }
+}
+/* =================================================================== */
+/* ==      CSS TỐI GIẢN & ỔN ĐỊNH CHO BẢNG ĐIỂM                 == */
+/* =================================================================== */
+
+#result-container {
+    max-width: 500px;
+    background-color: var(--white);
+    box-shadow: var(--shadow-md);
+    padding: var(--spacing-xl);
+    text-align: center;
+    display: flex;
+    flex-direction: column; /* Quan trọng: Mọi thứ xếp dọc */
+    gap: var(--spacing-lg); /* Tạo khoảng cách đều giữa các phần tử */
+}
+
+#result-container h2 {
+    color: var(--text-color-dark);
+    font-size: var(--font-size-xl);
+    margin: 0;
+}
+
+/* Hộp chứa điểm, nền màu nhẹ để nổi bật */
+.score-box {
+    background-color: var(--off-white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-lg);
+    margin: var(--spacing-sm) 0;
+}
+
+.score-label {
+    display: block;
+    font-size: var(--font-size-base);
+    color: var(--text-color-medium);
+    font-weight: 500;
+    margin-bottom: var(--spacing-sm);
+}
+
+#result-container #score {
+    font-size: 4rem; /* 64px */
+    font-weight: 700;
+    color: var(--success-color); /* Màu xanh lá cây cho điểm */
+    line-height: 1;
+}
+
+/* Nhóm thông tin Họ tên, Lớp... */
+.info-group {
+    width: 100%;
+    text-align: left;
+    border-top: 1px solid var(--border-color);
+    padding-top: var(--spacing-lg);
+}
+
+.info-group p {
+    display: flex;
+    justify-content: space-between; /* Căn lề 2 bên */
+    align-items: center;
+    font-size: var(--font-size-base);
+    padding: var(--spacing-sm) 0;
+    margin: 0;
+}
+/* Thêm đường kẻ mờ ngăn cách các dòng */
+.info-group p + p {
+    border-top: 1px dashed var(--border-color);
+}
+
+.info-group p span { /* Phần nhãn: Họ tên, Lớp... */
+    color: var(--text-color-medium);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.info-group p strong { /* Phần giá trị: Tên, Lớp... */
+    color: var(--text-color-dark);
+    font-weight: 600;
+}
+
+/* Nút bấm */
+#result-container .btn-primary {
+    margin-top: var(--spacing-sm); /* Thêm chút khoảng cách */
+}
+
+/* Tiêu đề "Xem chi tiết" */
+.details-title {
+    color: var(--text-color-light);
+    font-weight: 500;
+    font-size: var(--font-size-sm);
+    margin-top: var(--spacing-md);
+}
+/* ============================================================== */
+/* ===== CSS NÂNG CẤP CHO PHIẾU TRẢ LỜI (PDF ANSWER SHEET) ===== */
+/* ============================================================== */
+
+/* Container chung của phiếu trả lời */
+.pdf-answer-sheet {
+    background-color: #f0f2f5; /* Màu nền xám nhẹ nhàng */
+    padding: 10px !important;
+}
+
+/* Từng khối câu hỏi (Câu 1, Câu 2...) */
+.pdf-answer-sheet .question {
+    background-color: #ffffff;
+    border: 1px solid #d9d9d9;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    scroll-margin-top: 10px; /* Khoảng cách khi scroll tới */
+}
+
+/* Tiêu đề "Câu X" */
+.pdf-answer-sheet .question p {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+    margin: 0 0 12px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f0f0f0;
+    text-align: center;
+}
+
+/* Container chứa các lựa chọn (A,B,C,D hoặc T/F...) */
+.pdf-answer-sheet .answer-options {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* --- 1. Nút trắc nghiệm A,B,C,D --- */
+.pdf-answer-sheet .mc-option {
+    width: 40px;
+    height: 40px;
+    font-size: 0.9rem;
+    border: 2px solid #d9d9d9;
+    border-radius: 50%;
+    background-color: #fafafa;
+    color: #555;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    user-select: none;
+}
+.pdf-answer-sheet .mc-option:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    transform: translateY(-2px);
+}
+.pdf-answer-sheet .mc-option.selected {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 8px rgba(13, 110, 253, 0.4);
+}
+
+/* --- 2. Các nút Đúng/Sai (True/False) --- */
+.pdf-answer-sheet .tf-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+.pdf-answer-sheet .tf-item-label {
+    font-size: 0.75rem; /* 12px */
+    font-weight: 500;
+    color: #888;
+}
+.pdf-answer-sheet .tf-btn-group {
+    display: flex;
+}
+.pdf-answer-sheet .tf-btn {
+    padding: 6px 14px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border: 2px solid #d9d9d9;
+    background-color: #fafafa;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+.pdf-answer-sheet .tf-btn.T { border-radius: 5px 0 0 5px; }
+.pdf-answer-sheet .tf-btn.F { border-radius: 0 5px 5px 0; margin-left: -2px; }
+
+.pdf-answer-sheet .tf-btn.selected.T {
+    background-color: var(--correct-color); /* Màu xanh lá */
+    color: white;
+    border-color: var(--correct-color);
+}
+.pdf-answer-sheet .tf-btn.selected.F {
+    background-color: var(--wrong-color); /* Màu đỏ */
+    color: white;
+    border-color: var(--wrong-color);
+}
+
+/* --- 3. Ô nhập liệu cho câu trả lời ngắn (Numeric) --- */
+.pdf-answer-sheet .numeric-option input {
+    width: 150px;
+    padding: 8px 12px;
+    font-size: 1rem;
+    text-align: center;
+    border: 2px solid #d9d9d9;
+    border-radius: 6px;
+    transition: all 0.2s ease-in-out;
+}
+.pdf-answer-sheet .numeric-option input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.2);
+    outline: none;
+}
+
+/* --- 4. CSS cho thanh điều hướng tiến độ --- */
+#navigation-footer {
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.08);
+}
+.nav-item {
+    font-size: 0.85rem;
+    background-color: white;
+    border-color: #e0e0e0;
+}
+.nav-item.answered {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    font-weight: 600;
+}
+.nav-item.current {
+    transform: scale(1.15);
+    box-shadow: 0 0 8px var(--primary-color);
+    border-color: var(--primary-color);
+    font-weight: bold;
+}
+/* ===================================================================== */
+/* ===== CSS NÂNG CẤP CHO THANH TIẾN ĐỘ & NÚT ĐÚNG/SAI (HIỆN ĐẠI) ===== */
+/* ===================================================================== */
+
+/* --- 1. Thanh điều hướng tiến độ (Navigation Footer) --- */
+#navigation-footer {
+    position: fixed; /* ĐỔI THÀNH FIXED ĐỂ LUÔN HIỂN THỊ */
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.9); /* Nền mờ hiện đại */
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.08);
+    padding: 10px 15px;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 15px; /* Tăng khoảng cách */
+}
+
+#nav-scroll-container {
+    overflow-x: auto;
+    white-space: nowrap;
+    flex-grow: 1;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Ẩn thanh cuộn trên Firefox */
+}
+
+#nav-scroll-container::-webkit-scrollbar {
+    display: none; /* Ẩn thanh cuộn trên Chrome/Safari */
+}
+
+.nav-item {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid #d9d9d9;
+    border-radius: 8px; /* Đổi thành hình vuông bo góc */
+    margin: 0 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease-in-out;
+    font-size: 0.85rem;
+    background-color: white;
+    user-select: none;
+}
+
+.nav-item.answered {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    font-weight: 600;
+}
+
+.nav-item.current {
+    transform: scale(1.15) translateY(-2px); /* Hiệu ứng nổi bật hơn */
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.4);
+    border-color: var(--primary-color);
+    font-weight: bold;
+    z-index: 2; /* Đảm bảo nó nổi lên trên các nút khác */
+}
+
+#submit-btn-footer {
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    flex-shrink: 0; /* Không bị co lại */
+}
+
+
+/* --- 2. Các nút Đúng/Sai (True/False) - Giao diện Xanh/Đỏ --- */
+.pdf-answer-sheet .tf-btn {
+    padding: 6px 14px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border: 2px solid #d9d9d9;
+    background-color: #fafafa;
+    color: #555; /* Thêm màu chữ mặc định */
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.pdf-answer-sheet .tf-btn:hover {
+    transform: scale(1.05); /* Hiệu ứng khi rê chuột */
+}
+
+/* Nút "Đúng" (T) */
+.pdf-answer-sheet .tf-btn.T {
+    border-radius: 5px 0 0 5px;
+}
+.pdf-answer-sheet .tf-btn.T:hover {
+    border-color: var(--correct-color); /* Viền xanh lá */
+    color: var(--correct-color);
+}
+.pdf-answer-sheet .tf-btn.T.selected {
+    background-color: var(--correct-color);
+    color: white;
+    border-color: var(--correct-color);
+    z-index: 1;
+}
+
+/* Nút "Sai" (F) */
+.pdf-answer-sheet .tf-btn.F {
+    border-radius: 0 5px 5px 0;
+    margin-left: -2px; /* Dính liền vào nhau */
+}
+.pdf-answer-sheet .tf-btn.F:hover {
+    border-color: var(--wrong-color); /* Viền đỏ */
+    color: var(--wrong-color);
+}
+.pdf-answer-sheet .tf-btn.F.selected {
+    background-color: var(--wrong-color);
+    color: white;
+    border-color: var(--wrong-color);
+    z-index: 1;
+}
+/* ========================================================== */
+/* ==      KHÔI PHỤC STYLE MÀU CAM CHO TIÊU ĐỀ CÂU HỎI     == */
+/* ========================================================== */
+
+/* Tìm đến thẻ span có class là .question-number-highlight */
+.question-statement .question-number-highlight {
+    display: inline-block; /* Cho phép padding và margin */
+    font-size: 1.1em;      /* To hơn một chút so với text thường */
+    font-weight: 700;      /* In đậm */
+    color: #e44d26;         /* MÀU CAM đặc trưng */
+    background-color: rgba(228, 77, 38, 0.1); /* Nền cam rất nhạt để nổi bật */
+    padding: 2px 8px;      /* Thêm một chút đệm cho đẹp */
+    border-radius: 5px;    /* Bo góc nhẹ */
+    margin-right: 8px;     /* Tạo khoảng cách với nội dung câu hỏi */
+}

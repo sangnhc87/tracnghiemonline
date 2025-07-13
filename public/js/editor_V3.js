@@ -114,7 +114,18 @@ document.addEventListener('DOMContentLoaded', () => {
             questions.forEach((block, index) => {
                 const info = extractInfoFromBlock(block);
                 allKeys.push(info.key);
-                allCores.push(info.type === 'TABLE_TF' ? '0.25,0.5,0.75,1' : '0.5');
+                // allCores.push(info.type === 'TABLE_TF' ? '0.1,0.25,0.5,1' : '0.25');
+                // --- BẮT ĐẦU THAY THẾ TỪ ĐÂY ---
+    let coreValue; // Tạo một biến để lưu giá trị core
+    if (info.type === 'TABLE_TF') {
+        coreValue = '0.1,0.25,0.5,1'; // Đúng như cũ
+    } else if (info.type === 'NUMERIC') {
+        coreValue = '0.5'; // Thêm trường hợp cho câu hỏi dạng số
+    } else { // Mặc định cho các trường hợp còn lại (bao gồm MC)
+        coreValue = '0.25';
+    }
+    allCores.push(coreValue);
+    // --- KẾT THÚC THAY THẾ ---
                 const cleanBlock = block.replace(/^\s*#(?![#])\s*/gm, '');
                 if (window.parseMCQuestion) {
                     const parsedData = window.parseMCQuestion(cleanBlock);

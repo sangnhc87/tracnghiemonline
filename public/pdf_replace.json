@@ -1,0 +1,36 @@
+[
+  {
+    "find": "Lò̀i giải",
+    "replace": "\\loigiai"
+  },
+  {
+    "find": "Câu ([0-9]+)\\.",
+    "replace": "Câu $1:",
+    "isRegex": true
+  },
+  {
+    "find": "\\(\\s*-\\s*\\infty",
+    "replace": "(-\\infty",
+    "isRegex": true
+  },
+  {
+    "find": "\\vec",
+    "replace": "\\overrightarrow "
+  },
+  {
+    "find": "\\int_",
+    "replace": "\\displaystyle\\int\\limits_"
+  },
+  {
+    "find": "\\frac",
+    "replace": "\\dfrac"
+  },
+  {
+    "find": "$. }",
+    "replace": "$}"
+  },
+  {
+    "find":"\\displaystyle\\displaystyle",
+    "replace":"\\displaystyle"
+  }
+]
