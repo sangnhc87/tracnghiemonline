@@ -69,50 +69,6 @@
         .katex { color: magenta !important; }
         .question-number-highlight { font-weight: 700; color: #0d6efd; background-color: #e7f1ff; padding: 2px 8px; border-radius: 4px; margin-right: 8px; }
     </style>
-   <style>
-    /* Container để chứa các ảnh trên cùng một hàng */
-    .image-row {
-        display: flex;
-        justify-content: center; /* Nhóm các ảnh lại ở giữa */
-        align-items: center;
-        gap: 15px; /* Đặt lại khoảng cách mong muốn, ví dụ 15px */
-        margin-top: 1em;
-        margin-bottom: 1em;
-    }
-
-    /* 
-     * [SỬA LỖI QUAN TRỌNG] Ghi đè lên các style cũ của thẻ <img>
-     * khi nó nằm bên trong .image-row.
-     */
-    .image-row img {
-        /* Reset lại margin để chúng không tự đẩy nhau ra xa */
-        margin: 0 !important; 
-
-        /* Giới hạn chiều rộng để chúng có thể đứng cạnh nhau */
-        /* Nếu có 2 ảnh, 48% là một giá trị tốt */
-        max-width: 48%; 
-        height: auto; /* Giữ tỷ lệ ảnh */
-
-        /* Giữ lại các style đẹp mắt khác */
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    }
-
-    /* Các style cũ vẫn cần để xử lý các ảnh đứng một mình */
-    .img-center { 
-        margin-left: auto; 
-        margin-right: auto; 
-    }
-    .question-statement img, .explanation img { 
-        display: block; 
-        max-width: 100%; 
-        height: auto; 
-        margin-top: 1em; 
-        margin-bottom: 1em; 
-        border-radius: 8px; 
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
-    }
-</style>
 </head>
 <body>
     <div id="app-converter">
@@ -141,9 +97,9 @@
                     </div>
                     <div class="input-panel-actions">
                         <button id="add-question-btn" class="btn btn-primary"><i class="fas fa-plus"></i> Thêm câu hỏi</button>
-                         <button id="load-file-btn" class="btn btn-secondary" style="display: none;"><i class="fas fa-folder"></i> Tex Ko TikZ</button>
+                        <button id="load-file-btn" class="btn btn-secondary"><i class="fas fa-folder"></i> Tex Ko TikZ</button>
                         <button id="load-and-process-tikz-btn" class="btn btn-primary" style="background-color: #10B981; border-color: #059669;">
-                            <i class="fas fa-magic"></i> Upload File .Tex
+                            <i class="fas fa-magic"></i> Tải Có TikZ
                         </button>
                         <button id="clear-input-btn" class="btn btn-danger"><i class="fas fa-trash-alt"></i> Xóa tất cả</button>
                     </div>
@@ -186,29 +142,24 @@
         </main>
     </div>
 
-        <!-- ======================================================= -->
-    <!-- ==      THỨ TỰ NẠP SCRIPT ĐÚNG VÀ AN TOÀN           == -->
-    <!-- ======================================================= -->
-
-    <!-- BƯỚC 1: NẠP CÁC THƯ VIỆN FIREBASE -->
-    <script src="/__/firebase/9.10.0/firebase-app-compat.js"></script>
-    <script src="/__/firebase/9.10.0/firebase-auth-compat.js"></script>
-    <script src="/__/firebase/9.10.0/firebase-functions-compat.js"></script>
-    <script src="/__/firebase/9.10.0/firebase-storage-compat.js"></script>
-    
-    <!-- BƯỚC 2: KHỞI TẠO FIREBASE -->
-    <script src="/__/firebase/init.js"></script>
-
-    <!-- BƯỚC 3: NẠP CÁC FILE QUẢN LÝ VÀ TIỆN ÍCH -->
-    <script src="js/auth-manager.js"></script>
+    <!-- Firebase SDK (Rất quan trọng) -->
+    <script defer src="/__/firebase/9.10.0/firebase-app-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-auth-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-functions-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-storage-compat.js"></script>
+    <script defer src="/__/firebase/init.js"></script>
+    <!-- THÊM DÒNG NÀY -->
+    <script defer src="js/auth-manager.js"></script>
+    <!-- Các script của ứng dụng soạn thảo -->
+     
     <script src="js/latex-string-utils.js"></script> 
     <script src="soanthao/quiz-parser.js"></script> 
     <script src="soanthao/ex-converter.js"></script> 
     <script src="soanthao/text-preprocessor.js"></script>
-    
-    <!-- BƯỚC 4: NẠP FILE JS CHÍNH CỦA TRANG -->
+    <script defer src="soanthao/ex_converter_page_V4.js"></script>
+
     <script src="js/soan.js"></script> 
-    <script src="soanthao/ex_converter_page_V5.js"></script>
+
 
 </body>
 </html>

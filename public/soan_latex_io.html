@@ -210,7 +210,9 @@
                     if (typeof firebase === 'undefined' || !firebase.functions) {
                         throw new Error("Firebase SDK chưa được tải hoặc cấu hình. Không thể gọi hàm xử lý.");
                     }
-                    const functions = firebase.functions();
+                    const db = firebase.firestore();
+const storage = firebase.storage(); // Thêm cả storage cho đầy đủ
+const functions = firebase.app().functions("asia-southeast1");
                     const processTikz = functions.httpsCallable('processTikzFlyioProxy'); 
                     const result = await processTikz({ fileContent: tikzOnlyText });
                     const data = result.data; 

@@ -100,6 +100,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /**
+     * Vẽ lại toàn bộ các khung soạn thảo từ mảng `questions`.
+     */
     function renderEditor() {
         questionEditorContainer.innerHTML = '';
         questions.forEach((questionText, index) => {
@@ -122,6 +125,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         attachFrameEventListeners();
     }
+
+    /**
+     * Gán các sự kiện cần thiết cho mỗi khung soạn thảo.
+     */
     function attachFrameEventListeners() {
         document.querySelectorAll('.question-editor-frame').forEach(frame => {
             const index = parseInt(frame.dataset.index, 10);
@@ -153,10 +160,18 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
+
+    /**
+     * Hàm trung gian, sử dụng debouncing để tối ưu hiệu năng.
+     */
     function triggerAutoConversion() {
         clearTimeout(debounceTimeout);
         debounceTimeout = setTimeout(runFullConversion, 500);
     }
+    
+    /**
+     * Hàm chuyển đổi chính: Lấy dữ liệu từ state, chuyển đổi và cập nhật UI.
+     */
     function runFullConversion() {
         const fullInputContent = questions.join('\n\n');
 
@@ -183,6 +198,11 @@ document.addEventListener('DOMContentLoaded', () => {
             converterOutputArea.value = `LỖI: ${error.message}`;
         }
     }
+    
+   
+        /**
+     * Render phần xem trước.
+     */
     function renderReview(compiledContent, keysString) {
         if (typeof window.parseMCQuestion !== 'function') {
             return; // Lỗi đã được log ở nơi khác
@@ -331,6 +351,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
+    /**
+     * Hàm dùng để điền nội dung từ file vào các khung soạn thảo.
+     */
     function populateQuestionsFromText(textContent) {
         const questionBlockRegex = /(\\begin\{(?:ex|bt)\}[\s\S]*?\\end\{(?:ex|bt)\})/ig;
         const matchedBlocks = textContent.match(questionBlockRegex);
@@ -345,111 +368,8 @@ document.addEventListener('DOMContentLoaded', () => {
         triggerAutoConversion();
     }
 
-    // --- B. LOGIC TẢI FILE KẾT HỢP (UPLOAD ẢNH + TIỀN XỬ LÝ) ---
 
-    function uploadFileToCloudinary(file) {
-        const CLOUD_NAME = "dfprmep2p";
-        const UPLOAD_PRESET = "up2web";
-        return new Promise((resolve, reject) => {
-            const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('upload_preset', UPLOAD_PRESET);
-            fetch(url, { method: 'POST', body: formData })
-                .then(response => response.ok ? response.json() : response.json().then(err => Promise.reject(err)))
-                .then(data => resolve(data.secure_url))
-                .catch(error => reject(error.error ? new Error(error.error.message) : error));
-        });
-    }
-
-    async function processAndLoadTexFile(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        event.target.value = '';
-
-        // Đọc nội dung file thô
-        let rawContent = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = e => resolve(e.target.result);
-            reader.onerror = e => reject(e);
-            reader.readAsText(file);
-        });
-
-        // --- BƯỚC 1: XỬ LÝ UPLOAD ẢNH ---
-        try {
-            const imageRegex = /\\includegraphics(?:\[.*?\])?\{(.+?)\}/g;
-            const matches = [...rawContent.matchAll(imageRegex)];
-            const foundImages = matches.map(match => ({
-                fullCommand: match[0], path: match[1].trim(), newUrl: null
-            }));
-
-            if (foundImages.length > 0) {
-                // Nếu có ảnh, mở modal và đợi xử lý
-                const updatedContent = await showImageUploadModal(foundImages, rawContent);
-                // Cập nhật lại nội dung sau khi đã thay thế link ảnh
-                rawContent = updatedContent; 
-            }
-        } catch (error) {
-            Swal.fire('Lỗi xử lý ảnh', error.message, 'error');
-            return; // Dừng lại nếu có lỗi
-        }
-
-        // --- BƯỚC 2: TIỀN XỬ LÝ VỚI replace.json ---
-        try {
-            const response = await fetch('/soanthao/replace.json');
-            if (response.ok) {
-                const rules = await response.json();
-                if (typeof TextPreprocessor !== 'undefined' && typeof TextPreprocessor.process === 'function') {
-                    console.log("Đang áp dụng quy tắc từ replace.json...");
-                    rawContent = TextPreprocessor.process(rawContent, rules);
-                } else {
-                     console.warn("TextPreprocessor không được định nghĩa, bỏ qua bước tiền xử lý.");
-                }
-            }
-        } catch (error) {
-            console.warn("Không tải được file quy tắc replace.json, bỏ qua bước tiền xử lý.", error);
-        }
-        
-        // --- BƯỚC 3: ĐƯA NỘI DUNG CUỐI CÙNG VÀO TRÌNH SOẠN THẢO ---
-        populateQuestionsFromText(rawContent);
-        Swal.fire('Thành công!', `Đã tải và xử lý xong tệp.`, 'success');
-    }
-
-    function showImageUploadModal(foundImages, originalContent) {
-        return new Promise(async (resolve, reject) => {
-            let modalHtml = `<p style="text-align: center; margin-bottom: 20px;">Phát hiện <strong>${foundImages.length}</strong> ảnh. Vui lòng tải lên các tệp tương ứng.</p><ul id="image-upload-list" style="list-style: none; padding: 0;">`;
-            foundImages.forEach((img, index) => {
-                modalHtml += `<li style="display: flex; align-items: center; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee;"><span style="font-family: monospace; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%;" title="${img.path}">${img.path}</span><div id="upload-status-${index}"><input type="file" accept="image/*" class="swal-upload-input" data-index="${index}" style="display:none;"><button onclick="document.querySelector('.swal-upload-input[data-index=\\'${index}\\']').click()" class="swal2-styled">Chọn ảnh</button></div></li>`;
-            });
-            modalHtml += `</ul>`;
-
-            const { value: isConfirmed } = await Swal.fire({
-                title: 'Tải lên hình ảnh', html: modalHtml, width: '700px', showConfirmButton: true,
-                confirmButtonText: 'Hoàn tất & Tiếp tục', allowOutsideClick: false,
-                didOpen: () => { /* ... Gán sự kiện cho input như cũ ... */ },
-                preConfirm: () => {
-                    const notUploaded = foundImages.filter(img => !img.newUrl);
-                    if (notUploaded.length > 0) {
-                        Swal.showValidationMessage(`Vui lòng tải lên ${notUploaded.length} ảnh còn lại.`);
-                        return false;
-                    }
-                    return true;
-                }
-            });
-
-            if (isConfirmed) {
-                let updatedContent = originalContent;
-                foundImages.forEach(img => {
-                    const newCommand = img.fullCommand.replace(img.path, img.newUrl);
-                    updatedContent = updatedContent.replace(img.fullCommand, newCommand);
-                });
-                resolve(updatedContent); // Trả về nội dung đã được cập nhật
-            } else {
-                reject(new Error("Người dùng đã hủy bỏ quá trình upload ảnh.")); // Hủy nếu người dùng đóng modal
-            }
-        });
-    }
-
+    // ==========================================================
     // === 3. GÁN SỰ KIỆN VÀ KHỞI TẠO ỨNG DỤNG ===
     // ==========================================================
 
@@ -474,9 +394,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // loadFileBtn.addEventListener('click', () => {
-    //     if (fileInputHidden) fileInputHidden.click();
-    // });
+    loadFileBtn.addEventListener('click', () => {
+        if (fileInputHidden) fileInputHidden.click();
+    });
 
     // if (fileInputHidden) {
     //     fileInputHidden.addEventListener('change', (event) => {
@@ -495,41 +415,41 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================================
     // === ĐÂY LÀ CHỖ DUY NHẤT CẦN SỬA TRONG FILE NÀY ===
     // ==========================================================
-    // if (fileInputHidden) {
-    //     fileInputHidden.addEventListener('change', async (event) => { // Thêm async
-    //         const file = event.target.files[0];
-    //         if (!file) return;
+    if (fileInputHidden) {
+        fileInputHidden.addEventListener('change', async (event) => { // Thêm async
+            const file = event.target.files[0];
+            if (!file) return;
 
-    //         // 1. Tải quy tắc
-    //         let rules = null;
-    //         try {
-    //             const response = await fetch('/soanthao/replace.json');
-    //             if (!response.ok) throw new Error('Không tải được file quy tắc');
-    //             rules = await response.json();
-    //         } catch (error) {
-    //             console.error("Lỗi tải replace.json:", error);
-    //             Swal.fire('Lỗi', 'Không thể tải file quy tắc thay thế. Tệp sẽ được tải mà không tiền xử lý.', 'error');
-    //         }
+            // 1. Tải quy tắc
+            let rules = null;
+            try {
+                const response = await fetch('/soanthao/replace.json');
+                if (!response.ok) throw new Error('Không tải được file quy tắc');
+                rules = await response.json();
+            } catch (error) {
+                console.error("Lỗi tải replace.json:", error);
+                Swal.fire('Lỗi', 'Không thể tải file quy tắc thay thế. Tệp sẽ được tải mà không tiền xử lý.', 'error');
+            }
 
-    //         // 2. Đọc file .tex
-    //         const reader = new FileReader();
-    //         reader.onload = (e) => {
-    //             let content = e.target.result;
+            // 2. Đọc file .tex
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                let content = e.target.result;
                 
-    //             // 3. Tiền xử lý nếu có quy tắc
-    //             if (rules) {
-    //                 console.log("Đang tiền xử lý nội dung file...");
-    //                 content = TextPreprocessor.process(content, rules);
-    //             }
+                // 3. Tiền xử lý nếu có quy tắc
+                if (rules) {
+                    console.log("Đang tiền xử lý nội dung file...");
+                    content = TextPreprocessor.process(content, rules);
+                }
 
-    //             // 4. Gọi hàm gốc với nội dung đã (hoặc chưa) xử lý
-    //             populateQuestionsFromText(content);
-    //             Swal.fire('Thành công!', `Đã tải lên và tách thành ${questions.length} câu hỏi.`, 'success');
-    //         };
-    //         reader.readAsText(file);
-    //         event.target.value = '';
-    //     });
-    // }
+                // 4. Gọi hàm gốc với nội dung đã (hoặc chưa) xử lý
+                populateQuestionsFromText(content);
+                Swal.fire('Thành công!', `Đã tải lên và tách thành ${questions.length} câu hỏi.`, 'success');
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        });
+    }
     copyOutputBtn.addEventListener('click', () => {
         if (!converterOutputArea.value.trim()) {
             Swal.fire('Cảnh báo', 'Không có nội dung để sao chép.', 'warning');
@@ -695,11 +615,6 @@ function initializeApp() {
     window.app = {
         populateQuestionsFromText: populateQuestionsFromText
     };
-    addSafeListener(loadFileBtn, 'click', () => fileInputHidden.click());
-    // if (fileInputHidden) {
-    //     // Chỉ cần trỏ sự kiện 'change' vào hàm xử lý chính của chúng ta
-    //     fileInputHidden.addEventListener('change', handleTexFileUpload);
-    // }
 
     // Khởi tạo với 1 câu hỏi mẫu
     if (addQuestionBtn) {
@@ -711,7 +626,52 @@ function initializeApp() {
     // --- BẮT ĐẦU PHẦN TÍCH HỢP CHỨC NĂNG TẠO ĐỀ THI ---
     const createExamBtn = getEl("create-exam-btn");
 
-    
+    // async function showCreateExamDialog() {
+    //     const content = getEl("converter-output-area").value.trim();
+    //     const keys = getEl("extracted-keys").value.trim();
+    //     const cores = getEl("extracted-cores").value.trim();
+
+    //     if (!content || !keys || !cores) {
+    //         Swal.fire("Thiếu thông tin!", "Hãy chắc chắn rằng bạn đã soạn thảo và chuyển đổi đề thi. Nội dung, Keys, và Cores không được để trống.", "warning");
+    //         return;
+    //     }
+
+    //     const user = firebase.auth().currentUser;
+    //     if (!user) {
+    //         Swal.fire("Chưa đăng nhập", "Bạn cần đăng nhập để sử dụng chức năng này.", "error");
+    //         return;
+    //     }
+
+    //     const { value: formValues } = await Swal.fire({
+    //         title: `Hoàn tất thông tin đề thi`,
+    //         html: `
+    //             <p style="margin-bottom: 1rem;">Tạo đề cho tài khoản: <strong>${user.displayName || user.email}</strong></p>
+    //             <input id="swal-exam-code" class="swal2-input" placeholder="Mã đề thi (ví dụ: T001)">
+    //             <input id="swal-exam-time" type="number" class="swal2-input" placeholder="Thời gian (phút)" value="90">
+    //         `,
+    //         focusConfirm: false,
+    //         showCancelButton: true,
+    //         confirmButtonText: 'Tạo Đề Thi',
+    //         cancelButtonText: 'Hủy',
+    //         preConfirm: () => {
+    //             const examCode = getEl('swal-exam-code').value;
+    //             const timeLimit = getEl('swal-exam-time').value;
+    //             if (!examCode || !timeLimit) {
+    //                 Swal.showValidationMessage(`Vui lòng nhập đầy đủ Mã đề và Thời gian`);
+    //             }
+    //             return { examCode, timeLimit };
+    //         }
+    //     });
+
+    //     if (formValues) {
+    //         saveExamToFirebase(formValues.examCode, formValues.timeLimit, content, keys, cores);
+    //     }
+    // }
+// File: soanthao/ex_converter_page_V4.js
+
+// ... (các hàm khác giữ nguyên) ...
+
+    // THAY THẾ TOÀN BỘ HÀM NÀY
     async function showCreateExamDialog() {
         // 1. Kiểm tra đăng nhập trước
         const user = firebase.auth().currentUser;

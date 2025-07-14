@@ -6,7 +6,9 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- KHỞI TẠO ---
     const auth = firebase.auth();
-    const functions = firebase.functions();
+    const db = firebase.firestore();
+const storage = firebase.storage(); // Thêm cả storage cho đầy đủ
+const functions = firebase.app().functions("asia-southeast1");
     let currentStatsData = null; // Lưu dữ liệu thống kê hiện tại để xuất Excel
     let doughnutChart = null; // Lưu biểu đồ tròn
     let barChart = null;      // Lưu biểu đồ cột

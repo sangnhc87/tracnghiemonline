@@ -328,7 +328,40 @@ document.addEventListener('DOMContentLoaded', () => {
         renderEditor();
         triggerAutoConversion();
     }
+    async function processIncludeGraphics(content) {
+    if (!content) return Promise.resolve('');
+
+    const imageRegex = /\\includegraphics(?:\[.*?\])?\{(.+?)\}/g;
+    const matches = [...content.matchAll(imageRegex)];
+
+    // Nếu không có \includegraphics, trả về nội dung ngay lập tức
+    if (matches.length === 0) {
+        return Promise.resolve(content);
+    }
     
+    // Nếu có, hiển thị modal upload
+    try {
+        Swal.update({
+            title: `Phát hiện ${matches.length} ảnh cần upload...`,
+            text: 'Vui lòng cung cấp các file ảnh.',
+            showConfirmButton: false // Ẩn nút OK của alert loading
+        });
+
+        const foundImages = matches.map(match => ({ 
+            fullCommand: match[0], 
+            path: match[1].trim(), 
+            newUrl: null 
+        }));
+
+        // Gọi hàm showImageUploadModal đã có sẵn trong file này
+        const updatedContent = await showImageUploadModal(foundImages, content);
+        return updatedContent;
+
+    } catch (error) {
+        // Nếu người dùng hủy hoặc có lỗi, ném lại lỗi để hàm gọi có thể xử lý
+        throw error;
+    }
+}
     // --- B. LOGIC TẢI FILE KẾT HỢP (UPLOAD ẢNH + TIỀN XỬ LÝ) ---
 
 /**
@@ -621,7 +654,7 @@ function showImageUploadModal(foundImages, originalContent) {
         });
 
         try {
-            const addExamFunction = firebase.functions().httpsCallable('addExamWithStorage');
+            const addExamFunction = functions.httpsCallable('addExamWithStorage');
             const examData = {
                 examType: 'TEXT',
                 examCode: examCode,
@@ -727,7 +760,8 @@ function initializeApp() {
 
     // Đưa các hàm cần thiết ra `window` nếu các script khác cần gọi
     window.app = {
-        populateQuestionsFromText: populateQuestionsFromText
+        populateQuestionsFromText: populateQuestionsFromText,
+    processIncludeGraphics: processIncludeGraphics
     };
 
     // Bắt đầu với một câu hỏi mẫu để người dùng không thấy trang trống

@@ -2,7 +2,9 @@
 document.addEventListener('DOMContentLoaded', () => {
     // Khởi tạo Firebase
     const auth = firebase.auth();
-    const functions = firebase.functions();
+    const db = firebase.firestore();
+const storage = firebase.storage(); // Thêm cả storage cho đầy đủ
+const functions = firebase.app().functions("asia-southeast1");
     let currentTeacherId = null;
 
     // --- CÁC ĐỐI TƯỢNG DOM ---
@@ -74,7 +76,7 @@ async function checkAccessAndProceed() {
         const token = await user.getIdToken(true);
 
         // Bước 2: Dùng `fetch` để gọi HTTP function, kèm theo token
-        const response = await fetch('https://us-central1-sangnhc.cloudfunctions.net/checkTeacherAccess', {
+        const response = await fetch('https://asia-southeast1-sangnhc.cloudfunctions.net/checkTeacherAccess', {
             method: 'POST', // Phải là POST hoặc GET, tùy cách bạn xử lý ở server
             headers: {
                 'Authorization': 'Bearer ' + token, // Gửi token trong header

@@ -1,5 +1,9 @@
-// --- BƯỚC 1: KHAI BÁO CÁC MODULE CHÍNH ---
-const functions = require("firebase-functions");
+const { onRequest } = require("firebase-functions/v2/https");
+const {setGlobalOptions} = require("firebase-functions/v2");
+const logger = require("firebase-functions/logger");
+const { defineString } = require('firebase-functions/params');
+setGlobalOptions({ region: "asia-southeast1" });
+
 const admin = require("firebase-admin");
 const axios = require("axios");
 const cors = require('cors')({origin: true});
@@ -9,1041 +13,1158 @@ const FormData = require('form-data');
 // Khởi tạo Firebase Admin SDK
 admin.initializeApp();
 const db = admin.firestore();
-
-// -------------------------------------------------------------------
-// PHẦN 1: CÁC HÀM XÁC THỰC VÀ QUẢN LÝ USER (GIÁO VIÊN)
-// -------------------------------------------------------------------
-// Thêm các hàm này vào functions/index.js
-
-// Đảm bảo bạn có các khai báo này ở đầu file
-// const admin = require("firebase-admin");
-// const { getStorage } = require("firebase-admin/storage");
-// const db = admin.firestore();
-// const storage = getStorage();
-
-/**
- * [MỚI] Lấy danh sách URL tải về cho TẤT CẢ các file JSON
- * trong thư mục backup của người dùng.
- */
-exports.getListOfBankFiles = functions.https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
-    }
-    const { uid } = context.auth.token;
-    const backupFolderPath = `question_bank_backups/${uid}/`;
-
-    try {
-        const [files] = await storage.bucket().getFiles({ prefix: backupFolderPath });
-
-        if (files.length === 0) {
-            return { files: [] }; // Trả về mảng rỗng nếu không có file
-        }
-
-        const signedUrlPromises = files.map(file => {
-            // Bỏ qua nếu là thư mục rỗng (tên kết thúc bằng /)
-            if (file.name.endsWith('/')) return null;
-
-            return file.getSignedUrl({
-                action: 'read',
-                expires: Date.now() + 10 * 60 * 1000, // URL có hiệu lực 10 phút
-            }).then(([url]) => ({ name: file.name, url }));
-        });
-
-        const results = (await Promise.all(signedUrlPromises)).filter(Boolean); // Lọc bỏ các giá trị null
-
-        console.log(`User ${uid}: Tìm thấy ${results.length} file ngân hàng.`);
-        return { files: results };
-
-    } catch (error) {
-        console.error(`User ${uid}: Lỗi khi lấy danh sách file:`, error);
-        throw new functions.https.HttpsError("internal", "Không thể lấy danh sách file từ Cloud.");
-    }
-});
-
-
-/**
- * [MỚI] Nhận file JSON tổng hợp, upload nó, và xóa tất cả các file lẻ cũ.
- */
-exports.consolidateBank = functions.runWith({memory: '1GB', timeoutSeconds: 300}).https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
-    }
-    const { uid } = context.auth.token;
-    const { consolidatedContent } = data; // Client gửi nội dung file JSON tổng hợp
-
-    if (!consolidatedContent) {
-        throw new functions.https.HttpsError("invalid-argument", "Thiếu nội dung tổng hợp.");
-    }
-
-    const backupFolderPath = `question_bank_backups/${uid}/`;
-    const consolidatedFilePath = `${backupFolderPath}bank_consolidated_${Date.now()}.json`;
-
-    try {
-        // Bước 1: Xóa tất cả các file cũ trong thư mục
-        console.log(`User ${uid}: Bắt đầu hợp nhất. Đang xóa các file cũ trong ${backupFolderPath}...`);
-        await storage.bucket().deleteFiles({ prefix: backupFolderPath });
-        console.log(`User ${uid}: Đã xóa xong các file cũ.`);
-
-        // Bước 2: Upload file tổng hợp mới
-        console.log(`User ${uid}: Đang upload file tổng hợp mới: ${consolidatedFilePath}`);
-        const file = storage.bucket().file(consolidatedFilePath);
-        await file.save(consolidatedContent, { contentType: 'application/json; charset=utf-8' });
-        console.log(`User ${uid}: Upload file tổng hợp thành công.`);
-
-        return { success: true, message: "Đã hợp nhất và cập nhật ngân hàng câu hỏi thành công!" };
-
-    } catch (error) {
-        console.error(`User ${uid}: Lỗi khi hợp nhất ngân hàng:`, error);
-        throw new functions.https.HttpsError("internal", "Lỗi máy chủ khi hợp nhất ngân hàng câu hỏi.");
-    }
-});
-/**
- * Được gọi khi giáo viên đăng nhập lần đầu hoặc các lần sau.
- * Nếu là lần đầu, tạo một record user mới với thời gian dùng thử.
- * Nếu không, trả về dữ liệu user hiện có.
- */
-exports.onTeacherSignIn = functions.https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
-    }
-    const { uid, email, name } = context.auth.token;
-    const userRef = db.collection("users").doc(uid);
-    const userDoc = await userRef.get();
-
-    if (!userDoc.exists) {
-        // 180 ngày dùng thử cho người dùng mới
-        const trialEndDate = admin.firestore.Timestamp.fromMillis(Date.now() + 180 * 24 * 60 * 60 * 1000);
-        const newUserProfile = {
-            email,
-            name: name || email,
-            role: "teacher",
-            trialEndDate,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            teacherAlias: null
-        };
-        await userRef.set(newUserProfile);
-        return newUserProfile;
-    } else {
-        return userDoc.data();
-    }
-});
-
-/**
- * Cập nhật Alias (mã định danh duy nhất) cho giáo viên.
- */
-exports.updateTeacherAlias = functions.https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
-    }
-    const { uid } = context.auth.token;
-    const newAlias = String(data.alias || "").trim().toLowerCase();
-
-    if (!newAlias || newAlias.length < 3 || newAlias.length > 20 || !/^[a-z0-9]+$/.test(newAlias)) {
-        throw new functions.https.HttpsError("invalid-argument", "Alias phải từ 3-20 ký tự, chỉ chứa chữ thường và số.");
-    }
-
-    const aliasCheck = await db.collection("users").where("teacherAlias", "==", newAlias).limit(1).get();
-    if (!aliasCheck.empty && aliasCheck.docs[0].id !== uid) {
-        throw new functions.https.HttpsError("already-exists", "Alias này đã có người dùng khác sử dụng.");
-    }
-
-    await db.collection("users").doc(uid).update({ teacherAlias: newAlias });
-    return { success: true, message: "Cập nhật Alias thành công!" };
-});
-
-// -------------------------------------------------------------------
-// PHẦN 2: CÁC HÀM CRUD CHO ĐỀ THI (Hợp nhất TEXT và PDF)
-// -------------------------------------------------------------------
-
-/**
- * Thêm một đề thi mới (TEXT hoặc PDF).
- */
-exports.addExam = functions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
-    
-    const { examData } = data;
-    if (!examData || !examData.examCode || !examData.keys) {
-        throw new functions.https.HttpsError("invalid-argument", "Thiếu Mã đề hoặc Đáp án.");
-    }
-
-    const newExam = {
-        teacherId: context.auth.uid,
-        examType: examData.examType || 'TEXT',
-        examCode: String(examData.examCode).trim(),
-        timeLimit: parseInt(examData.timeLimit, 10) || 90,
-        keys: String(examData.keys).split("|").map(k => k.trim()),
-        cores: String(examData.cores || "").split("|").map(c => parseFloat(c.trim()) || 0.2),
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    };
-
-    if (newExam.examType === 'TEXT') {
-        if (!examData.content) throw new functions.https.HttpsError("invalid-argument", "Đề TEXT cần có nội dung.");
-        newExam.content = examData.content;
-    } else if (newExam.examType === 'PDF') {
-        if (!newExam.examCode.toUpperCase().startsWith('PDF-')) {
-            throw new functions.https.HttpsError("invalid-argument", "Mã đề PDF phải bắt đầu bằng 'PDF-'.");
-        }
-        if (!examData.examPdfUrl) throw new functions.https.HttpsError("invalid-argument", "Đề PDF cần có Link đề thi.");
-        newExam.examPdfUrl = examData.examPdfUrl;
-        newExam.solutionPdfUrl = examData.solutionPdfUrl || '';
-    }
-
-    await db.collection("exams").add(newExam);
-    return { success: true, message: "Đã thêm đề thi thành công!" };
-});
-
-/**
- * Cập nhật một đề thi đã có (TEXT hoặc PDF).
- */
-exports.updateExam = functions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
-    
-    const { examId, examData } = data;
-    if (!examId || !examData) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID hoặc dữ liệu đề thi.");
-    
-    const examRef = db.collection("exams").doc(examId);
-    const doc = await examRef.get();
-    if (!doc.exists || doc.data().teacherId !== context.auth.uid) {
-        throw new functions.https.HttpsError("permission-denied", "Bạn không có quyền sửa đề thi này.");
-    }
-    
-    const updatedExam = {
-        examType: examData.examType || 'TEXT',
-        examCode: String(examData.examCode).trim(),
-        timeLimit: parseInt(examData.timeLimit, 10) || 90,
-        keys: String(examData.keys).split("|").map(k => k.trim()),
-        cores: String(examData.cores || "").split("|").map(c => parseFloat(c.trim()) || 0.2),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    };
-    
-    if (updatedExam.examType === 'TEXT') {
-        updatedExam.content = examData.content || '';
-        updatedExam.examPdfUrl = admin.firestore.FieldValue.delete();
-        updatedExam.solutionPdfUrl = admin.firestore.FieldValue.delete();
-    } else if (updatedExam.examType === 'PDF') {
-        if (!updatedExam.examCode.toUpperCase().startsWith('PDF-')) {
-            throw new functions.https.HttpsError("invalid-argument", "Mã đề PDF phải bắt đầu bằng 'PDF-'.");
-        }
-        updatedExam.examPdfUrl = examData.examPdfUrl || '';
-        updatedExam.solutionPdfUrl = examData.solutionPdfUrl || '';
-        updatedExam.content = admin.firestore.FieldValue.delete();
-    }
-    
-    await examRef.update(updatedExam);
-    return { success: true, message: "Đã cập nhật đề thi thành công!" };
-});
-
-/**
- * Xóa một đề thi.
- */
-exports.deleteExam = functions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
-    const { examId } = data;
-    if (!examId) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID đề thi.");
-
-    const examRef = db.collection("exams").doc(examId);
-    const doc = await examRef.get();
-    if (!doc.exists || doc.data().teacherId !== context.auth.uid) {
-        throw new functions.https.HttpsError("permission-denied", "Không có quyền xóa đề thi này.");
-    }
-    await examRef.delete();
-    return { success: true, message: "Đã xóa đề thi." };
-});
-
-/**
- * Lấy toàn bộ dữ liệu (đề thi, lớp học) cho dashboard của giáo viên.
- */
-exports.getTeacherFullData = functions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
-    const { uid } = context.auth.token;
-
-    const examsPromise = db.collection("exams").where("teacherId", "==", uid).get();
-    const classesPromise = db.collection("classes").where("teacherId", "==", uid).get();
-
-    const [examsSnapshot, classesSnapshot] = await Promise.all([examsPromise, classesPromise]);
-    const exams = examsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    const classes = classesSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    return { exams, classes };
-});
-
-/**
- * Lấy chi tiết một đề thi để sửa.
- */
-exports.getTeacherFullExam = functions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
-    const { examId } = data;
-    if (!examId) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID đề thi.");
-
-    const doc = await db.collection("exams").doc(examId).get();
-    if (!doc.exists || doc.data().teacherId !== context.auth.uid) {
-        throw new functions.https.HttpsError("permission-denied", "Không có quyền xem đề thi này.");
-    }
-    return { id: doc.id, ...doc.data() };
-});
-
-// -------------------------------------------------------------------
-// PHẦN 3: CÁC HÀM CRUD CHO LỚP HỌC
-// -------------------------------------------------------------------
-
-exports.addClass = functions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
-    const { classData } = data;
-    if (!classData || !classData.name) throw new functions.https.HttpsError("invalid-argument", "Tên lớp không được trống.");
-    await db.collection("classes").add({
-        teacherId: context.auth.token.uid,
-        name: String(classData.name).trim(),
-        students: Array.isArray(classData.students) ? classData.students.filter(s => s.trim() !== "") : [],
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-    return { success: true, message: "Đã thêm lớp học thành công!" };
-});
-
-exports.updateClass = functions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
-    const { classId, classData } = data;
-    if (!classId || !classData) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID hoặc dữ liệu lớp học.");
-    const classRef = db.collection("classes").doc(classId);
-    const doc = await classRef.get();
-    if (!doc.exists || doc.data().teacherId !== context.auth.token.uid) throw new functions.https.HttpsError("permission-denied", "Không có quyền sửa lớp học này.");
-    await classRef.update({
-        name: String(classData.name).trim(),
-        students: Array.isArray(classData.students) ? classData.students.filter(s => s.trim() !== "") : []
-    });
-    return { success: true, message: "Đã cập nhật lớp học thành công!" };
-});
-
-exports.deleteClass = functions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
-    const { classId } = data;
-    if (!classId) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID lớp học.");
-    const classRef = db.collection("classes").doc(classId);
-    const doc = await classRef.get();
-    if (!doc.exists || doc.data().teacherId !== context.auth.token.uid) throw new functions.https.HttpsError("permission-denied", "Không có quyền xóa lớp học này.");
-    await classRef.delete();
-    return { success: true, message: "Đã xóa lớp học." };
-});
-
-exports.getTeacherFullClass = functions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
-    const { classId } = data;
-    if (!classId) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID lớp học.");
-    const doc = await db.collection("classes").doc(classId).get();
-    if (!doc.exists || doc.data().teacherId !== context.auth.token.uid) throw new functions.https.HttpsError("permission-denied", "Không có quyền xem lớp học này.");
-    return { id: doc.id, ...doc.data() };
-});
-
-// -------------------------------------------------------------------
-// PHẦN 4: CÁC HÀM CHO HỌC SINH
-// -------------------------------------------------------------------
-
-/**
- * Lấy danh sách lớp của một giáo viên (dựa trên Alias).
- */
-exports.getClassesForStudent = functions.https.onCall(async (data, context) => {
-    const teacherAlias = String(data.teacherAlias).trim().toLowerCase();
-    if (!teacherAlias) throw new functions.https.HttpsError("invalid-argument", "Mã giáo viên là bắt buộc.");
-    const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
-    if (teacherSnapshot.empty) throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên với Alias này.");
-    const teacherDoc = teacherSnapshot.docs[0];
-    const teacherData = teacherDoc.data();
-    const trialEndDateMillis = teacherData.trialEndDate?.toMillis ? teacherData.trialEndDate.toMillis() : new Date(teacherData.trialEndDate).getTime();
-    if (!teacherData.trialEndDate || trialEndDateMillis < Date.now()) {
-        throw new functions.https.HttpsError("permission-denied", "Tài khoản của giáo viên này đã hết hạn dùng thử.");
-    }
-    const classesSnapshot = await db.collection("classes").where("teacherId", "==", teacherDoc.id).get();
-    const classData = {};
-    classesSnapshot.forEach((doc) => { classData[doc.data().name] = doc.data().students || []; });
-    return classData;
-});
-
-// File: functions/index.js
-// THAY THẾ TOÀN BỘ HÀM loadExamForStudent
-
-exports.loadExamForStudent = functions.https.onCall(async (data, context) => {
-    const { teacherAlias, examCode } = data;
-    if (!teacherAlias || !examCode) throw new functions.https.HttpsError("invalid-argument", "Mã giáo viên và Mã đề là bắt buộc.");
-    
-    // ... (lấy teacherDoc và examSnapshot giữ nguyên) ...
-    const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
-    if (teacherSnapshot.empty) throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên.");
-    const teacherDoc = teacherSnapshot.docs[0];
-    const examSnapshot = await db.collection("exams")
-                                 .where("teacherId", "==", teacherDoc.id)
-                                 .where("examCode", "==", examCode.trim())
-                                 .limit(1).get();
-    if (examSnapshot.empty) throw new functions.https.HttpsError("not-found", `Không tìm thấy đề thi ${examCode} của giáo viên này.`);
-    
-    let examData = examSnapshot.docs[0].data();
-    
-    // === LOGIC NÂNG CẤP: TỰ LẤY NỘI DUNG TỪ STORAGE ===
-    if (examData.storageVersion === 2 && examData.contentStoragePath) {
+// === ĐỊNH NGHĨA BIẾN MÔI TRƯỜNG Ở ĐÂY ===
+const CLOUD_RUN_URL = defineString('CONVERTER_URL'); // Tên biến phải viết hoa
+const FLYIO_URL = defineString('FLYIO_URL');
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.getListOfBankFiles = onRequest(async (req, res) => {
+    cors(req, res, async () => {
         try {
-            const file = storage.bucket().file(examData.contentStoragePath);
-            const [contentBuffer] = await file.download();
-            examData.content = contentBuffer.toString('utf8');
-        } catch (e) {
-            console.error(`Không thể tải nội dung từ Storage cho đề ${examCode}:`, e.message);
-            throw new functions.https.HttpsError("internal", "Lỗi tải nội dung đề thi từ máy chủ.");
-        }
-    }
-
-    // Trả về dữ liệu đã được bổ sung content
-    return {
-        examType: examData.examType || 'TEXT',
-        timeLimit: examData.timeLimit || 90,
-        keys: examData.keys || [],
-        cores: examData.cores || [],
-        examPdfUrl: examData.examPdfUrl || null,
-        solutionPdfUrl: examData.solutionPdfUrl || null,
-        content: examData.content || '', // Bây giờ trường này sẽ luôn có dữ liệu nếu là đề Storage
-        storageVersion: examData.storageVersion || 1, 
-    };
-});
-exports.submitExam_GOC = functions.https.onCall(async (data, context) => {
-    const { teacherAlias, examCode, studentName, className, answers, isCheating } = data;
-    if (!teacherAlias || !examCode || !studentName || !className) throw new functions.https.HttpsError("invalid-argument", "Thiếu thông tin định danh.");
-    if (!isCheating && !answers) throw new functions.https.HttpsError("invalid-argument", "Thiếu dữ liệu câu trả lời.");
-
-    const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
-    if (teacherSnapshot.empty) throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên.");
-    const teacherDoc = teacherSnapshot.docs[0];
-
-    const examSnapshot = await db.collection("exams").where("teacherId", "==", teacherDoc.id).where("examCode", "==", examCode.trim()).limit(1).get();
-    if (examSnapshot.empty) throw new functions.https.HttpsError("not-found", `Không tìm thấy đề thi ${examCode}.`);
-    const examData = examSnapshot.docs[0].data();
-    
-    if (isCheating === true) {
-        await db.collection("submissions").add({ 
-            teacherId: teacherDoc.id, timestamp: admin.firestore.FieldValue.serverTimestamp(), 
-            examCode, studentName, className, score: 0, isCheating: true 
-        });
-        return { score: 0, examData: examData, detailedResults: {} };
-    }
-
-    const { keys, cores } = examData;
-    if (!Array.isArray(keys) || !Array.isArray(cores)) {
-        throw new functions.https.HttpsError("internal", "Dữ liệu đề thi bị lỗi: Keys hoặc Cores không hợp lệ.");
-    }
-    
-    let totalScore = 0;
-    const detailedResults = {};
-
-    keys.forEach((key, i) => {
-        let questionScore = 0;
-        const userAnswer = answers[`q${i}`];
-        const coreValue = parseFloat(cores[i]) || 0; 
-        
-        const questionType = (() => {
-            if (typeof key !== 'string') return "Invalid";
-            if (key.length === 1 && "ABCD".includes(key.toUpperCase())) return "MC";
-            if (/^[TF]+$/i.test(key)) return "TF";
-            if (!isNaN(parseFloat(key)) && String(parseFloat(key)) === key.trim()) return "Numeric";
-            return "Unknown";
-        })();
-        
-        if (questionType === "MC") {
-            if (userAnswer === key) {
-                questionScore = coreValue;
+            // 1. Tự xác thực token
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
+                throw new Error('Missing Authorization Token');
             }
-        }
-        // Thêm logic chấm TF, Numeric ở đây nếu cần
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid; // Lấy uid từ token
 
-        totalScore += questionScore;
-        detailedResults[`q${i}`] = { userAnswer: userAnswer || null, correctAnswer: key, scoreEarned: questionScore, type: questionType };
-    });
+            // 2. Logic chính của hàm (giữ nguyên)
+            const backupFolderPath = `question_bank_backups/${uid}/`;
+            const [files] = await storage.bucket().getFiles({ prefix: backupFolderPath });
 
-    await db.collection("submissions").add({ 
-        teacherId: teacherDoc.id, 
-        timestamp: admin.firestore.FieldValue.serverTimestamp(), 
-        examCode, studentName, className, answers,
-        score: parseFloat(totalScore.toFixed(2)), 
-        isCheating: false 
-    });
-
-    return {
-        score: parseFloat(totalScore.toFixed(2)),
-        examData: { ...examData, keysStr: keys, coreStr: cores },
-        detailedResults: detailedResults,
-    };
-});
-// File: functions/index.js
-
-/**
- * [PHIÊN BẢN HOÀN CHỈNH] Nhận bài làm, chấm điểm, lưu CSDL và trả về đầy đủ dữ liệu.
- * - Chấm được câu hỏi trắc nghiệm (MC), điền số (Numeric) và bảng Đúng/Sai (TABLE_TF).
- * - Tự động tải nội dung đề thi từ Storage nếu cần, chỉ trong một lệnh gọi duy nhất.
- * - Xử lý lỗi mạnh mẽ, đảm bảo client luôn nhận được kết quả.
- */
-exports.submitExam = functions.runWith({ timeoutSeconds: 60, memory: '256MB' }).https.onCall(async (data, context) => {
-    // ---- 1. VALIDATE INPUT ----
-    const { teacherAlias, examCode, studentName, className, answers, isCheating } = data;
-    if (!teacherAlias || !examCode || !studentName || !className) {
-        throw new functions.https.HttpsError("invalid-argument", "Thiếu thông tin định danh (giáo viên, mã đề, tên hoặc lớp).");
-    }
-    if (!isCheating && (answers === undefined || answers === null)) {
-        throw new functions.https.HttpsError("invalid-argument", "Thiếu dữ liệu câu trả lời.");
-    }
-
-    // ---- 2. LẤY DỮ LIỆU TỪ FIRESTORE ----
-    const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
-    if (teacherSnapshot.empty) {
-        throw new functions.https.HttpsError("not-found", "Không tìm thấy giáo viên với mã này.");
-    }
-    const teacherDoc = teacherSnapshot.docs[0];
-
-    const examSnapshot = await db.collection("exams").where("teacherId", "==", teacherDoc.id).where("examCode", "==", examCode.trim()).limit(1).get();
-    if (examSnapshot.empty) {
-        throw new functions.https.HttpsError("not-found", `Không tìm thấy đề thi '${examCode}' của giáo viên này.`);
-    }
-    
-    // Dùng 'let' để có thể sửa đổi object này sau đó
-    let examData = examSnapshot.docs[0].data();
-    
-    // ---- 3. XỬ LÝ TRƯỜNG HỢP GIAN LẬN ----
-    if (isCheating === true) {
-        await db.collection("submissions").add({ 
-            teacherId: teacherDoc.id, 
-            timestamp: admin.firestore.FieldValue.serverTimestamp(), 
-            examCode, studentName, className, 
-            score: 0, 
-            answers: {}, 
-            isCheating: true 
-        });
-        // Trả về dữ liệu trống nhưng vẫn có examData để client biết
-        return { score: 0, examData, detailedResults: {} };
-    }
-
-    // ---- 4. CHẤM ĐIỂM ----
-    const correctKeys = examData.keys || [];
-    const cores = examData.cores || [];
-    if (correctKeys.length !== cores.length || correctKeys.length === 0) {
-        throw new functions.https.HttpsError("internal", "Dữ liệu đề thi bị lỗi: Số lượng đáp án và điểm không khớp hoặc rỗng.");
-    }
-    
-    let totalScore = 0;
-    const detailedResults = {};
-
-    for (let i = 0; i < correctKeys.length; i++) {
-        const correctAnswer = correctKeys[i];
-        const coreValue = parseFloat(cores[i]) || 0;
-        const userAnswer = answers[`q${i}`];
-        let isCorrect = false;
-
-        if (userAnswer !== undefined && userAnswer !== null) {
-            // Xử lý câu MC và Numeric (dạng chuỗi)
-            if (typeof userAnswer === 'string') {
-                if (userAnswer.trim().toLowerCase() === String(correctAnswer).trim().toLowerCase()) {
-                    isCorrect = true;
-                }
-            } 
-            // Xử lý câu TABLE_TF (dạng object)
-            else if (typeof userAnswer === 'object' && typeof correctAnswer === 'string') {
-                // Ví dụ: userAnswer = {a:'T', b:'F'}, correctAnswer = 'TF'
-                const sortedUserAnswerKeys = Object.keys(userAnswer).sort();
-                if (sortedUserAnswerKeys.length > 0 && sortedUserAnswerKeys.length === correctAnswer.length) {
-                    const constructedAnswerString = sortedUserAnswerKeys.map(key => userAnswer[key]).join('');
-                    if (constructedAnswerString.toUpperCase() === correctAnswer.toUpperCase()) {
-                        isCorrect = true;
-                    }
-                }
+            if (files.length === 0) {
+                // Trả về thành công với mảng rỗng
+                return res.status(200).json({ data: { files: [] } });
             }
+
+            const signedUrlPromises = files.map(file => {
+                if (file.name.endsWith('/')) return null;
+                return file.getSignedUrl({
+                    action: 'read',
+                    expires: Date.now() + 10 * 60 * 1000,
+                }).then(([url]) => ({ name: file.name, url }));
+            });
+
+            const results = (await Promise.all(signedUrlPromises)).filter(Boolean);
+            console.log(`User ${uid}: Tìm thấy ${results.length} file ngân hàng.`);
+            
+            // 3. Trả về kết quả thành công
+            res.status(200).json({ data: { files: results } });
+
+        } catch (error) {
+            console.error("Lỗi trong getListOfBankFiles:", error);
+            res.status(401).json({ error: { message: error.message || "Không thể lấy danh sách file." } });
         }
-        
-        const questionScore = isCorrect ? coreValue : 0;
-        totalScore += questionScore;
-        detailedResults[`q${i}`] = { 
-            userAnswer: userAnswer || null, 
-            correctAnswer: correctAnswer, 
-            scoreEarned: questionScore,
-        };
-    }
-
-    const finalScore = parseFloat(totalScore.toFixed(2));
-    
-    // ---- 5. LƯU BÀI NỘP VÀO DATABASE ----
-    await db.collection("submissions").add({ 
-        teacherId: teacherDoc.id, 
-        timestamp: admin.firestore.FieldValue.serverTimestamp(), 
-        examCode, studentName, className, answers,
-        score: finalScore,
-        detailedResults: detailedResults,
-        isCheating: false 
     });
+});
 
-    // ---- 6. [NÂNG CẤP] TỰ LẤY NỘI DUNG ĐỀ THI TỪ STORAGE NẾU CẦN ----
-    if (examData.storageVersion === 2 && examData.contentStoragePath) {
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.consolidateBank = onRequest({ memory: '1GB', timeoutSeconds: 300 }, async (req, res) => {
+    cors(req, res, async () => {
         try {
-            console.log(`Đề Storage, đang tải nội dung từ: ${examData.contentStoragePath}`);
-            const file = storage.bucket().file(examData.contentStoragePath);
-            const [contentBuffer] = await file.download();
-            // Gán nội dung trực tiếp vào object examData sẽ được trả về
-            examData.content = contentBuffer.toString('utf8');
-            console.log("Tải nội dung chi tiết thành công.");
-        } catch (e) {
-            console.error(`Không thể tải nội dung từ Storage cho đề ${examCode} trong hàm submitExam:`, e.message);
-            // Gửi một chuỗi lỗi đặc biệt về cho client để nó biết và hiển thị
-            examData.content = `##LỖI## Không thể tải nội dung chi tiết: ${e.message}`;
-        }
-    }
-
-    // ---- 7. TRẢ VỀ KẾT QUẢ HOÀN CHỈNH ----
-    return {
-        score: finalScore,
-        examData: examData, // examData bây giờ đã được bổ sung 'content' nếu cần
-        detailedResults,
-    };
-});
-
-exports.getPdfFromGitLab = functions.https.onCall(async (data, context) => {
-    const gitlabUrl = data.url;
-    if (!gitlabUrl || !gitlabUrl.startsWith("https://gitlab.com")) {
-        throw new functions.https.HttpsError("invalid-argument", "URL không hợp lệ hoặc không phải từ GitLab.");
-    }
-    try {
-        const response = await axios.get(gitlabUrl, { responseType: 'arraybuffer' });
-        const base64 = Buffer.from(response.data, 'binary').toString('base64');
-        return { base64Data: base64 };
-    } catch (error) {
-        console.error("Lỗi khi tải PDF từ GitLab:", error.message);
-        throw new functions.https.HttpsError("internal", "Không thể tải file PDF từ GitLab.");
-    }
-});
-// ===================================================================
-// ==  HÀM MỚI: XỬ LÝ LINK PDF TỪ GOOGLE DRIVE, DROPBOX...         ==
-// ===================================================================
-
-exports.getPdfFromGeneralUrl = functions.https.onCall(async (data, context) => {
-    let url = data.url;
-
-    if (!url) {
-        throw new functions.https.HttpsError("invalid-argument", "URL không được để trống.");
-    }
-
-    // --- XỬ LÝ CHO LINK GOOGLE DRIVE ---
-    if (url.includes("drive.google.com")) {
-        // Biến đổi link 'view' thành link 'export' để tải trực tiếp
-        // Ví dụ: https://drive.google.com/file/d/FILE_ID/view
-        //   ->  https://drive.google.com/uc?export=download&id=FILE_ID
-        const match = url.match(/file\/d\/([^/]+)/);
-        if (match && match[1]) {
-            const fileId = match[1];
-            url = `https://drive.google.com/uc?export=download&id=${fileId}`;
-            console.log("Đã biến đổi URL Google Drive thành:", url);
-        } else {
-            throw new functions.https.HttpsError("invalid-argument", "Định dạng link Google Drive không hợp lệ.");
-        }
-    } 
-    // --- XỬ LÝ CHO LINK DROPBOX ---
-    else if (url.includes("dropbox.com")) {
-        // Biến đổi link xem trước của Dropbox thành link tải trực tiếp
-        // Ví dụ: https://www.dropbox.com/s/..../file.pdf?dl=0
-        //   ->  https://www.dropbox.com/s/..../file.pdf?dl=1
-        // Hoặc có thể thay 'www.dropbox.com' bằng 'dl.dropboxusercontent.com'
-        if (url.includes("?dl=0")) {
-            url = url.replace("?dl=0", "?dl=1");
-        } else if (!url.endsWith("?dl=1")) {
-            url += "?dl=1";
-        }
-        console.log("Đã biến đổi URL Dropbox thành:", url);
-    }
-    // Bạn có thể thêm các điều kiện else if khác cho các dịch vụ khác ở đây
-
-    try {
-        const response = await axios.get(url, {
-            responseType: 'arraybuffer'
-        });
-        const base64 = Buffer.from(response.data, 'binary').toString('base64');
-        return { base64Data: base64 };
-
-    } catch (error) {
-        console.error(`Lỗi khi tải PDF từ URL [${url}]:`, error.message);
-        throw new functions.https.HttpsError("internal", "Không thể tải file PDF từ URL được cung cấp.");
-    }
-});
-
-// -------------------------------------------------------------------
-// PHẦN 6: CÁC HÀM DÀNH RIÊNG CHO TRANG THỐNG KÊ
-// -------------------------------------------------------------------
-
-/**
- * Lấy dữ liệu ban đầu (danh sách đề, lớp) cho các bộ lọc trên trang thống kê.
- */
-exports.getStatsInitialData = functions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Bạn phải đăng nhập.');
-    const teacherId = context.auth.uid;
-    const examsPromise = db.collection('exams').where('teacherId', '==', teacherId).select('examCode').get();
-    const classesPromise = db.collection('classes').where('teacherId', '==', teacherId).select('name').get();
-    const [examsSnapshot, classesSnapshot] = await Promise.all([examsPromise, classesPromise]);
-    const exams = examsSnapshot.docs.map(doc => doc.data());
-    const classes = classesSnapshot.docs.map(doc => doc.data());
-    return { exams, classes };
-});
-
-/**
- * Hàm xử lý thống kê chính, mạnh mẽ và an toàn.
- */
-exports.getExamStatistics = functions.runWith({ timeoutSeconds: 120, memory: '256MB' }).https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Bạn phải đăng nhập.');
-    
-    const teacherId = context.auth.uid;
-    const { examCode, className, duplicateHandling } = data;
-
-    if (!examCode) throw new functions.https.HttpsError('invalid-argument', 'Mã đề thi là bắt buộc.');
-    
-    console.log(`Bắt đầu thống kê: Teacher=${teacherId}, Exam=${examCode}, Class=${className}, Handling=${duplicateHandling}`);
-
-    try {
-        let query = db.collection('submissions').where('teacherId', '==', teacherId).where('examCode', '==', examCode);
-        if (className && className !== 'all') {
-            query = query.where('className', '==', className);
-        }
-        
-        const snapshot = await query.orderBy('timestamp', 'desc').get();
-        if (snapshot.empty) return { summary: { count: 0 }, filters: data };
-        const allSubmissions = snapshot.docs.map(doc => doc.data());
-
-        let filteredSubmissions = [];
-        if (duplicateHandling === 'all' || !duplicateHandling) {
-            filteredSubmissions = allSubmissions;
-        } else {
-            const studentSubmissionsMap = new Map();
-            for (const sub of allSubmissions) {
-                const studentKey = `${sub.studentName || 'N/A'}|${sub.className || 'N/A'}`;
-                const existingSub = studentSubmissionsMap.get(studentKey);
-                if (!existingSub || (duplicateHandling === 'highest' && (sub.score || 0) > (existingSub.score || 0))) {
-                    studentSubmissionsMap.set(studentKey, sub);
-                }
+            // 1. Tự xác thực token
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
+                throw new Error('Missing Authorization Token');
             }
-            filteredSubmissions = Array.from(studentSubmissionsMap.values());
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid; // Lấy uid từ token
+
+            // 2. Lấy dữ liệu từ body
+            const { consolidatedContent } = req.body.data;
+            if (!consolidatedContent) {
+                throw new Error("Thiếu nội dung tổng hợp.");
+            }
+            
+            // 3. Logic chính của hàm (giữ nguyên)
+            const backupFolderPath = `question_bank_backups/${uid}/`;
+            const consolidatedFilePath = `${backupFolderPath}bank_consolidated_${Date.now()}.json`;
+
+            console.log(`User ${uid}: Bắt đầu hợp nhất. Đang xóa các file cũ trong ${backupFolderPath}...`);
+            await storage.bucket().deleteFiles({ prefix: backupFolderPath });
+            console.log(`User ${uid}: Đã xóa xong các file cũ.`);
+
+            console.log(`User ${uid}: Đang upload file tổng hợp mới: ${consolidatedFilePath}`);
+            const file = storage.bucket().file(consolidatedFilePath);
+            await file.save(consolidatedContent, { contentType: 'application/json; charset=utf-8' });
+            console.log(`User ${uid}: Upload file tổng hợp thành công.`);
+
+            // 4. Trả về kết quả thành công
+            res.status(200).json({ data: { success: true, message: "Đã hợp nhất và cập nhật ngân hàng câu hỏi thành công!" } });
+
+        } catch (error) {
+            console.error("Lỗi trong consolidateBank:", error);
+            res.status(400).json({ error: { message: error.message || "Lỗi máy chủ khi hợp nhất." } });
         }
+    });
+});
 
-        if (filteredSubmissions.length === 0) return { summary: { count: 0 }, filters: data };
-        
-        const examDocSnapshot = await db.collection('exams').where('teacherId', '==', teacherId).where('examCode', '==', examCode).limit(1).get();
-        if (examDocSnapshot.empty) throw new functions.https.HttpsError('not-found', `Không tìm thấy đề thi với mã ${examCode}.`);
-        const correctKeys = examDocSnapshot.docs[0].data().keys || [];
+// =====================================================================
+// ==   PHIÊN BẢN CUỐI CÙNG - CHUYỂN SANG onRequest ĐỂ SỬA LỖI 401   ==
+// =====================================================================
+exports.handleTeacherLogin = onRequest(async (req, res) => {
+    // Luôn dùng cors cho hàm onRequest
+    cors(req, res, async () => {
+        try {
+            // 1. Tự tay xác thực token từ header (giống hệt hàm testAuth)
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
+                throw new Error('Missing Authorization Token');
+            }
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            
+            // 2. Lấy thông tin người dùng từ token đã được xác thực
+            const { uid, email, name } = decodedToken;
 
-        let totalScore = 0, highestScore = -1, lowestScore = 11;
-        const performanceTiers = { gioi: 0, kha: 0, trungBinh: 0, yeu: 0 };
-        const scoreDistribution = { '[0, 2]': 0, '(2, 4]': 0, '(4, 5]': 0, '(5, 6.5]': 0, '(6.5, 8]': 0, '(8, 9]': 0, '(9, 10]': 0 };
-        const questionAnalysis = {};
-        correctKeys.forEach((key, i) => { questionAnalysis[`q${i}`] = { totalAttempts: 0, correctAttempts: 0, choices: {} }; });
+            // 3. Thực hiện logic chính của bạn (copy từ hàm cũ)
+            const userRef = db.collection("users").doc(uid);
+            const userDoc = await userRef.get();
 
-        for (const sub of filteredSubmissions) {
-            const score = typeof sub.score === 'number' ? sub.score : 0;
-            totalScore += score;
-            if (score > highestScore) highestScore = score;
-            if (score < lowestScore) lowestScore = score;
+            let userProfile;
+            if (!userDoc.exists) {
+                const trialEndDate = admin.firestore.Timestamp.fromMillis(Date.now() + 180 * 24 * 60 * 60 * 1000);
+                userProfile = {
+                    email, name: name || email, role: "teacher",
+                    trialEndDate, createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    teacherAlias: null
+                };
+                await userRef.set(userProfile);
+            } else {
+                userProfile = userDoc.data();
+            }
 
-            if (score >= 8) performanceTiers.gioi++; else if (score >= 6.5) performanceTiers.kha++; else if (score >= 5.0) performanceTiers.trungBinh++; else performanceTiers.yeu++;
-            if (score <= 2) scoreDistribution['[0, 2]']++; else if (score <= 4) scoreDistribution['(2, 4]']++; else if (score <= 5) scoreDistribution['(4, 5]']++; else if (score <= 6.5) scoreDistribution['(5, 6.5]']++; else if (score <= 8) scoreDistribution['(6.5, 8]']++; else if (score <= 9) scoreDistribution['(8, 9]']++; else scoreDistribution['(9, 10]']++;
+  
+            res.status(200).json({ data: userProfile });
+
+        } catch (error) {
+            console.error("Lỗi trong handleTeacherLogin:", error.message);
+            // Gửi về lỗi theo định dạng mà client `httpsCallable` có thể hiểu
+            res.status(401).json({
+                error: {
+                    message: error.message,
+                    code: 'unauthenticated'
+                }
+            });
+        }
+    });
+});
+
+exports.updateTeacherAlias = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            // 1. Tự xác thực token
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
+                throw new Error('Missing Authorization Token');
+            }
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid; // Lấy uid từ token
+            
+            // 2. Lấy dữ liệu từ body (thay vì data)
+            const newAlias = String(req.body.data.alias || "").trim().toLowerCase();
+
+            // 3. Logic chính (giữ nguyên, chỉ thay context.auth.token.uid bằng uid)
+            if (!newAlias || newAlias.length < 3 || newAlias.length > 20 || !/^[a-z0-9]+$/.test(newAlias)) {
+                throw new HttpsError("invalid-argument", "Alias phải từ 3-20 ký tự, chỉ chứa chữ thường và số.");
+            }
+            const aliasCheck = await db.collection("users").where("teacherAlias", "==", newAlias).limit(1).get();
+            if (!aliasCheck.empty && aliasCheck.docs[0].id !== uid) {
+                throw new HttpsError("already-exists", "Alias này đã có người dùng khác sử dụng.");
+            }
+            await db.collection("users").doc(uid).update({ teacherAlias: newAlias });
+
+            // 4. Trả về kết quả
+            res.status(200).json({ data: { success: true, message: "Cập nhật Alias thành công!" } });
+        } catch (error) {
+            console.error("Lỗi trong updateTeacherAlias:", error);
+            res.status(401).json({ error: { message: error.message } });
+        }
+    });
+});
+
+exports.addExam = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            // 1. Tự xác thực token
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) throw new Error('Missing Auth Token');
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid;
+
+            // 2. Lấy dữ liệu từ body
+            const { examData } = req.body.data;
+            if (!examData || !examData.examCode || !examData.keys) {
+                // Ném lỗi và khối catch sẽ xử lý
+                throw new Error("Thiếu Mã đề hoặc Đáp án."); 
+            }
+
+            // 3. Logic chính (thay context.auth.uid bằng uid)
+            const newExam = {
+                teacherId: uid,
+                examType: examData.examType || 'TEXT',
+                examCode: String(examData.examCode).trim(),
+                timeLimit: parseInt(examData.timeLimit, 10) || 90,
+                keys: String(examData.keys).split("|").map(k => k.trim()),
+                cores: String(examData.cores || "").split("|").map(c => parseFloat(c.trim()) || 0.2),
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            };
+            if (newExam.examType === 'TEXT') { /* ... */ } 
+            else if (newExam.examType === 'PDF') { /* ... */ }
+            await db.collection("exams").add(newExam);
+
+            // 4. Trả về thành công
+            res.status(200).json({ data: { success: true, message: "Đã thêm đề thi thành công!" } });
+
+        } catch (error) {
+            console.error("Lỗi trong addExam:", error);
+            res.status(400).json({ error: { message: error.message || "Yêu cầu không hợp lệ." } });
+        }
+    });
+});
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.updateExam = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            // 1. Tự xác thực token
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
+                throw new Error('Missing Authorization Token');
+            }
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid;
+
+            // 2. Lấy dữ liệu từ body
+            const { examId, examData } = req.body.data;
+            if (!examId || !examData) {
+                throw new Error("Thiếu ID hoặc dữ liệu đề thi.");
+            }
+
+            // 3. Logic chính của hàm (thay context.auth.uid bằng uid)
+            const examRef = db.collection("exams").doc(examId);
+            const doc = await examRef.get();
+            if (!doc.exists || doc.data().teacherId !== uid) {
+                throw new Error("Bạn không có quyền sửa đề thi này.");
+            }
+
+            const updatedExam = {
+                examType: examData.examType || 'TEXT',
+                examCode: String(examData.examCode).trim(),
+                timeLimit: parseInt(examData.timeLimit, 10) || 90,
+                keys: String(examData.keys).split("|").map(k => k.trim()),
+                cores: String(examData.cores || "").split("|").map(c => parseFloat(c.trim()) || 0.2),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            };
+
+            if (updatedExam.examType === 'TEXT') {
+                updatedExam.content = examData.content || '';
+                updatedExam.examPdfUrl = admin.firestore.FieldValue.delete();
+                updatedExam.solutionPdfUrl = admin.firestore.FieldValue.delete();
+            } else if (updatedExam.examType === 'PDF') {
+                if (!updatedExam.examCode.toUpperCase().startsWith('PDF-')) {
+                    throw new Error("Mã đề PDF phải bắt đầu bằng 'PDF-'.");
+                }
+                updatedExam.examPdfUrl = examData.examPdfUrl || '';
+                updatedExam.solutionPdfUrl = examData.solutionPdfUrl || '';
+                updatedExam.content = admin.firestore.FieldValue.delete();
+            }
+
+            await examRef.update(updatedExam);
+            
+            // 4. Trả về kết quả thành công
+            res.status(200).json({ data: { success: true, message: "Đã cập nhật đề thi thành công!" } });
+
+        } catch (error) {
+            console.error("Lỗi trong updateExam:", error);
+            res.status(400).json({ error: { message: error.message || "Yêu cầu không hợp lệ." } });
+        }
+    });
+});
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.deleteExam = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            // 1. Tự xác thực token
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
+                throw new Error('Missing Authorization Token');
+            }
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid;
+
+            // 2. Lấy dữ liệu từ body
+            const { examId } = req.body.data;
+            if (!examId) {
+                throw new Error("Thiếu ID đề thi.");
+            }
+
+            // 3. Logic chính của hàm (thay context.auth.uid bằng uid)
+            const examRef = db.collection("exams").doc(examId);
+            const doc = await examRef.get();
+            if (!doc.exists || doc.data().teacherId !== uid) {
+                throw new Error("Không có quyền xóa đề thi này.");
+            }
+            await examRef.delete();
+
+            // 4. Trả về kết quả thành công
+            res.status(200).json({ data: { success: true, message: "Đã xóa đề thi." } });
+
+        } catch (error) {
+            console.error("Lỗi trong deleteExam:", error);
+            res.status(400).json({ error: { message: error.message || "Yêu cầu không hợp lệ." } });
+        }
+    });
+});
+// =================================================================
+// ==   SỬA LẠI getTeacherFullData SANG DẠNG onRequest           ==
+// =================================================================
+exports.getTeacherFullData = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            // 1. Tự tay xác thực token từ header
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
+                throw new Error('Missing Authorization Token');
+            }
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid; // Lấy uid từ token đã xác thực
+
+            // 2. Thực hiện logic chính của bạn
+            const examsPromise = db.collection("exams").where("teacherId", "==", uid).get();
+            const classesPromise = db.collection("classes").where("teacherId", "==", uid).get();
+
+            const [examsSnapshot, classesSnapshot] = await Promise.all([examsPromise, classesPromise]);
+            
+            const exams = examsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+            const classes = classesSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+            
+            // 3. Gửi về kết quả thành công dưới định dạng data
+            res.status(200).json({ data: { exams, classes } });
+
+        } catch (error) {
+            console.error("Lỗi trong getTeacherFullData:", error.message);
+            res.status(401).json({
+                error: {
+                    message: "Lỗi xác thực hoặc không thể tải dữ liệu.",
+                    code: 'unauthenticated'
+                }
+            });
+        }
+    });
+});
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.getTeacherFullExam = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            // 1. Xác thực token
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) throw new Error('Missing Auth Token');
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid;
+
+            // 2. Lấy dữ liệu từ body
+            const { examId } = req.body.data;
+            if (!examId) throw new Error("Thiếu ID đề thi.");
+
+            // 3. Logic chính
+            const doc = await db.collection("exams").doc(examId).get();
+            if (!doc.exists || doc.data().teacherId !== uid) {
+                throw new Error("Không có quyền xem đề thi này.");
+            }
+            
+            // 4. Trả về kết quả
+            res.status(200).json({ data: { id: doc.id, ...doc.data() } });
+
+        } catch (error) {
+            console.error("Lỗi trong getTeacherFullExam:", error);
+            res.status(400).json({ error: { message: error.message } });
+        }
+    });
+});
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.addClass = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            // 1. Xác thực token
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) throw new Error('Missing Auth Token');
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid;
+
+            // 2. Lấy dữ liệu từ body
+            const { classData } = req.body.data;
+            if (!classData || !classData.name) throw new Error("Tên lớp không được trống.");
+
+            // 3. Logic chính
+            await db.collection("classes").add({
+                teacherId: uid,
+                name: String(classData.name).trim(),
+                students: Array.isArray(classData.students) ? classData.students.filter(s => s.trim() !== "") : [],
+                createdAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            // 4. Trả về kết quả
+            res.status(200).json({ data: { success: true, message: "Đã thêm lớp học thành công!" } });
+
+        } catch (error) {
+            console.error("Lỗi trong addClass:", error);
+            res.status(400).json({ error: { message: error.message } });
+        }
+    });
+});
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.updateClass = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            // 1. Xác thực token
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) throw new Error('Missing Auth Token');
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid;
+
+            // 2. Lấy dữ liệu từ body
+            const { classId, classData } = req.body.data;
+            if (!classId || !classData) throw new Error("Thiếu ID hoặc dữ liệu lớp học.");
+            
+            // 3. Logic chính
+            const classRef = db.collection("classes").doc(classId);
+            const doc = await classRef.get();
+            if (!doc.exists || doc.data().teacherId !== uid) throw new Error("Không có quyền sửa lớp học này.");
+            
+            await classRef.update({
+                name: String(classData.name).trim(),
+                students: Array.isArray(classData.students) ? classData.students.filter(s => s.trim() !== "") : []
+            });
+            
+            // 4. Trả về kết quả
+            res.status(200).json({ data: { success: true, message: "Đã cập nhật lớp học thành công!" } });
+
+        } catch (error) {
+            console.error("Lỗi trong updateClass:", error);
+            res.status(400).json({ error: { message: error.message } });
+        }
+    });
+});
+
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.deleteClass = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            // 1. Xác thực token
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) throw new Error('Missing Auth Token');
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid;
+
+            // 2. Lấy dữ liệu từ body
+            const { classId } = req.body.data;
+            if (!classId) throw new Error("Thiếu ID lớp học.");
+
+            // 3. Logic chính
+            const classRef = db.collection("classes").doc(classId);
+            const doc = await classRef.get();
+            if (!doc.exists || doc.data().teacherId !== uid) throw new Error("Không có quyền xóa lớp học này.");
+            
+            await classRef.delete();
+            
+            // 4. Trả về kết quả
+            res.status(200).json({ data: { success: true, message: "Đã xóa lớp học." } });
+
+        } catch (error) {
+            console.error("Lỗi trong deleteClass:", error);
+            res.status(400).json({ error: { message: error.message } });
+        }
+    });
+});
+
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.getTeacherFullClass = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            // 1. Xác thực token
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) throw new Error('Missing Auth Token');
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid;
+
+            // 2. Lấy dữ liệu từ body
+            const { classId } = req.body.data;
+            if (!classId) throw new Error("Thiếu ID lớp học.");
+
+            // 3. Logic chính
+            const doc = await db.collection("classes").doc(classId).get();
+            if (!doc.exists || doc.data().teacherId !== uid) throw new Error("Không có quyền xem lớp học này.");
+            
+            // 4. Trả về kết quả
+            res.status(200).json({ data: { id: doc.id, ...doc.data() } });
+            
+        } catch (error) {
+            console.error("Lỗi trong getTeacherFullClass:", error);
+            res.status(400).json({ error: { message: error.message } });
+        }
+    });
+});
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.getClassesForStudent = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            // 1. Lấy dữ liệu từ body
+            const teacherAlias = String(req.body.data.teacherAlias || "").trim().toLowerCase();
+            if (!teacherAlias) throw new Error("Mã giáo viên là bắt buộc.");
+            
+            // 2. Logic chính của hàm
+            const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
+            if (teacherSnapshot.empty) throw new Error("Không tìm thấy giáo viên với Alias này.");
+            
+            const teacherDoc = teacherSnapshot.docs[0];
+            const teacherData = teacherDoc.data();
+            const trialEndDateMillis = teacherData.trialEndDate?.toMillis ? teacherData.trialEndDate.toMillis() : new Date(teacherData.trialEndDate).getTime();
+            if (!teacherData.trialEndDate || trialEndDateMillis < Date.now()) {
+                throw new Error("Tài khoản của giáo viên này đã hết hạn dùng thử.");
+            }
+            
+            const classesSnapshot = await db.collection("classes").where("teacherId", "==", teacherDoc.id).get();
+            const classData = {};
+            classesSnapshot.forEach((doc) => { classData[doc.data().name] = doc.data().students || []; });
+
+            // 3. Trả về kết quả thành công
+            res.status(200).json({ data: classData });
+
+        } catch (error) {
+            console.error("Lỗi trong getClassesForStudent:", error);
+            res.status(400).json({ error: { message: error.message } });
+        }
+    });
+});
+
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.loadExamForStudent = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            // 1. Lấy dữ liệu từ body
+            const { teacherAlias, examCode } = req.body.data;
+            if (!teacherAlias || !examCode) throw new Error("Mã giáo viên và Mã đề là bắt buộc.");
+            
+            // 2. Logic chính của hàm
+            const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
+            if (teacherSnapshot.empty) throw new Error("Không tìm thấy giáo viên.");
+            
+            const teacherDoc = teacherSnapshot.docs[0];
+            const examSnapshot = await db.collection("exams")
+                                         .where("teacherId", "==", teacherDoc.id)
+                                         .where("examCode", "==", examCode.trim())
+                                         .limit(1).get();
+            if (examSnapshot.empty) throw new Error(`Không tìm thấy đề thi ${examCode} của giáo viên này.`);
+            
+            let examData = examSnapshot.docs[0].data();
+            
+            if (examData.storageVersion === 2 && examData.contentStoragePath) {
+                const file = storage.bucket().file(examData.contentStoragePath);
+                const [contentBuffer] = await file.download();
+                examData.content = contentBuffer.toString('utf8');
+            }
+
+            const resultData = {
+                examType: examData.examType || 'TEXT',
+                timeLimit: examData.timeLimit || 90,
+                keys: examData.keys || [],
+                cores: examData.cores || [],
+                examPdfUrl: examData.examPdfUrl || null,
+                solutionPdfUrl: examData.solutionPdfUrl || null,
+                content: examData.content || '',
+                storageVersion: examData.storageVersion || 1,
+            };
+
+            // 3. Trả về kết quả thành công
+            res.status(200).json({ data: resultData });
+
+        } catch (error) {
+            console.error("Lỗi trong loadExamForStudent:", error);
+            res.status(400).json({ error: { message: error.message } });
+        }
+    });
+});
+
+// Thay thế hàm submitExam cũ bằng phiên bản onRequest này
+exports.submitExam = onRequest({ timeoutSeconds: 60, memory: '256MB' }, async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            // ---- 1. LẤY DỮ LIỆU TỪ BODY ----
+            const { teacherAlias, examCode, studentName, className, answers, isCheating } = req.body.data;
+            if (!teacherAlias || !examCode || !studentName || !className) {
+                throw new Error("Thiếu thông tin định danh (giáo viên, mã đề, tên hoặc lớp).");
+            }
+            if (!isCheating && (answers === undefined || answers === null)) {
+                throw new Error("Thiếu dữ liệu câu trả lời.");
+            }
+
+            // ---- 2. LẤY DỮ LIỆU TỪ FIRESTORE ----
+            const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
+            if (teacherSnapshot.empty) {
+                throw new Error("Không tìm thấy giáo viên với mã này.");
+            }
+            const teacherDoc = teacherSnapshot.docs[0];
+
+            const examSnapshot = await db.collection("exams").where("teacherId", "==", teacherDoc.id).where("examCode", "==", examCode.trim()).limit(1).get();
+            if (examSnapshot.empty) {
+                throw new Error(`Không tìm thấy đề thi '${examCode}' của giáo viên này.`);
+            }
+            
+            let examData = examSnapshot.docs[0].data();
+            
+            // ---- 3. XỬ LÝ TRƯỜNG HỢP GIAN LẬN ----
+            if (isCheating === true) {
+                await db.collection("submissions").add({ 
+                    teacherId: teacherDoc.id, 
+                    timestamp: admin.firestore.FieldValue.serverTimestamp(), 
+                    examCode, studentName, className, 
+                    score: 0, 
+                    answers: {}, 
+                    isCheating: true 
+                });
+                // Trả về kết quả và kết thúc hàm ở đây
+                return res.status(200).json({ data: { score: 0, examData, detailedResults: {} } });
+            }
+
+            // ---- 4. CHẤM ĐIỂM ----
+            const correctKeys = examData.keys || [];
+            const cores = examData.cores || [];
+            if (correctKeys.length !== cores.length || correctKeys.length === 0) {
+                throw new Error("Dữ liệu đề thi bị lỗi: Số lượng đáp án và điểm không khớp hoặc rỗng.");
+            }
+            
+            let totalScore = 0;
+            const detailedResults = {};
 
             for (let i = 0; i < correctKeys.length; i++) {
-                const qKey = `q${i}`;
-                if (!questionAnalysis[qKey]) continue;
-                const userAnswer = (sub.answers && sub.answers[qKey] !== undefined) ? sub.answers[qKey] : null;
+                const correctAnswer = correctKeys[i];
+                const coreValue = parseFloat(cores[i]) || 0;
+                const userAnswer = answers[`q${i}`];
+                let isCorrect = false;
 
-                if (userAnswer !== null) {
-                    questionAnalysis[qKey].totalAttempts++;
-                    const choice = userAnswer === '' ? 'Bỏ trống' : String(userAnswer);
-                    questionAnalysis[qKey].choices[choice] = (questionAnalysis[qKey].choices[choice] || 0) + 1;
-                    if ((sub.detailedResults && sub.detailedResults[qKey]?.scoreEarned > 0) || (!sub.detailedResults && String(userAnswer) === String(correctKeys[i]))) {
-                        questionAnalysis[qKey].correctAttempts++;
+                if (userAnswer !== undefined && userAnswer !== null) {
+                    if (typeof userAnswer === 'string') {
+                        if (userAnswer.trim().toLowerCase() === String(correctAnswer).trim().toLowerCase()) isCorrect = true;
+                    } else if (typeof userAnswer === 'object' && typeof correctAnswer === 'string') {
+                        const sortedUserAnswerKeys = Object.keys(userAnswer).sort();
+                        if (sortedUserAnswerKeys.length > 0 && sortedUserAnswerKeys.length === correctAnswer.length) {
+                            const constructedAnswerString = sortedUserAnswerKeys.map(key => userAnswer[key]).join('');
+                            if (constructedAnswerString.toUpperCase() === correctAnswer.toUpperCase()) isCorrect = true;
+                        }
+                    }
+                }
+                
+                const questionScore = isCorrect ? coreValue : 0;
+                totalScore += questionScore;
+                detailedResults[`q${i}`] = { userAnswer: userAnswer || null, correctAnswer, scoreEarned: questionScore };
+            }
+
+            const finalScore = parseFloat(totalScore.toFixed(2));
+            
+            // ---- 5. LƯU BÀI NỘP VÀO DATABASE ----
+            await db.collection("submissions").add({ 
+                teacherId: teacherDoc.id, 
+                timestamp: admin.firestore.FieldValue.serverTimestamp(), 
+                examCode, studentName, className, answers,
+                score: finalScore,
+                detailedResults,
+                isCheating: false 
+            });
+
+            // ---- 6. TẢI NỘI DUNG ĐỀ THI TỪ STORAGE NẾU CẦN (ĐỂ TRẢ VỀ CHO CLIENT) ----
+            if (examData.storageVersion === 2 && examData.contentStoragePath) {
+                try {
+                    const file = storage.bucket().file(examData.contentStoragePath);
+                    const [contentBuffer] = await file.download();
+                    examData.content = contentBuffer.toString('utf8');
+                } catch (e) {
+                    examData.content = `##LỖI## Không thể tải nội dung chi tiết: ${e.message}`;
+                }
+            }
+
+            // ---- 7. TRẢ VỀ KẾT QUẢ CUỐI CÙNG ----
+            const finalResult = { score: finalScore, examData, detailedResults };
+            res.status(200).json({ data: finalResult });
+
+        } catch (error) {
+            console.error("Lỗi trong submitExam:", error);
+            res.status(400).json({ error: { message: error.message } });
+        }
+    });
+});
+
+exports.getPdfFromGitLab = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            const gitlabUrl = req.body.data.url;
+            if (!gitlabUrl || !gitlabUrl.startsWith("https://gitlab.com")) {
+                throw new Error("URL không hợp lệ hoặc không phải từ GitLab.");
+            }
+            const response = await axios.get(gitlabUrl, { responseType: 'arraybuffer' });
+            const base64 = Buffer.from(response.data, 'binary').toString('base64');
+            res.status(200).json({ data: { base64Data: base64 } });
+        } catch (error) {
+            console.error("Lỗi khi tải PDF từ GitLab:", error.message);
+            res.status(400).json({ error: { message: "Không thể tải file PDF từ GitLab." } });
+        }
+    });
+});
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.getPdfFromGeneralUrl = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            // 1. Lấy dữ liệu từ body
+            let url = req.body.data.url;
+            if (!url) {
+                throw new Error("URL không được để trống.");
+            }
+
+            // 2. Logic chính của hàm
+            if (url.includes("drive.google.com")) {
+                const match = url.match(/file\/d\/([^/]+)/);
+                if (match && match[1]) {
+                    url = `https://drive.google.com/uc?export=download&id=${match[1]}`;
+                } else {
+                    throw new Error("Định dạng link Google Drive không hợp lệ.");
+                }
+            } else if (url.includes("dropbox.com")) {
+                if (url.includes("?dl=0")) url = url.replace("?dl=0", "?dl=1");
+                else if (!url.endsWith("?dl=1")) url += "?dl=1";
+            }
+
+            const response = await axios.get(url, { responseType: 'arraybuffer' });
+            const base64 = Buffer.from(response.data, 'binary').toString('base64');
+            
+            // 3. Trả về kết quả
+            res.status(200).json({ data: { base64Data: base64 } });
+
+        } catch (error) {
+            console.error(`Lỗi khi tải PDF từ URL:`, error.message);
+            res.status(400).json({ error: { message: "Không thể tải file PDF từ URL được cung cấp." } });
+        }
+    });
+});
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.getStatsInitialData = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            // 1. Tự xác thực token
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) throw new Error('Missing Auth Token');
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const teacherId = decodedToken.uid;
+
+            // 2. Logic chính
+            const examsPromise = db.collection('exams').where('teacherId', '==', teacherId).select('examCode').get();
+            const classesPromise = db.collection('classes').where('teacherId', '==', teacherId).select('name').get();
+            
+            const [examsSnapshot, classesSnapshot] = await Promise.all([examsPromise, classesPromise]);
+            
+            const exams = examsSnapshot.docs.map(doc => doc.data());
+            const classes = classesSnapshot.docs.map(doc => doc.data());
+
+            // 3. Trả về kết quả
+            res.status(200).json({ data: { exams, classes } });
+
+        } catch (error) {
+            console.error("Lỗi trong getStatsInitialData:", error);
+            res.status(401).json({ error: { message: error.message || "Lỗi xác thực." } });
+        }
+    });
+});
+
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.getExamStatistics = onRequest({ timeoutSeconds: 120, memory: '256MB' }, async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            // 1. Tự xác thực token
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
+                throw new Error('Missing Authorization Token');
+            }
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const teacherId = decodedToken.uid;
+            
+            // 2. Lấy dữ liệu từ body
+            const { examCode, className, duplicateHandling } = req.body.data;
+            if (!examCode) {
+                throw new Error('Mã đề thi là bắt buộc.');
+            }
+            
+            console.log(`Bắt đầu thống kê: Teacher=${teacherId}, Exam=${examCode}, Class=${className}, Handling=${duplicateHandling}`);
+
+            // 3. Logic chính (được copy từ hàm cũ)
+            let query = db.collection('submissions').where('teacherId', '==', teacherId).where('examCode', '==', examCode);
+            if (className && className !== 'all') {
+                query = query.where('className', '==', className);
+            }
+            
+            const snapshot = await query.orderBy('timestamp', 'desc').get();
+            // Thay đổi: dùng res.status().json() để trả về và kết thúc hàm
+            if (snapshot.empty) return res.status(200).json({ data: { summary: { count: 0 }, filters: req.body.data } });
+
+            const allSubmissions = snapshot.docs.map(doc => doc.data());
+
+            let filteredSubmissions = [];
+            if (duplicateHandling === 'all' || !duplicateHandling) {
+                filteredSubmissions = allSubmissions;
+            } else {
+                const studentSubmissionsMap = new Map();
+                for (const sub of allSubmissions) {
+                    const studentKey = `${sub.studentName || 'N/A'}|${sub.className || 'N/A'}`;
+                    const existingSub = studentSubmissionsMap.get(studentKey);
+                    if (!existingSub || (duplicateHandling === 'highest' && (sub.score || 0) > (existingSub.score || 0))) {
+                        studentSubmissionsMap.set(studentKey, sub);
+                    }
+                }
+                filteredSubmissions = Array.from(studentSubmissionsMap.values());
+            }
+
+            if (filteredSubmissions.length === 0) return res.status(200).json({ data: { summary: { count: 0 }, filters: req.body.data } });
+            
+            const examDocSnapshot = await db.collection('exams').where('teacherId', '==', teacherId).where('examCode', '==', examCode).limit(1).get();
+            if (examDocSnapshot.empty) throw new Error(`Không tìm thấy đề thi với mã ${examCode}.`);
+            
+            const correctKeys = examDocSnapshot.docs[0].data().keys || [];
+            let totalScore = 0, highestScore = -1, lowestScore = 11;
+            const performanceTiers = { gioi: 0, kha: 0, trungBinh: 0, yeu: 0 };
+            const scoreDistribution = { '[0, 2]': 0, '(2, 4]': 0, '(4, 5]': 0, '(5, 6.5]': 0, '(6.5, 8]': 0, '(8, 9]': 0, '(9, 10]': 0 };
+            const questionAnalysis = {};
+            correctKeys.forEach((key, i) => { questionAnalysis[`q${i}`] = { totalAttempts: 0, correctAttempts: 0, choices: {} }; });
+
+            for (const sub of filteredSubmissions) {
+                const score = typeof sub.score === 'number' ? sub.score : 0;
+                totalScore += score;
+                if (score > highestScore) highestScore = score;
+                if (score < lowestScore) lowestScore = score;
+                if (score >= 8) performanceTiers.gioi++; else if (score >= 6.5) performanceTiers.kha++; else if (score >= 5.0) performanceTiers.trungBinh++; else performanceTiers.yeu++;
+                if (score <= 2) scoreDistribution['[0, 2]']++; else if (score <= 4) scoreDistribution['(2, 4]']++; else if (score <= 5) scoreDistribution['(4, 5]']++; else if (score <= 6.5) scoreDistribution['(5, 6.5]']++; else if (score <= 8) scoreDistribution['(6.5, 8]']++; else if (score <= 9) scoreDistribution['(8, 9]']++; else scoreDistribution['(9, 10]']++;
+                for (let i = 0; i < correctKeys.length; i++) {
+                    const qKey = `q${i}`;
+                    if (!questionAnalysis[qKey]) continue;
+                    const userAnswer = (sub.answers && sub.answers[qKey] !== undefined) ? sub.answers[qKey] : null;
+                    if (userAnswer !== null) {
+                        questionAnalysis[qKey].totalAttempts++;
+                        const choice = userAnswer === '' ? 'Bỏ trống' : String(userAnswer);
+                        questionAnalysis[qKey].choices[choice] = (questionAnalysis[qKey].choices[choice] || 0) + 1;
+                        if ((sub.detailedResults && sub.detailedResults[qKey]?.scoreEarned > 0) || (!sub.detailedResults && String(userAnswer) === String(correctKeys[i]))) {
+                            questionAnalysis[qKey].correctAttempts++;
+                        }
                     }
                 }
             }
+            
+            const count = filteredSubmissions.length;
+            const average = count > 0 ? totalScore / count : 0;
+            filteredSubmissions.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+            console.log(`Thống kê thành công cho ${examCode}. Trả về ${count} bản ghi.`);
+
+            // Tạo object kết quả cuối cùng
+            const finalResult = {
+                summary: { count, average, highest: highestScore, lowest: lowestScore },
+                scoreDistribution, 
+                performanceTiers, 
+                detailedSubmissions: filteredSubmissions,
+                questionAnalysis, 
+                filters: req.body.data
+            };
+
+            // 4. Trả về kết quả
+            res.status(200).json({ data: finalResult });
+
+        } catch (error) {
+            console.error("Lỗi nghiêm trọng trong getExamStatistics:", error);
+            res.status(500).json({ error: { message: 'Đã có lỗi xảy ra trên máy chủ khi xử lý thống kê.' } });
         }
-        
-        const count = filteredSubmissions.length;
-        const average = count > 0 ? totalScore / count : 0;
-        filteredSubmissions.sort((a, b) => (b.score || 0) - (a.score || 0));
-
-        console.log(`Thống kê thành công cho ${examCode}. Trả về ${count} bản ghi.`);
-
-        return {
-            summary: { count, average, highest: highestScore, lowest: lowestScore },
-            scoreDistribution, performanceTiers, detailedSubmissions: filteredSubmissions,
-            questionAnalysis, filters: data
-        };
-    } catch (error) {
-        console.error("Lỗi nghiêm trọng trong getExamStatistics:", error);
-        throw new functions.https.HttpsError('internal', 'Đã có lỗi xảy ra trên máy chủ khi xử lý thống kê.', error.message);
-    }
+    });
 });
 
-// File: functions/index.js
-// THÊM các hàm này vào cuối file
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.addPdfExam = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) throw new Error('Missing Auth Token');
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid;
 
-// [MỚI] Thêm đề thi PDF
-exports.addPdfExam = functions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần xác thực.");
-    const { examData } = data;
-    if (!examData) throw new functions.https.HttpsError("invalid-argument", "Thiếu dữ liệu.");
-    
-    const examCode = String(examData.examCode || "").trim();
-    if (!examCode.toUpperCase().startsWith('PDF-')) {
-        throw new functions.https.HttpsError("invalid-argument", "Mã đề PDF phải bắt đầu bằng 'PDF-'.");
-    }
+            const { examData } = req.body.data;
+            if (!examData) throw new Error("Thiếu dữ liệu.");
+            
+            const examCode = String(examData.examCode || "").trim();
+            if (!examCode.toUpperCase().startsWith('PDF-')) {
+                throw new Error("Mã đề PDF phải bắt đầu bằng 'PDF-'.");
+            }
 
-    const newPdfExam = {
-        teacherId: context.auth.uid,
-        examType: 'PDF',
-        examCode: examCode,
-        timeLimit: parseInt(examData.timeLimit, 10) || 90,
-        keys: String(examData.keys || "").split("|").map(k => k.trim()),
-        cores: String(examData.cores || "").split("|").map(c => c.trim()),
-        examPdfUrl: String(examData.examPdfUrl || "").trim(),
-        solutionPdfUrl: String(examData.solutionPdfUrl || "").trim(),
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    };
-    
-    await db.collection("exams").add(newPdfExam);
-    return { success: true, message: "Đã thêm đề thi PDF thành công!" };
+            const newPdfExam = {
+                teacherId: uid,
+                examType: 'PDF',
+                examCode: examCode,
+                timeLimit: parseInt(examData.timeLimit, 10) || 90,
+                keys: String(examData.keys || "").split("|").map(k => k.trim()),
+                cores: String(examData.cores || "").split("|").map(c => c.trim()),
+                examPdfUrl: String(examData.examPdfUrl || "").trim(),
+                solutionPdfUrl: String(examData.solutionPdfUrl || "").trim(),
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            };
+            
+            await db.collection("exams").add(newPdfExam);
+            res.status(200).json({ data: { success: true, message: "Đã thêm đề thi PDF thành công!" } });
+        } catch (error) {
+            console.error("Lỗi trong addPdfExam:", error);
+            res.status(400).json({ error: { message: error.message } });
+        }
+    });
 });
 
-// [MỚI] Lấy danh sách đề PDF
-exports.getPdfExams = functions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần xác thực.");
-    const { uid } = context.auth.token;
-    
-    const snapshot = await db.collection("exams")
-                             .where("teacherId", "==", uid)
-                             .where("examType", "==", "PDF")
-                             .orderBy("createdAt", "desc")
-                             .get();
-                             
-    const exams = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    return exams;
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.getPdfExams = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) throw new Error('Missing Auth Token');
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid;
+            
+            const snapshot = await db.collection("exams")
+                                     .where("teacherId", "==", uid)
+                                     .where("examType", "==", "PDF")
+                                     .orderBy("createdAt", "desc")
+                                     .get();
+                                     
+            const exams = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            res.status(200).json({ data: exams });
+        } catch (error) {
+            console.error("Lỗi trong getPdfExams:", error);
+            res.status(401).json({ error: { message: error.message } });
+        }
+    });
 });
 
-// [MỚI] Lấy chi tiết 1 đề PDF
-exports.getSinglePdfExam = functions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần xác thực.");
-    const { examId } = data;
-    if (!examId) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID đề thi.");
-    const doc = await db.collection("exams").doc(examId).get();
-    if (!doc.exists || doc.data().teacherId !== context.auth.uid) {
-        throw new functions.https.HttpsError("permission-denied", "Không có quyền xem đề thi này.");
-    }
-    return { id: doc.id, ...doc.data() };
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.getSinglePdfExam = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) throw new Error('Missing Auth Token');
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid;
+
+            const { examId } = req.body.data;
+            if (!examId) throw new Error("Thiếu ID đề thi.");
+
+            const doc = await db.collection("exams").doc(examId).get();
+            if (!doc.exists || doc.data().teacherId !== uid) {
+                throw new Error("Không có quyền xem đề thi này.");
+            }
+            res.status(200).json({ data: { id: doc.id, ...doc.data() } });
+        } catch (error) {
+            console.error("Lỗi trong getSinglePdfExam:", error);
+            res.status(401).json({ error: { message: error.message } });
+        }
+    });
 });
 
-// [HOÀN CHỈNH] Cập nhật một đề thi PDF đã có
-exports.updatePdfExam = functions.https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần xác thực.");
-    }
-    const { examId, examData } = data;
-    if (!examId || !examData) {
-        throw new functions.https.HttpsError("invalid-argument", "Thiếu ID hoặc dữ liệu đề thi.");
-    }
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.updatePdfExam = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) throw new Error('Missing Auth Token');
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid;
 
-    const examRef = db.collection("exams").doc(examId);
-    const doc = await examRef.get();
-    if (!doc.exists || doc.data().teacherId !== context.auth.uid) {
-        throw new functions.https.HttpsError("permission-denied", "Bạn không có quyền sửa đề thi này.");
-    }
+            const { examId, examData } = req.body.data;
+            if (!examId || !examData) throw new Error("Thiếu ID hoặc dữ liệu đề thi.");
 
-    const examCode = String(examData.examCode || "").trim();
-    if (!examCode.toUpperCase().startsWith('PDF-')) {
-        throw new functions.https.HttpsError("invalid-argument", "Mã đề PDF phải bắt đầu bằng 'PDF-'.");
-    }
+            const examRef = db.collection("exams").doc(examId);
+            const doc = await examRef.get();
+            if (!doc.exists || doc.data().teacherId !== uid) {
+                throw new Error("Bạn không có quyền sửa đề thi này.");
+            }
 
-    const updatedPdfExam = {
-        examCode: examCode,
-        timeLimit: parseInt(examData.timeLimit, 10) || 90,
-        keys: String(examData.keys || "").split("|").map(k => k.trim()),
-        cores: String(examData.cores || "").split("|").map(c => c.trim()),
-        examPdfUrl: String(examData.examPdfUrl || "").trim(),
-        solutionPdfUrl: String(examData.solutionPdfUrl || "").trim(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    };
+            const examCode = String(examData.examCode || "").trim();
+            if (!examCode.toUpperCase().startsWith('PDF-')) {
+                throw new Error("Mã đề PDF phải bắt đầu bằng 'PDF-'.");
+            }
 
-    await examRef.update(updatedPdfExam);
-    return { success: true, message: "Đã cập nhật đề thi PDF thành công!" };
+            const updatedPdfExam = {
+                examCode: examCode,
+                timeLimit: parseInt(examData.timeLimit, 10) || 90,
+                keys: String(examData.keys || "").split("|").map(k => k.trim()),
+                cores: String(examData.cores || "").split("|").map(c => c.trim()),
+                examPdfUrl: String(examData.examPdfUrl || "").trim(),
+                solutionPdfUrl: String(examData.solutionPdfUrl || "").trim(),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            };
+
+            await examRef.update(updatedPdfExam);
+            res.status(200).json({ data: { success: true, message: "Đã cập nhật đề thi PDF thành công!" } });
+        } catch (error) {
+            console.error("Lỗi trong updatePdfExam:", error);
+            res.status(400).json({ error: { message: error.message } });
+        }
+    });
 });
 
-// [HOÀN CHỈNH] Xóa một đề thi PDF
-exports.deletePdfExam = functions.https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
-    }
-    const { examId } = data;
-    if (!examId) {
-        throw new functions.https.HttpsError("invalid-argument", "Thiếu ID đề thi.");
-    }
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.deletePdfExam = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) throw new Error('Missing Auth Token');
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid;
 
-    const examRef = db.collection("exams").doc(examId);
-    const doc = await examRef.get();
-    
-    // Kiểm tra quyền sở hữu và đúng loại đề thi
-    if (!doc.exists || doc.data().teacherId !== context.auth.uid || doc.data().examType !== 'PDF') {
-        throw new functions.https.HttpsError("permission-denied", "Không có quyền xóa hoặc đây không phải đề PDF.");
-    }
+            const { examId } = req.body.data;
+            if (!examId) throw new Error("Thiếu ID đề thi.");
+            
+            const examRef = db.collection("exams").doc(examId);
+            const doc = await examRef.get();
+            
+            if (!doc.exists || doc.data().teacherId !== uid || doc.data().examType !== 'PDF') {
+                throw new Error("Không có quyền xóa hoặc đây không phải đề PDF.");
+            }
 
-    await examRef.delete();
-    return { success: true, message: "Đã xóa đề thi PDF." };
+            await examRef.delete();
+            res.status(200).json({ data: { success: true, message: "Đã xóa đề thi PDF." } });
+        } catch (error) {
+            console.error("Lỗi trong deletePdfExam:", error);
+            res.status(401).json({ error: { message: error.message } });
+        }
+    });
 });
-
-// thêm chức năng tận dụng 5G
-// =====================================================================
-// ==     CÁC HÀM MỚI - DÀNH RIÊNG CHO LUỒNG LƯU TRỮ TRÊN STORAGE    ==
-// =====================================================================
-
 // Đảm bảo bạn có các dòng này ở đầu file
 const { getStorage } = require("firebase-admin/storage");
 const storage = getStorage();
 
-/**
- * [MỚI] Thêm đề thi TEXT và lưu nội dung vào Firebase Storage.
- */
-exports.addExamWithStorage = functions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần xác thực.");
-    const { uid } = context.auth.token;
-    const { examData } = data;
-    if (!examData || !examData.examCode || !examData.keys || !examData.content) {
-        throw new functions.https.HttpsError("invalid-argument", "Thiếu dữ liệu (Mã đề, Đáp án, Nội dung).");
-    }
-
-    // 1. Upload nội dung lên Storage
-    const fileName = `exam_content/${uid}/${examData.examCode.trim()}_${Date.now()}.txt`;
-    const file = storage.bucket().file(fileName);
-    await file.save(examData.content, { contentType: 'text/plain; charset=utf-8' });
-
-    // 2. Chuẩn bị dữ liệu để lưu vào Firestore
-    const newExam = {
-        teacherId: uid,
-        examType: 'TEXT',
-        examCode: String(examData.examCode).trim(),
-        timeLimit: parseInt(examData.timeLimit, 10) || 90,
-        keys: String(examData.keys).split("|").map(k => k.trim()),
-        cores: String(examData.cores || "").split("|").map(c => parseFloat(c.trim()) || 0.2),
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        // Lưu đường dẫn file thay vì nội dung
-        contentStoragePath: fileName, 
-        // Đánh dấu đây là đề thi thế hệ mới
-        storageVersion: 2 
-    };
-
-    // 3. Lưu document vào Firestore
-    await db.collection("exams").add(newExam);
-    return { success: true, message: "Đã thêm đề thi và lưu nội dung lên Storage thành công!" };
-});
-
-/**
- * [MỚI] Cập nhật đề thi TEXT có nội dung trên Firebase Storage.
- */
-exports.updateExamWithStorage = functions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần xác thực.");
-    const { examId, examData } = data;
-    if (!examId || !examData) throw new functions.https.HttpsError("invalid-argument", "Thiếu ID hoặc dữ liệu.");
-
-    const examRef = db.collection("exams").doc(examId);
-    const doc = await examRef.get();
-    if (!doc.exists || doc.data().teacherId !== context.auth.uid) {
-        throw new functions.https.HttpsError("permission-denied", "Không có quyền sửa đề thi này.");
-    }
-    const oldExamData = doc.data();
-
-    // 1. Xóa file content cũ trên Storage nếu có
-    if (oldExamData.contentStoragePath) {
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.addExamWithStorage = onRequest(async (req, res) => {
+    cors(req, res, async () => {
         try {
-            await storage.bucket().file(oldExamData.contentStoragePath).delete();
-        } catch (e) {
-            console.warn(`Không thể xóa file cũ: ${oldExamData.contentStoragePath}`, e.message);
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) throw new Error('Missing Auth Token');
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid;
+
+            const { examData } = req.body.data;
+            if (!examData || !examData.examCode || !examData.keys || !examData.content) {
+                throw new Error("Thiếu dữ liệu (Mã đề, Đáp án, Nội dung).");
+            }
+
+            const fileName = `exam_content/${uid}/${examData.examCode.trim()}_${Date.now()}.txt`;
+            const file = storage.bucket().file(fileName);
+            await file.save(examData.content, { contentType: 'text/plain; charset=utf-8' });
+
+            const newExam = {
+                teacherId: uid,
+                examType: 'TEXT',
+                examCode: String(examData.examCode).trim(),
+                timeLimit: parseInt(examData.timeLimit, 10) || 90,
+                keys: String(examData.keys).split("|").map(k => k.trim()),
+                cores: String(examData.cores || "").split("|").map(c => parseFloat(c.trim()) || 0.2),
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                contentStoragePath: fileName,
+                storageVersion: 2
+            };
+
+            await db.collection("exams").add(newExam);
+            res.status(200).json({ data: { success: true, message: "Đã thêm đề thi và lưu nội dung lên Storage thành công!" } });
+        } catch (error) {
+            console.error("Lỗi trong addExamWithStorage:", error);
+            res.status(400).json({ error: { message: error.message } });
         }
-    }
-    
-    // 2. Upload file mới
-    const fileName = `exam_content/${context.auth.uid}/${examData.examCode.trim()}_${Date.now()}.txt`;
-    const file = storage.bucket().file(fileName);
-    await file.save(examData.content, { contentType: 'text/plain; charset=utf-8' });
-
-    // 3. Chuẩn bị dữ liệu cập nhật
-    const updatedExam = {
-        examCode: String(examData.examCode).trim(),
-        timeLimit: parseInt(examData.timeLimit, 10) || 90,
-        keys: String(examData.keys).split("|").map(k => k.trim()),
-        cores: String(examData.cores || "").split("|").map(c => parseFloat(c.trim()) || 0.2),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        contentStoragePath: fileName,
-        storageVersion: 2,
-        content: admin.firestore.FieldValue.delete(), // Xóa trường content cũ nếu còn tồn tại
-    };
-
-    // 4. Cập nhật Firestore
-    await examRef.update(updatedExam);
-    return { success: true, message: "Đã cập nhật đề thi trên kho của bạn!" };
+    });
 });
-// File: functions/index.js
-// THAY THẾ HOÀN TOÀN HÀM getContentUrl CŨ BẰNG PHIÊN BẢN NÀY
 
-exports.getContentUrl = functions.runWith({ memory: '256MB' }).https.onCall(async (data, context) => {
-    // Ghi log ngay khi hàm được gọi, trước cả khi check auth
-    console.log("--- getContentUrl CALLED v3 ---");
-    console.log("Data received from client:", JSON.stringify(data));
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.updateExamWithStorage = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) throw new Error('Missing Auth Token');
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid;
 
-    if (!context.auth) {
-        console.error("Authentication check failed. No context.auth.");
-        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần xác thực.");
-    }
-    const uid = context.auth.uid;
-    const { examId } = data;
+            const { examId, examData } = req.body.data;
+            if (!examId || !examData) throw new Error("Thiếu ID hoặc dữ liệu.");
 
-    console.log(`User [${uid}] is requesting URL for examId [${examId}]`);
+            const examRef = db.collection("exams").doc(examId);
+            const doc = await examRef.get();
+            if (!doc.exists || doc.data().teacherId !== uid) {
+                throw new Error("Không có quyền sửa đề thi này.");
+            }
+            const oldExamData = doc.data();
 
-    if (!examId) {
-        console.error("Validation failed: examId is missing.");
-        throw new functions.https.HttpsError("invalid-argument", "Thiếu ID đề thi.");
-    }
+            if (oldExamData.contentStoragePath) {
+                try {
+                    await storage.bucket().file(oldExamData.contentStoragePath).delete();
+                } catch (e) {
+                    console.warn(`Không thể xóa file cũ: ${oldExamData.contentStoragePath}`, e.message);
+                }
+            }
 
-    try {
-        console.log(`Step 1: Accessing Firestore for exam doc: exams/${examId}`);
-        const doc = await db.collection("exams").doc(examId).get();
+            const fileName = `exam_content/${uid}/${examData.examCode.trim()}_${Date.now()}.txt`;
+            const file = storage.bucket().file(fileName);
+            await file.save(examData.content, { contentType: 'text/plain; charset=utf-8' });
 
-        if (!doc.exists) {
-            console.error(`Step 2 Error: Exam doc not found at exams/${examId}`);
-            throw new functions.https.HttpsError("not-found", "Không tìm thấy đề thi.");
+            const updatedExam = {
+                examCode: String(examData.examCode).trim(),
+                timeLimit: parseInt(examData.timeLimit, 10) || 90,
+                keys: String(examData.keys).split("|").map(k => k.trim()),
+                cores: String(examData.cores || "").split("|").map(c => parseFloat(c.trim()) || 0.2),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                contentStoragePath: fileName,
+                storageVersion: 2,
+                content: admin.firestore.FieldValue.delete(),
+            };
+
+            await examRef.update(updatedExam);
+            res.status(200).json({ data: { success: true, message: "Đã cập nhật đề thi trên kho của bạn!" } });
+        } catch (error) {
+            console.error("Lỗi trong updateExamWithStorage:", error);
+            res.status(400).json({ error: { message: error.message } });
         }
-        const examData = doc.data();
-        console.log("Step 2 Success: Found exam doc. TeacherId is", examData.teacherId);
-
-        if (examData.teacherId !== uid) {
-            console.error(`Step 3 Error: Permission denied. Doc owner is ${examData.teacherId}, requester is ${uid}`);
-            throw new functions.https.HttpsError("permission-denied", "Bạn không có quyền truy cập nội dung này.");
-        }
-        console.log("Step 3 Success: User is the owner.");
-
-        const path = examData.contentStoragePath;
-        if (!path) {
-            console.error("Step 4 Error: contentStoragePath is missing in the doc.");
-            throw new functions.https.HttpsError("not-found", "Đề thi này không có nội dung trên Storage.");
-        }
-        console.log(`Step 4 Success: Found storage path: ${path}`);
-        
-        const file = storage.bucket().file(path);
-        console.log("Step 5: Calling file.getSignedUrl(). THIS IS THE CRITICAL STEP.");
-
-        const [downloadURL] = await file.getSignedUrl({
-            action: 'read',
-            expires: Date.now() + 15 * 60 * 1000,
-        });
-
-        console.log("Step 6 Success: Signed URL generated. Returning to client.");
-        return { contentUrl: downloadURL };
-
-    } catch (error) {
-        // GHI LẠI TOÀN BỘ LỖI GỐC
-        console.error("!!! CRITICAL ERROR CAUGHT IN getContentUrl !!!");
-        console.error("Error Code:", error.code);
-        console.error("Error Message:", error.message);
-        console.error("Full Error Object:", JSON.stringify(error, null, 2));
-        
-        throw new functions.https.HttpsError("internal", "Lỗi máy chủ khi lấy URL nội dung. Check a new log.");
-    }
+    });
 });
-exports.checkTeacherAccess = functions.https.onRequest((req, res) => {
-    // Bọc toàn bộ logic của bạn bằng cors handler
+
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.getContentUrl = onRequest({ memory: '256MB' }, async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) throw new Error('Missing Auth Token');
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid;
+
+            const { examId } = req.body.data;
+            if (!examId) throw new Error("Thiếu ID đề thi.");
+
+            const doc = await db.collection("exams").doc(examId).get();
+            if (!doc.exists) throw new Error("Không tìm thấy đề thi.");
+
+            const examData = doc.data();
+            if (examData.teacherId !== uid) throw new Error("Bạn không có quyền truy cập nội dung này.");
+
+            const path = examData.contentStoragePath;
+            if (!path) throw new Error("Đề thi này không có nội dung trên Storage.");
+            
+            const file = storage.bucket().file(path);
+            const [downloadURL] = await file.getSignedUrl({
+                action: 'read',
+                expires: Date.now() + 15 * 60 * 1000,
+            });
+
+            res.status(200).json({ data: { contentUrl: downloadURL } });
+
+        } catch (error) {
+            console.error("Lỗi trong getContentUrl:", error);
+            res.status(401).json({ error: { message: error.message || "Lỗi máy chủ khi lấy URL nội dung." } });
+        }
+    });
+});
+
+exports.checkTeacherAccess = onRequest((req, res) => {
     cors(req, res, async () => {
         // Kiểm tra xem người dùng đã đăng nhập chưa bằng cách xác minh ID token từ header
         if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
@@ -1106,239 +1227,389 @@ exports.checkTeacherAccess = functions.https.onRequest((req, res) => {
 
 
 
+// Thay thế hàm cũ bằng hàm onRequest này
+// Thay thế toàn bộ hàm cũ exports.adminGetUsers bằng hàm này
+exports.adminGetUsers = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            // 1. Xác thực token và quyền Admin (Giữ nguyên)
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) throw new Error('Missing Auth Token');
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const ADMIN_EMAIL = 'nguyensangnhc@gmail.com'; 
+            if (decodedToken.email !== ADMIN_EMAIL) {
+                throw new Error("Bạn không có quyền truy cập chức năng này.");
+            }
 
+            // 3. Logic chính (SỬA Ở ĐÂY)
+            // Sắp xếp theo trường 'createdAt' theo thứ tự giảm dần (mới nhất lên đầu)
+            const usersSnapshot = await db.collection("users").orderBy("createdAt", "desc").get();
+            
+            const users = [];
+            usersSnapshot.forEach(doc => {
+                const userData = doc.data();
+                // Chuyển đổi timestamp thành chuỗi ISO để gửi về client một cách nhất quán
+                const trialEndDate = userData.trialEndDate ? userData.trialEndDate.toDate().toISOString() : null;
+                const createdAt = userData.createdAt ? userData.createdAt.toDate().toISOString() : null;
+                
+                users.push({
+                    id: doc.id,
+                    email: userData.email,
+                    name: userData.name,
+                    teacherAlias: userData.teacherAlias,
+                    trialEndDate: trialEndDate,
+                    createdAt: createdAt, // Đảm bảo trường này có trong dữ liệu trả về
+                    role: userData.role
+                });
+            });
+            
+            // 4. Trả về kết quả
+            res.status(200).json({ data: users });
 
-
-// File: functions/index.js
-
-// ... (các hàm cũ của bạn như onTeacherSignIn, addPdfExam, submitExam...) ...
-
-// ==============================================================
-// == [MỚI] HÀM CHO ADMIN DASHBOARD                         ==
-// ==============================================================
-
-/**
- * [ADMIN FUNCTION] Lấy danh sách người dùng (giáo viên).
- * Chỉ cho phép truy cập bởi một tài khoản admin cụ thể.
- */
-exports.adminGetUsers = functions.https.onCall(async (data, context) => {
-    // === BẢO MẬT: CHỈ CHO PHÉP ADMIN CỤ THỂ TRUY CẬP ===
-    // Thay 'YOUR_ADMIN_EMAIL@gmail.com' bằng email tài khoản Google của bạn (admin)
-    const ADMIN_EMAIL = 'nguyensangnhc@gmail.com'; 
-    if (!context.auth || context.auth.token.email !== ADMIN_EMAIL) {
-        throw new functions.https.HttpsError("permission-denied", "Bạn không có quyền truy cập chức năng này.");
-    }
-
-    const usersSnapshot = await db.collection("users").orderBy("email").get();
-    const users = [];
-    usersSnapshot.forEach(doc => {
-        const userData = doc.data();
-        // Chuyển đổi Timestamp sang định dạng dễ đọc cho client
-        const trialEndDate = userData.trialEndDate ? userData.trialEndDate.toDate().toISOString() : null;
-        users.push({
-            id: doc.id, // UID của người dùng
-            email: userData.email,
-            name: userData.name,
-            teacherAlias: userData.teacherAlias,
-            trialEndDate: trialEndDate, // Dạng chuỗi ISO
-            createdAt: userData.createdAt ? userData.createdAt.toDate().toISOString() : null,
-            role: userData.role
-        });
-    });
-    return users;
-});
-
-/**
- * [ADMIN FUNCTION] Cập nhật ngày hết hạn dùng thử cho một người dùng.
- * Chỉ cho phép truy cập bởi một tài khoản admin cụ thể.
- */
-exports.adminUpdateUserTrialDate = functions.https.onCall(async (data, context) => {
-    // === BẢO MẬT: CHỈ CHO PHÉP ADMIN CỤ THỂ TRUY CẬP ===
-    const ADMIN_EMAIL = 'nguyensangnhc@gmail.com'; // Thay bằng email của bạn
-    if (!context.auth || context.auth.token.email !== ADMIN_EMAIL) {
-        throw new functions.https.HttpsError("permission-denied", "Bạn không có quyền thực hiện chức năng này.");
-    }
-
-    const { userId, newTrialEndDateISO } = data; // newTrialEndDateISO là chuỗi ISO date
-    if (!userId || !newTrialEndDateISO) {
-        throw new functions.https.HttpsError("invalid-argument", "Thiếu User ID hoặc Ngày hết hạn mới.");
-    }
-
-    try {
-        const newDate = new Date(newTrialEndDateISO);
-        if (isNaN(newDate.getTime())) { // Kiểm tra ngày có hợp lệ không
-            throw new functions.https.HttpsError("invalid-argument", "Ngày hết hạn không hợp lệ.");
+        } catch (error) {
+            console.error("Lỗi trong adminGetUsers:", error);
+            // Thêm kiểm tra nếu lỗi do không có trường 'createdAt'
+            if (error.code === 'failed-precondition') {
+                 res.status(400).json({ error: { message: "Lỗi Firestore: Cần tạo index cho trường 'createdAt'. Vui lòng kiểm tra link lỗi trong logs của Firebase Functions để tạo index." } });
+            } else {
+                 res.status(403).json({ error: { message: error.message || "Không có quyền truy cập." } });
+            }
         }
-        const newTimestamp = admin.firestore.Timestamp.fromDate(newDate);
-
-        await db.collection("users").doc(userId).update({
-            trialEndDate: newTimestamp,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp() // Cập nhật thời gian sửa đổi
-        });
-        return { success: true, message: "Đã cập nhật ngày hết hạn thành công!" };
-    } catch (error) {
-        console.error("Lỗi cập nhật ngày hết hạn:", error);
-        throw new functions.https.HttpsError("internal", `Không thể cập nhật ngày hết hạn: ${error.message}`);
-    }
-});
-
-// ===================================================================
-// ==   PROXY FUNCTION ĐỂ GỌI ĐÚNG ENDPOINT XỬ LÝ TIKZ             ==
-// ===================================================================
-
-exports.processTikzProxy = functions.runWith({ timeoutSeconds: 300, memory: '1GB' }).https.onCall(async (data, context) => {
-    // Tạm thời bỏ qua xác thực để dễ debug
-    /*
-    if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
-    }
-    */
-
-    const { fileContent } = data;
-    if (!fileContent) {
-        throw new functions.https.HttpsError("invalid-argument", "Thiếu nội dung file TikZ (fileContent).");
-    }
-
-    const CLOUD_RUN_URL = functions.config().converter.url;
-    if (!CLOUD_RUN_URL) {
-        console.error("Lỗi cấu hình: Biến môi trường 'converter.url' chưa được thiết lập.");
-        throw new functions.https.HttpsError("internal", "URL dịch vụ chuyển đổi chưa được cấu hình phía server.");
-    }
-    
-    // SỬA LẠI ĐÚNG ENDPOINT Ở ĐÂY
-    const endpoint = `${CLOUD_RUN_URL}/process-tex-file`; 
-    console.log(`Proxying TikZ request to: ${endpoint}`);
-
-    try {
-        const form = new FormData();
-        form.append('file', Buffer.from(fileContent), {
-            filename: 'temp_tikz_batch.tex',
-            contentType: 'text/plain',
-        });
-        
-        const response = await axios.post(endpoint, form, {
-            headers: form.getHeaders(),
-            timeout: 290000 
-        });
-
-        return response.data;
-
-    } catch (error) {
-        console.error("Lỗi khi gọi dịch vụ TikZ Proxy:", error.response ? JSON.stringify(error.response.data) : error.message);
-        const errorMessage = error.response?.data?.error || 'Lỗi không xác định khi giao tiếp với dịch vụ xử lý TikZ.';
-        throw new functions.https.HttpsError("internal", errorMessage);
-    }
-});
-
-// File: functions/index.js
-
-// ... (các hàm cũ và hàm processTikzProxy cho Cloud Run) ...
-
-// ===================================================================
-// ==   [MỚI] PROXY FUNCTION ĐỂ GỌI DỊCH VỤ TIKZ (FLY.IO)          ==
-// ===================================================================
-
-/**
- * [Proxy an toàn] Gọi đến dịch vụ xử lý TikZ trên Fly.io.
- */
-exports.processTikzFlyioProxy = functions.runWith({ timeoutSeconds: 300, memory: '1GB' }).https.onCall(async (data, context) => {
-    // Tạm thời bỏ qua xác thực để dễ debug.
-    /*
-    if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần xác thực.");
-    }
-    */
-
-    const { fileContent } = data;
-    if (!fileContent) {
-        throw new functions.https.HttpsError("invalid-argument", "Thiếu nội dung file TikZ (fileContent).");
-    }
-
-    // Lấy URL của dịch vụ Fly.io từ biến môi trường đã cấu hình
-    const FLYIO_URL = functions.config().flyio.url;
-    if (!FLYIO_URL) {
-        console.error("Lỗi cấu hình: Biến môi trường 'flyio.url' chưa được thiết lập.");
-        throw new functions.https.HttpsError("internal", "URL dịch vụ Fly.io chưa được cấu hình phía server.");
-    }
-    
-    // Endpoint cụ thể trên dịch vụ Fly.io của bạn
-    const endpoint = `${FLYIO_URL}/process-tex-file`; 
-    console.log(`Proxying TikZ request to Fly.io: ${endpoint}`);
-
-    try {
-        const form = new FormData();
-        form.append('file', Buffer.from(fileContent), {
-            filename: 'temp_tikz_batch_flyio.tex',
-            contentType: 'text/plain',
-        });
-        
-        const response = await axios.post(endpoint, form, {
-            headers: form.getHeaders(),
-            timeout: 290000
-        });
-
-        return response.data;
-
-    } catch (error) {
-        console.error("Lỗi khi gọi dịch vụ TikZ trên Fly.io:", error.response ? JSON.stringify(error.response.data) : error.message);
-        const errorMessage = error.response?.data?.error || 'Lỗi không xác định khi giao tiếp với dịch vụ xử lý TikZ trên Fly.io.';
-        throw new functions.https.HttpsError("internal", errorMessage);
-    }
-});
-
-
-// ===================================================================
-// ==   CÁC HÀM SAO LƯU & PHỤC HỒI NGÂN HÀNG CÂU HỎI (TỐI GIẢN)    ==
-// ===================================================================
-
-exports.getBankBackupUrl = functions.https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần xác thực.");
-    }
-    const { uid } = context.auth.token;
-    const metaRef = db.collection("userBankMetadata").doc(uid);
-    const metaDoc = await metaRef.get();
-
-    if (!metaDoc.exists || !metaDoc.data().backupFilePath) {
-        throw new functions.https.HttpsError("not-found", "Không tìm thấy bản sao lưu nào trên Cloud.");
-    }
-
-    const backupPath = metaDoc.data().backupFilePath;
-    const file = storage.bucket().file(backupPath);
-    
-    const [url] = await file.getSignedUrl({
-        action: 'read',
-        expires: Date.now() + 5 * 60 * 1000, // URL có hiệu lực 5 phút
     });
-
-    return { 
-        downloadUrl: url,
-        lastModified: metaDoc.data().lastModified 
-    };
 });
 
-/**
- * [Cho soanthao.html] Hoàn tất quá trình sao lưu.
- * Client sẽ upload file lên Storage trước, sau đó gọi hàm này để ghi lại timestamp.
- */
-exports.finalizeBankBackup = functions.https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "Yêu cầu cần được xác thực.");
-    }
-    const { uid } = context.auth.token;
-    const { filePath } = data;
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.adminUpdateUserTrialDate = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            // 1. Xác thực token
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) throw new Error('Missing Auth Token');
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
 
-    // Kiểm tra quyền sở hữu file
-    if (!filePath || !filePath.startsWith(`question_bank_backups/${uid}/`)) {
-         throw new functions.https.HttpsError("permission-denied", "Đường dẫn file sao lưu không hợp lệ.");
-    }
+            // 2. Kiểm tra quyền Admin
+            const ADMIN_EMAIL = 'nguyensangnhc@gmail.com';
+            if (decodedToken.email !== ADMIN_EMAIL) {
+                throw new Error("Bạn không có quyền thực hiện chức năng này.");
+            }
 
-    const metaRef = db.collection("userBankMetadata").doc(uid);
-    await metaRef.set({
-        teacherId: uid, // Giữ lại để tiện truy vấn nếu cần
-        backupFilePath: filePath,
-        lastModified: admin.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+            // 3. Lấy dữ liệu từ body
+            const { userId, newTrialEndDateISO } = req.body.data;
+            if (!userId || !newTrialEndDateISO) {
+                throw new Error("Thiếu User ID hoặc Ngày hết hạn mới.");
+            }
 
-    return { success: true, message: "Đã cập nhật thông tin sao lưu." };
+            // 4. Logic chính
+            const newDate = new Date(newTrialEndDateISO);
+            if (isNaN(newDate.getTime())) {
+                throw new Error("Ngày hết hạn không hợp lệ.");
+            }
+            const newTimestamp = admin.firestore.Timestamp.fromDate(newDate);
+
+            await db.collection("users").doc(userId).update({
+                trialEndDate: newTimestamp,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+            
+            // 5. Trả về kết quả
+            res.status(200).json({ data: { success: true, message: "Đã cập nhật ngày hết hạn thành công!" } });
+
+        } catch (error) {
+            console.error("Lỗi cập nhật ngày hết hạn:", error);
+            res.status(400).json({ error: { message: error.message || `Không thể cập nhật ngày hết hạn.` } });
+        }
+    });
+});
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.processTikzProxy = onRequest({ timeoutSeconds: 300, memory: '1GB' }, async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            // Lấy dữ liệu từ body
+            const { fileContent } = req.body.data;
+            if (!fileContent) {
+                throw new Error("Thiếu nội dung file TikZ (fileContent).");
+            }
+
+            // Lấy biến môi trường (bạn đã định nghĩa ở đầu file)
+            const converterUrlValue = CLOUD_RUN_URL.value();
+            if (!converterUrlValue) {
+                throw new Error("URL dịch vụ chuyển đổi chưa được cấu hình phía server.");
+            }
+            
+            const endpoint = `${converterUrlValue}/process-tex-file`;
+            console.log(`Proxying TikZ request to: ${endpoint}`);
+
+            // Logic chính
+            const FormData = require('form-data'); // Cần require lại ở đây
+            const form = new FormData();
+            form.append('file', Buffer.from(fileContent), {
+                filename: 'temp_tikz_batch.tex',
+                contentType: 'text/plain',
+            });
+            
+            const response = await axios.post(endpoint, form, {
+                headers: form.getHeaders(),
+                timeout: 290000 
+            });
+
+            // Trả về kết quả
+            res.status(200).json({ data: response.data });
+
+        } catch (error) {
+            console.error("Lỗi khi gọi dịch vụ TikZ Proxy:", error.response ? JSON.stringify(error.response.data) : error.message);
+            const errorMessage = error.response?.data?.error || 'Lỗi không xác định khi giao tiếp với dịch vụ xử lý TikZ.';
+            res.status(500).json({ error: { message: errorMessage } });
+        }
+    });
+});
+
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.processTikzFlyioProxy = onRequest({ timeoutSeconds: 300, memory: '1GB' }, async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            // Lấy dữ liệu từ body
+            const { fileContent } = req.body.data;
+            if (!fileContent) {
+                throw new Error("Thiếu nội dung file TikZ (fileContent).");
+            }
+            
+            // Lấy biến môi trường (bạn đã định nghĩa ở đầu file)
+            const flyioUrlValue = FLYIO_URL.value();
+            if (!flyioUrlValue) {
+                throw new Error("URL dịch vụ Fly.io chưa được cấu hình phía server.");
+            }
+            
+            const endpoint = `${flyioUrlValue}/process-tex-file`;
+            console.log(`Proxying TikZ request to Fly.io: ${endpoint}`);
+
+            // Logic chính
+            const FormData = require('form-data');
+            const form = new FormData();
+            form.append('file', Buffer.from(fileContent), {
+                filename: 'temp_tikz_batch_flyio.tex',
+                contentType: 'text/plain',
+            });
+            
+            const response = await axios.post(endpoint, form, {
+                headers: form.getHeaders(),
+                timeout: 290000
+            });
+
+            // Trả về kết quả
+            res.status(200).json({ data: response.data });
+
+        } catch (error) {
+            console.error("Lỗi khi gọi dịch vụ TikZ trên Fly.io:", error.response ? JSON.stringify(error.response.data) : error.message);
+            const errorMessage = error.response?.data?.error || 'Lỗi không xác định khi giao tiếp với dịch vụ xử lý TikZ trên Fly.io.';
+            res.status(500).json({ error: { message: errorMessage } });
+        }
+    });
+});
+
+
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.getBankBackupUrl = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) throw new Error('Missing Auth Token');
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid;
+            
+            const metaRef = db.collection("userBankMetadata").doc(uid);
+            const metaDoc = await metaRef.get();
+
+            if (!metaDoc.exists || !metaDoc.data().backupFilePath) {
+                throw new Error("Không tìm thấy bản sao lưu nào trên Cloud.");
+            }
+
+            const backupPath = metaDoc.data().backupFilePath;
+            const file = storage.bucket().file(backupPath);
+            
+            const [url] = await file.getSignedUrl({
+                action: 'read',
+                expires: Date.now() + 5 * 60 * 1000, // URL có hiệu lực 5 phút
+            });
+
+            const result = { 
+                downloadUrl: url,
+                lastModified: metaDoc.data().lastModified 
+            };
+            
+            res.status(200).json({ data: result });
+
+        } catch (error) {
+            console.error("Lỗi trong getBankBackupUrl:", error);
+            res.status(401).json({ error: { message: error.message } });
+        }
+    });
+});
+// Thay thế hàm cũ bằng hàm onRequest này
+exports.finalizeBankBackup = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) throw new Error('Missing Auth Token');
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid;
+
+            const { filePath } = req.body.data;
+
+            if (!filePath || !filePath.startsWith(`question_bank_backups/${uid}/`)) {
+                 throw new Error("Đường dẫn file sao lưu không hợp lệ hoặc bạn không có quyền.");
+            }
+
+            const metaRef = db.collection("userBankMetadata").doc(uid);
+            await metaRef.set({
+                teacherId: uid,
+                backupFilePath: filePath,
+                lastModified: admin.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+
+            res.status(200).json({ data: { success: true, message: "Đã cập nhật thông tin sao lưu." } });
+
+        } catch (error) {
+            console.error("Lỗi trong finalizeBankBackup:", error);
+            res.status(401).json({ error: { message: error.message } });
+        }
+    });
+});
+
+exports.testAuth = onRequest(async (req, res) => {
+    // Luôn dùng cors cho hàm onRequest
+    cors(req, res, async () => {
+        console.log("Hàm testAuth được gọi, đang kiểm tra header...");
+
+        if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
+            console.error('testAuth: Không tìm thấy Bearer token trong header.');
+            res.status(403).send({ error: 'Missing authorization token.' });
+            return;
+        }
+
+        const idToken = req.headers.authorization.split('Bearer ')[1];
+        
+        try {
+            // Đây là bước quan trọng: tự tay xác thực token
+            console.log("testAuth: Đang thử xác thực token...");
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            
+            // NẾU THÀNH CÔNG, GỬI VỀ UID
+            console.log(`testAuth: Token hợp lệ! UID: ${decodedToken.uid}`);
+            res.status(200).send({ success: true, uid: decodedToken.uid });
+
+        } catch (error) {
+            // NẾU THẤT BẠI, GỬI VỀ LỖI CHI TIẾT
+            console.error("testAuth: LỖI XÁC THỰC TOKEN!", error);
+            res.status(401).send({ success: false, error: error.message });
+        }
+    });
+});
+
+// Thêm vào cuối file index.js (Cloud Functions)
+
+
+exports.adminGetTeacherDetails = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            // 1. Xác thực và kiểm tra quyền Admin
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
+                throw new Error('Missing Auth Token');
+            }
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            if (decodedToken.email !== 'nguyensangnhc@gmail.com') { // Thay email admin của bạn ở đây
+                throw new Error("Bạn không có quyền truy cập chức năng này.");
+            }
+
+            // 2. Lấy uid của giáo viên từ request
+            const { teacherUid } = req.body.data;
+            if (!teacherUid) {
+                throw new Error("Thiếu UID của giáo viên.");
+            }
+
+            // 3. Lấy thông tin cơ bản của giáo viên
+            const teacherDoc = await db.collection("users").doc(teacherUid).get();
+            if (!teacherDoc.exists) throw new Error("Không tìm thấy giáo viên.");
+            const teacherProfile = teacherDoc.data();
+
+            // 4. Lấy tất cả đề thi của giáo viên đó
+            const examsSnapshot = await db.collection("exams").where("teacherId", "==", teacherUid).orderBy("createdAt", "desc").get();
+            const exams = examsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            // 5. Tính toán dung lượng lưu trữ từ các file content
+            const contentPrefix = `exam_content/${teacherUid}/`;
+            const [contentFiles] = await storage.bucket().getFiles({ prefix: contentPrefix });
+            
+            let totalSizeBytes = 0;
+            contentFiles.forEach(file => {
+                totalSizeBytes += parseInt(file.metadata.size, 10);
+            });
+            const totalSizeMB = (totalSizeBytes / (1024 * 1024)).toFixed(2);
+
+            // 6. Trả về kết quả tổng hợp
+            res.status(200).json({ 
+                data: {
+                    profile: teacherProfile,
+                    exams: exams,
+                    storageUsage: {
+                        totalFiles: contentFiles.length,
+                        totalSizeMB: totalSizeMB
+                    }
+                } 
+            });
+
+        } catch (error) {
+            console.error("Lỗi trong adminGetTeacherDetails:", error);
+            res.status(400).json({ error: { message: error.message } });
+        }
+    });
+});
+
+// Thêm vào cuối file index.js
+
+exports.adminGetExamContent = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            // 1. Xác thực và kiểm tra quyền Admin
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
+                throw new Error('Missing Auth Token');
+            }
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            if (decodedToken.email !== 'nguyensangnhc@gmail.com') { // Thay email admin của bạn
+                throw new Error("Bạn không có quyền truy cập chức năng này.");
+            }
+
+            // 2. Lấy examId từ request body
+            const { examId } = req.body.data;
+            if (!examId) {
+                throw new Error("Thiếu ID của đề thi.");
+            }
+
+            // 3. Lấy thông tin đề thi từ Firestore
+            const examDoc = await db.collection("exams").doc(examId).get();
+            if (!examDoc.exists) {
+                throw new Error("Không tìm thấy đề thi.");
+            }
+            const examData = examDoc.data();
+
+            // 4. Kiểm tra xem có đường dẫn file trên Storage không
+            const storagePath = examData.contentStoragePath;
+            if (!storagePath) {
+                throw new Error("Đề thi này không có nội dung được lưu trên Storage.");
+            }
+
+            // 5. Đọc file từ Cloud Storage
+            const file = storage.bucket().file(storagePath);
+            const [contentBuffer] = await file.download();
+            const content = contentBuffer.toString('utf8');
+
+            // 6. Trả về nội dung
+            res.status(200).json({ data: { content: content } });
+
+        } catch (error) {
+            console.error("Lỗi trong adminGetExamContent:", error);
+            res.status(400).json({ error: { message: error.message } });
+        }
+    });
 });

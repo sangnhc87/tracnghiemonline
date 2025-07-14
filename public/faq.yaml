@@ -109,3 +109,35 @@
 - question: "? Đề word có mathtype thì sao?"
   answer: |     
     Hệ thống không hỗ trợ mathtype, Thầy Cô vui long dùng chức năng $Toogle Tex$ của mathtype rẫ toàn bộ Mathtype ra code sau đó upload lên hệ thống là được.
+# - question: "🔥 Làm sao để lấy ngẫu nhiên N câu từ một nhóm?"
+#   answer: | 
+#     Rất đơn giản, chỉ cần thêm số câu bạn muốn lấy vào ngay sau dấu phân cách.    
+#     % ----- Nhóm 1: Có 50 câu, chỉ lấy ngẫu nhiên 10 câu -----  
+      ##group-separator-10##     
+#     ... 50 câu hỏi ...    
+#     
+      ##group-separator-all## 
+#     % ----- Nhóm 2: Có 30 câu, lấy tất cả và xáo trộn -----   
+#     ... 30 câu hỏi ...    
+#        
+#     
+# - question: "🔥 Làm sao để xáo trộn toàn bộ đề thi cuối cùng?"
+#   answer: |   
+#     Thêm dòng `##shuffle_group##` vào bất kỳ đâu trong file `.tex` (thường đặt ở dòng đầu tiên).    
+#     Hệ thống sẽ chọn câu hỏi từ các nhóm trước, sau đó trộn lẫn tất cả chúng với nhau.    
+#     ##shuffle_all##   
+#     % Nhóm 1: Lấy 10 câu    
+#     ...   
+#     ##group-separator-10##    
+#     % Nhóm 2: Lấy 5 câu   
+#     ...   
+#     ##group-separator-5##
+- question: "? Nếu 2 ảnh cùng 1 dòng làm sao?"
+  answer: |   
+    Chỉ cần để trong thẻ <div class="image-row"> ...</div>.     
+    Ví dụ     
+    <div class="image-row">   
+    <img src='link_anh_1.jpg' alt="Mô tả ảnh 1">    
+    <img src='link_anh_2.png' alt="Mô tả ảnh 2">    
+    </div>    
+    

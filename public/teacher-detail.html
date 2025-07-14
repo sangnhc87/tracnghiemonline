@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chi tiết Giáo viên</title>
+    <!-- Nạp CSS và các thư viện cần thiết -->
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="css/admin.css"> <!-- Tái sử dụng CSS của trang admin -->
+    <style>
+        .detail-card { margin-bottom: 2rem; }
+        .detail-card h3 { border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 15px; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .info-item strong { min-width: 150px; display: inline-block; }
+    </style>
+</head>
+<body>
+    <div id="loading-overlay" class="loading-overlay" style="display:flex;">
+        <div class="spinner"></div><p>Đang tải dữ liệu...</p>
+    </div>
+
+    <div id="app" class="admin-dashboard-container">
+        <header class="admin-header">
+            <h1><i class="fas fa-user-check"></i> Chi tiết Giáo viên</h1>
+            <div class="user-info">
+                <a href="/admin.html" class="btn-logout" title="Quay lại"><i class="fas fa-arrow-left"></i> Quay lại</a>
+            </div>
+        </header>
+
+        <main class="admin-main-content">
+            <section class="admin-section detail-card">
+                <h3><i class="fas fa-id-card"></i> Thông tin cá nhân</h3>
+                <div class="info-grid">
+                    <div class="info-item"><strong>Email:</strong> <span id="teacher-email">...</span></div>
+                    <div class="info-item"><strong>Tên:</strong> <span id="teacher-name">...</span></div>
+                    <div class="info-item"><strong>Mã GV:</strong> <span id="teacher-alias">...</span></div>
+                    <div class="info-item"><strong>Ngày tạo:</strong> <span id="teacher-created">...</span></div>
+                </div>
+            </section>
+
+            <section class="admin-section detail-card">
+                <h3><i class="fas fa-hdd"></i> Dung lượng lưu trữ</h3>
+                <div class="info-grid">
+                     <div class="info-item"><strong>Tổng dung lượng:</strong> <span id="storage-usage">...</span></div>
+                     <div class="info-item"><strong>Tổng số file:</strong> <span id="storage-files">...</span></div>
+                </div>
+            </section>
+
+            <section class="admin-section user-list-section">
+                <h2><i class="fas fa-file-alt"></i> Danh sách Đề thi đã tạo</h2>
+                <div id="exam-list-container" class="user-table-container">
+                    <!-- Bảng đề thi sẽ được JS chèn vào đây -->
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <!-- Firebase SDKs (Cần nạp đủ) -->
+    <script defer src="/__/firebase/9.10.0/firebase-app-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-auth-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-functions-compat.js"></script>
+    <script defer src="/__/firebase/init.js"></script>
+
+    <!-- Script riêng cho trang này -->
+    <script defer src="js/teacher-detail.js"></script>
+</body>
+</html>

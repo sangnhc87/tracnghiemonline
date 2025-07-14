@@ -1,6 +1,6 @@
 # firebase deploy --only functions,hosting
 
-# firebase deploy --only hosting
+firebase deploy --only hosting
 
 # firebase deploy --only firestore:indexes
 

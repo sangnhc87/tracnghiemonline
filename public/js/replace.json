@@ -2,7 +2,8 @@
   "simpleReplacements": {
     "\\vec": "\\overrightarrow",
     "\\bar": "\\overline",
-     "xyz": "xxzzyy",
+    "\\begin{align*}": "$$\\begin{aligned}",
+    "\\end{align*}": "\\end{aligned}$$",
     "<table>": "<table border=\"1\">",
     "\\lq\\lq": " ` ` ",
     "\\rq\\rq": " ' ' ",

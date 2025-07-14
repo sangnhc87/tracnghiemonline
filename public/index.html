@@ -79,6 +79,50 @@
         border: 2px solid #ddd;
     }
 </style>
+ <style>
+    /* Container để chứa các ảnh trên cùng một hàng */
+    .image-row {
+        display: flex;
+        justify-content: center; /* Nhóm các ảnh lại ở giữa */
+        align-items: center;
+        gap: 15px; /* Đặt lại khoảng cách mong muốn, ví dụ 15px */
+        margin-top: 1em;
+        margin-bottom: 1em;
+    }
+
+    /* 
+     * [SỬA LỖI QUAN TRỌNG] Ghi đè lên các style cũ của thẻ <img>
+     * khi nó nằm bên trong .image-row.
+     */
+    .image-row img {
+        /* Reset lại margin để chúng không tự đẩy nhau ra xa */
+        margin: 0 !important; 
+
+        /* Giới hạn chiều rộng để chúng có thể đứng cạnh nhau */
+        /* Nếu có 2 ảnh, 48% là một giá trị tốt */
+        max-width: 48%; 
+        height: auto; /* Giữ tỷ lệ ảnh */
+
+        /* Giữ lại các style đẹp mắt khác */
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    /* Các style cũ vẫn cần để xử lý các ảnh đứng một mình */
+    .img-center { 
+        margin-left: auto; 
+        margin-right: auto; 
+    }
+    .question-statement img, .explanation img { 
+        display: block; 
+        max-width: 100%; 
+        height: auto; 
+        margin-top: 1em; 
+        margin-bottom: 1em; 
+        border-radius: 8px; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+    }
+</style>
 </head>
 <body>
 
@@ -165,8 +209,8 @@
                 <!-- Các nút mới được thêm vào -->
     <a href="/hdsd.html" target="_blank" class="btn btn-secondary"><i class="fas fa-book-open"></i>Hướng dẫn</a>
     <a href="/editor_V2.html" target="_blank" class="btn btn-warning"><i class="fas fa-pencil-alt"></i>Soạn Word</a>
-    <a href="/soan_latex.html" target="_blank" class="btn btn-dark"><i class="fas fa-exchange-alt"></i>Soạn Latex 1</a>
-    <a href="/soan_latex_io.html" target="_blank" class="btn btn-dark"><i class="fas fa-exchange-alt"></i>Soạn Latex 2</a>
+    <a href="/soan_latex_pro.html" target="_blank" class="btn btn-dark"><i class="fas fa-exchange-alt"></i>Soạn Latex 1</a>
+    <a href="/soan_flyio_pro.html" target="_blank" class="btn btn-dark"><i class="fas fa-exchange-alt"></i>Soạn Latex 2</a>
             </div>
             
             <div class="dashboard-sections">

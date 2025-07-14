@@ -43,7 +43,7 @@ async function handleExamFormSubmitWithStorage() {
 
     showLoading();
     try {
-        const callableFunction = firebase.functions().httpsCallable(functionName);
+        const callableFunction = functions.httpsCallable(functionName);
         const result = await callableFunction(dataToSend);
         Swal.fire("Thành công!", result.data.message, "success");
         hideExamForm();
@@ -71,7 +71,7 @@ async function startExamWithStorage() {
     showLoading();
     try {
         // Vẫn gọi hàm loadExamForStudent cũ để lấy thông tin ban đầu
-        const result = await firebase.functions().httpsCallable("loadExamForStudent")({ teacherAlias, examCode });
+        const result = await functions.httpsCallable("loadExamForStudent")({ teacherAlias, examCode });
         let examDetails = result.data;
         
         // KIỂM TRA ĐỂ BIẾT CÓ CẦN CHUYỂN HƯỚNG SANG TRANG PDF KHÔNG
@@ -86,7 +86,7 @@ async function startExamWithStorage() {
         // KIỂM TRA ĐỂ BIẾT CẦN TẢI TỪ STORAGE HAY KHÔNG
         if (examDetails.examType === 'TEXT' && examDetails.contentStoragePath) {
             console.log("Đề thi trên Storage, đang lấy URL để tải...");
-            const getContentUrl = firebase.functions().httpsCallable('getContentUrl');
+            const getContentUrl = functions.httpsCallable('getContentUrl');
             const urlResult = await getContentUrl({ path: examDetails.contentStoragePath });
             
             const response = await fetch(urlResult.data.contentUrl);

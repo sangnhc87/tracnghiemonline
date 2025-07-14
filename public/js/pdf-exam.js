@@ -5,7 +5,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     // Khởi tạo và biến toàn cục
     const db = firebase.firestore();
-    const functions = firebase.functions();
+const storage = firebase.storage(); // Thêm cả storage cho đầy đủ
+const functions = firebase.app().functions("asia-southeast1");
     let examData = null;
     let timerInterval = null;
 

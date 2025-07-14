@@ -139,7 +139,7 @@ async function processTexFileWithTikZ(fileContent) {
             updateSwalProgress(`Đang dịch ${tikzBlocks.length} hình TikZ...`, 'Gửi yêu cầu đến server...');
             
             // SỬA Ở ĐÂY: Dùng biến `functions` đã được cấu hình đúng
-            const processTikz = functions.httpsCallable('processTikzProxy');
+            const processTikz = functions.httpsCallable('processTikzFlyioProxy');
             
             const tikzOnlyText = tikzBlocks.join('\n\n');
             const result = await processTikz({ fileContent: tikzOnlyText });

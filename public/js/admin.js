@@ -3,7 +3,9 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- Khởi tạo Firebase ---
     const auth = firebase.auth();
-    const functions = firebase.functions();
+    const db = firebase.firestore();
+const storage = firebase.storage(); // Thêm cả storage cho đầy đủ
+const functions = firebase.app().functions("asia-southeast1");
 
     // --- Các phần tử DOM (Chỉ khai báo một lần) ---
     const adminNameEl = document.getElementById('adminName');
@@ -111,65 +113,65 @@ document.addEventListener('DOMContentLoaded', () => {
         renderUserTable(filteredUsers);
     }
 
-    // Hiển thị bảng người dùng
-    function renderUserTable(users) {
-        if (!users || users.length === 0) {
-            userListContainer.innerHTML = '<p class="loading-text">Không tìm thấy giáo viên nào.</p>';
-            return;
-        }
+// file: js/admin.js
 
-        let tableHtml = `
-            <table class="user-table">
-                <thead>
-                    <tr>
-                        <th>Email</th>
-                        <th>Tên</th>
-                        <th>Mã giáo viên</th>
-                        <th>Trạng thái</th>
-                        <th>Ngày hết hạn</th>
-                        <th>Hành động</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-
-        users.forEach(user => {
-            const trialEndDate = user.trialEndDate ? new Date(user.trialEndDate) : null;
-            const isExpired = !trialEndDate || trialEndDate.getTime() < Date.now();
-            const statusClass = isExpired ? 'expired' : 'active';
-            const statusText = isExpired ? 'Hết hạn' : 'Đang hoạt động';
-            
-            // Lấy ngày hết hạn theo định dạng YYYY-MM-DD cho input type="date"
-            const isoDateValue = trialEndDate ? trialEndDate.toISOString().split('T')[0] : '';
-
-            tableHtml += `
-                <tr>
-                    <td>${user.email}</td>
-                    <td>${user.name || 'N/A'}</td>
-                    <td>${user.teacherAlias || 'N/A'}</td>
-                    <td><span class="trial-status ${statusClass}">${statusText}</span></td>
-                    <td>
-                        <input type="date" class="date-input" id="date-${user.id}" value="${isoDateValue}">
-                    </td>
-                    <td>
-                        <!-- ĐÃ SỬA: user.id ĐƯỢC BỌC TRONG DẤU NHÁY ĐƠN -->
-                        <button class="save-btn" onclick="updateUserTrial('${user.id}', document.getElementById('date-${user.id}').value)"><i class="fas fa-save"></i> Lưu</button>
-                    </td>
-                </tr>
-            `;
-        });
-
-        tableHtml += `</tbody></table>`;
-        userListContainer.innerHTML = tableHtml;
-
-        // Khởi tạo Flatpickr cho tất cả các input type="date" vừa được tạo
-        // (Lưu ý: hàm flatpickr nhận selector, nên nó sẽ áp dụng cho tất cả các phần tử khớp)
-        flatpickr(".date-input", {
-            dateFormat: "Y-m-d", // Định dạng ngày tháng
-            minDate: "today",     // Không cho chọn ngày trong quá khứ
-        });
+function renderUserTable(users) {
+    if (!users || users.length === 0) {
+        userListContainer.innerHTML = '<p class="loading-text">Không tìm thấy giáo viên nào.</p>';
+        return;
     }
 
+    let tableHtml = `
+        <table class="user-table">
+            <thead>
+                <tr>
+                    <th>STT</th>
+                    <th>Email</th>
+                    <th>Tên</th>
+                    <th>Mã giáo viên</th>
+                    <th>Trạng thái</th>
+                    <th>Ngày hết hạn</th>
+                    <th>Hành động</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    users.forEach((user, index) => {
+        const trialEndDate = user.trialEndDate ? new Date(user.trialEndDate) : null;
+        const isExpired = !trialEndDate || trialEndDate.getTime() < Date.now();
+        const statusClass = isExpired ? 'expired' : 'active';
+        const statusText = isExpired ? 'Hết hạn' : 'Đang hoạt động';
+        const isoDateValue = trialEndDate ? trialEndDate.toISOString().split('T')[0] : '';
+
+        // ĐOẠN ĐƯỢC SỬA NẰM Ở ĐÂY
+        tableHtml += `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${user.email}</td>
+                <td>${user.name || 'N/A'}</td>
+                <td>${user.teacherAlias || 'N/A'}</td>
+                <td><span class="trial-status ${statusClass}">${statusText}</span></td>
+                <td>
+                    <input type="date" class="date-input" id="date-${user.id}" value="${isoDateValue}">
+                </td>
+                <td>
+                    <button class="save-btn" onclick="updateUserTrial('${user.id}', document.getElementById('date-${user.id}').value)" title="Lưu ngày hết hạn"><i class="fas fa-save"></i> Lưu</button>
+                    
+                    <a href="teacher-detail.html?uid=${user.id}" class="btn btn-info" title="Xem chi tiết"><i class="fas fa-eye"></i> Chi tiết</a>
+                </td>
+            </tr>
+        `;
+    });
+
+    tableHtml += `</tbody></table>`;
+    userListContainer.innerHTML = tableHtml;
+
+    flatpickr(".date-input", {
+        dateFormat: "Y-m-d",
+        minDate: "today",
+    });
+}
     // Cập nhật ngày hết hạn cho người dùng
     // Gán hàm này vào window để nó có thể được gọi từ HTML onclick
     window.updateUserTrial = async (userId, newDateValue) => {
