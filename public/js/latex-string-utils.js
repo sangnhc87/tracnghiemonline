@@ -186,6 +186,7 @@ const LatexStringUtils = {
      * @param {string} text - Chuỗi cần xử lý.
      * @returns {string} Chuỗi đã thay thế.
      */
+    
     replaceDoubleBackslashToBr: function(text) {
         if (!text) return text;
         // const mathBlocksRegex = /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\$[\s\S]*?\$|\\\([\s\S]*?\\\))/g;

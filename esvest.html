@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>KaTeX Vector Nhọn</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/contrib/auto-render.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      line-height: 1.8;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Hiển thị vectơ kiểu mũi tên nhọn (giả lập esvect)</h2>
+
+<p>\( \vec{AB} \) — mũi tên mặc định (tù)</p>
+<p>\( \overrightarrow{AB} \)</p>
+<p>\( \vv{v} \), \( \vv{AB} \), \( \vv{F_x} \)</p>
+
+<script>
+  window.addEventListener("load", function () {
+    renderMathInElement(document.body, {
+      delimiters: [
+        {left: "$$", right: "$$", display: true},
+        {left: "\\(", right: "\\)", display: false}
+      ],
+      macros: {
+        "\\vv": "\\overset{\\scriptstyle\\text{\\char\"2192}}"
+      }
+    });
+  });
+</script>
+
+</body>
+</html>

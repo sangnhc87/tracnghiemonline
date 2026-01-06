@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Admin - Quản Lý Hệ Thống</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script defer src="/__/firebase/9.10.0/firebase-app-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-auth-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-firestore-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-functions-compat.js"></script>
+    <script defer src="/__/firebase/init.js"></script>
+
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #1d4ed8;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --font: 'Be Vietnam Pro', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font);
+            background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+            min-height: 100vh;
+            color: white;
+        }
+
+        .admin-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1.5rem;
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-header i {
+            font-size: 2rem;
+            color: var(--primary);
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .sidebar-header span {
+            font-size: 0.7rem;
+            background: var(--primary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 1rem;
+        }
+
+        .nav-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .nav-section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            transition: all 0.2s;
+            margin-bottom: 0.25rem;
+            cursor: pointer;
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .nav-item.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .nav-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 0.5rem;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        .user-name {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .user-role {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .page-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+        }
+
+        .page-subtitle {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .stat-icon.blue {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+        }
+
+        .stat-icon.green {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+        }
+
+        .stat-icon.orange {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+        }
+
+        .stat-icon.purple {
+            background: rgba(168, 85, 247, 0.2);
+            color: #c084fc;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .stat-change {
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .stat-change.positive {
+            color: var(--success);
+        }
+
+        .stat-change.negative {
+            color: var(--danger);
+        }
+
+        /* Tables */
+        .data-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+
+        .data-card-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .data-card-title {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 1rem 1.5rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .data-table th {
+            background: rgba(0, 0, 0, 0.2);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.6);
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+
+        .data-table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .data-table td {
+            font-size: 0.875rem;
+        }
+
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .badge.active {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+        }
+
+        .badge.pending {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+        }
+
+        .badge.expired {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+        }
+
+        .action-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .action-btn.primary {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .action-btn.danger {
+            background: transparent;
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .action-btn.danger:hover {
+            background: var(--danger);
+            color: white;
+        }
+
+        /* Login Screen */
+        .login-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 1rem;
+            padding: 2.5rem;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .login-icon {
+            font-size: 4rem;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+        }
+
+        .login-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .login-subtitle {
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 2rem;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 1rem 2rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            transition: all 0.2s;
+        }
+
+        .login-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .login-btn i {
+            font-size: 1.25rem;
+        }
+
+        /* Section display */
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-screen">
+        <div class="login-card">
+            <i class="fas fa-shield-halved login-icon"></i>
+            <h1 class="login-title">Super Admin</h1>
+            <p class="login-subtitle">Đăng nhập để quản lý hệ thống</p>
+            <button class="login-btn" id="login-btn">
+                <i class="fab fa-google"></i>
+                Đăng nhập với Google
+            </button>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="admin-dashboard" class="admin-layout" style="display: none;">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-shield-halved"></i>
+                <div>
+                    <h1>Super Admin</h1>
+                    <span>v1.0</span>
+                </div>
+            </div>
+
+            <nav>
+                <div class="nav-section">
+                    <div class="nav-section-title">Dashboard</div>
+                    <a class="nav-item active" data-section="overview">
+                        <i class="fas fa-chart-pie"></i> Tổng quan
+                    </a>
+                    <a class="nav-item" data-section="realtime">
+                        <i class="fas fa-bolt"></i> Realtime
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Quản lý</div>
+                    <a class="nav-item" data-section="teachers">
+                        <i class="fas fa-chalkboard-user"></i> Giáo viên
+                    </a>
+                    <a class="nav-item" data-section="exams">
+                        <i class="fas fa-file-alt"></i> Đề thi
+                    </a>
+                    <a class="nav-item" data-section="submissions">
+                        <i class="fas fa-paper-plane"></i> Bài nộp
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Hệ thống</div>
+                    <a class="nav-item" data-section="settings">
+                        <i class="fas fa-cog"></i> Cài đặt
+                    </a>
+                    <a class="nav-item" data-section="logs">
+                        <i class="fas fa-history"></i> Logs
+                    </a>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar" id="user-avatar">A</div>
+                    <div>
+                        <div class="user-name" id="user-name">Admin</div>
+                        <div class="user-role">Super Admin</div>
+                    </div>
+                </div>
+                <button class="action-btn danger" style="width:100%;margin-top:1rem;" id="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Đăng xuất
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Overview Section -->
+            <section id="section-overview" class="section active">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Tổng quan hệ thống</h1>
+                        <p class="page-subtitle">Thống kê và phân tích dữ liệu</p>
+                    </div>
+                    <button class="action-btn primary" onclick="refreshStats()">
+                        <i class="fas fa-sync-alt"></i> Làm mới
+                    </button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div class="stat-icon blue"><i class="fas fa-users"></i></div>
+                        </div>
+                        <div class="stat-value" id="stat-teachers">0</div>
+                        <div class="stat-label">Giáo viên đăng ký</div>
+                        <div class="stat-change positive"><i class="fas fa-arrow-up"></i> Đang hoạt động</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div class="stat-icon green"><i class="fas fa-file-alt"></i></div>
+                        </div>
+                        <div class="stat-value" id="stat-exams">0</div>
+                        <div class="stat-label">Đề thi đã tạo</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div class="stat-icon orange"><i class="fas fa-paper-plane"></i></div>
+                        </div>
+                        <div class="stat-value" id="stat-submissions">0</div>
+                        <div class="stat-label">Bài nộp</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div class="stat-icon purple"><i class="fas fa-graduation-cap"></i></div>
+                        </div>
+                        <div class="stat-value" id="stat-classes">0</div>
+                        <div class="stat-label">Lớp học</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Teachers Section -->
+            <section id="section-teachers" class="section">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Quản lý Giáo viên</h1>
+                        <p class="page-subtitle">Danh sách giáo viên và trạng thái</p>
+                    </div>
+                </div>
+
+                <div class="data-card">
+                    <div class="data-card-header">
+                        <span class="data-card-title">Danh sách Giáo viên</span>
+                        <button class="action-btn primary" onclick="loadTeachers()">
+                            <i class="fas fa-sync-alt"></i> Tải lại
+                        </button>
+                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Tên</th>
+                                <th>Email</th>
+                                <th>Mã GV</th>
+                                <th>Trạng thái</th>
+                                <th>Còn lại</th>
+                                <th>Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teachers-table">
+                            <tr>
+                                <td colspan="6" style="text-align:center;padding:2rem;">Đang tải...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Exams Section -->
+            <section id="section-exams" class="section">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Quản lý Đề thi</h1>
+                        <p class="page-subtitle">Tất cả đề thi trong hệ thống</p>
+                    </div>
+                </div>
+                <div class="data-card">
+                    <div class="data-card-header">
+                        <span class="data-card-title">Đề thi gần đây</span>
+                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Mã đề</th>
+                                <th>Giáo viên</th>
+                                <th>Loại</th>
+                                <th>Số câu</th>
+                                <th>Ngày tạo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="exams-table">
+                            <tr>
+                                <td colspan="5" style="text-align:center;padding:2rem;">Đang tải...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Submissions Section -->
+            <section id="section-submissions" class="section">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Bài nộp gần đây</h1>
+                        <p class="page-subtitle">Theo dõi bài làm của học sinh</p>
+                    </div>
+                </div>
+                <div class="data-card">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Học sinh</th>
+                                <th>Lớp</th>
+                                <th>Mã đề</th>
+                                <th>Điểm</th>
+                                <th>Thời gian</th>
+                            </tr>
+                        </thead>
+                        <tbody id="submissions-table">
+                            <tr>
+                                <td colspan="5" style="text-align:center;padding:2rem;">Đang tải...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="section-settings" class="section">
+                <div class="page-header">
+                    <h1 class="page-title">Cài đặt hệ thống</h1>
+                </div>
+                <div class="data-card" style="padding:2rem;">
+                    <p style="color:rgba(255,255,255,0.6);">Tính năng đang phát triển...</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let db, auth;
+
+            // Wait for Firebase
+            const initApp = setInterval(() => {
+                if (typeof firebase !== 'undefined' && firebase.apps.length) {
+                    clearInterval(initApp);
+                    auth = firebase.auth();
+                    db = firebase.firestore();
+                    setupAuth();
+                }
+            }, 100);
+
+            function setupAuth() {
+                // Super Admin list (add your email)
+                const SUPER_ADMINS = ['sangnhc@gmail.com', 'nguyensangnhc@gmail.com'];
+
+                document.getElementById('login-btn').onclick = () => {
+                    const provider = new firebase.auth.GoogleAuthProvider();
+                    auth.signInWithPopup(provider);
+                };
+
+                document.getElementById('logout-btn').onclick = () => {
+                    auth.signOut();
+                };
+
+                auth.onAuthStateChanged(user => {
+                    if (user && SUPER_ADMINS.includes(user.email)) {
+                        document.getElementById('login-screen').style.display = 'none';
+                        document.getElementById('admin-dashboard').style.display = 'flex';
+                        document.getElementById('user-name').textContent = user.displayName || user.email;
+                        document.getElementById('user-avatar').textContent = (user.displayName || user.email)[0].toUpperCase();
+                        loadAllData();
+                    } else if (user) {
+                        Swal.fire('Không có quyền', 'Tài khoản của bạn không có quyền truy cập Admin.', 'error');
+                        auth.signOut();
+                    } else {
+                        document.getElementById('login-screen').style.display = 'flex';
+                        document.getElementById('admin-dashboard').style.display = 'none';
+                    }
+                });
+            }
+
+            // Navigation
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.onclick = () => {
+                    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+                    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+                    const sectionId = 'section-' + item.dataset.section;
+                    document.getElementById(sectionId)?.classList.add('active');
+                };
+            });
+
+            // Load all data
+            async function loadAllData() {
+                await Promise.all([loadStats(), loadTeachers(), loadExams(), loadSubmissions()]);
+            }
+            window.refreshStats = loadAllData;
+
+            async function loadStats() {
+                try {
+                    const [teachers, exams, submissions, classes] = await Promise.all([
+                        db.collection('users').get(),
+                        db.collectionGroup('exams').get(),
+                        db.collectionGroup('submissions').get(),
+                        db.collectionGroup('classes').get()
+                    ]);
+                    document.getElementById('stat-teachers').textContent = teachers.size;
+                    document.getElementById('stat-exams').textContent = exams.size;
+                    document.getElementById('stat-submissions').textContent = submissions.size;
+                    document.getElementById('stat-classes').textContent = classes.size;
+                } catch (e) { console.error('Stats error:', e); }
+            }
+
+            async function loadTeachers() {
+                try {
+                    const snapshot = await db.collection('users').get();
+                    const tbody = document.getElementById('teachers-table');
+                    if (snapshot.empty) {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Chưa có dữ liệu</td></tr>';
+                        return;
+                    }
+                    tbody.innerHTML = snapshot.docs.map(doc => {
+                        const d = doc.data();
+                        const days = d.subscriptionDays || 0;
+                        const status = days > 30 ? 'active' : (days > 0 ? 'pending' : 'expired');
+                        const statusText = days > 30 ? 'Hoạt động' : (days > 0 ? 'Sắp hết hạn' : 'Hết hạn');
+                        return `<tr>
+                        <td>${d.displayName || 'N/A'}</td>
+                        <td>${d.email || 'N/A'}</td>
+                        <td><strong>${d.teacherAlias || 'Chưa có'}</strong></td>
+                        <td><span class="badge ${status}">${statusText}</span></td>
+                        <td>${days} ngày</td>
+                        <td><button class="action-btn" onclick="extendSub('${doc.id}')">+30 ngày</button></td>
+                    </tr>`;
+                    }).join('');
+                } catch (e) { console.error('Teachers error:', e); }
+            }
+            window.loadTeachers = loadTeachers;
+
+            window.extendSub = async (uid) => {
+                const { value: days } = await Swal.fire({
+                    title: 'Gia hạn',
+                    input: 'number',
+                    inputLabel: 'Số ngày',
+                    inputValue: 30,
+                    showCancelButton: true
+                });
+                if (days) {
+                    const userRef = db.collection('users').doc(uid);
+                    const doc = await userRef.get();
+                    const current = doc.data()?.subscriptionDays || 0;
+                    await userRef.update({ subscriptionDays: current + parseInt(days) });
+                    Swal.fire('Thành công!', `Đã thêm ${days} ngày.`, 'success');
+                    loadTeachers();
+                    loadStats();
+                }
+            };
+
+            async function loadExams() {
+                try {
+                    const snapshot = await db.collectionGroup('exams').orderBy('createdAt', 'desc').limit(20).get();
+                    const tbody = document.getElementById('exams-table');
+                    if (snapshot.empty) { tbody.innerHTML = '<tr><td colspan="5">Chưa có đề thi</td></tr>'; return; }
+                    tbody.innerHTML = snapshot.docs.map(doc => {
+                        const d = doc.data();
+                        const date = d.createdAt?.toDate?.()?.toLocaleDateString('vi-VN') || 'N/A';
+                        const keys = d.answerKeys?.split('|') || [];
+                        return `<tr>
+                        <td><strong>${d.examCode || 'N/A'}</strong></td>
+                        <td>${d.teacherId?.split('/').pop() || 'N/A'}</td>
+                        <td>${d.examType || 'TEXT'}</td>
+                        <td>${keys.length}</td>
+                        <td>${date}</td>
+                    </tr>`;
+                    }).join('');
+                } catch (e) { console.error('Exams error:', e); }
+            }
+
+            async function loadSubmissions() {
+                try {
+                    const snapshot = await db.collectionGroup('submissions').orderBy('submittedAt', 'desc').limit(30).get();
+                    const tbody = document.getElementById('submissions-table');
+                    if (snapshot.empty) { tbody.innerHTML = '<tr><td colspan="5">Chưa có bài nộp</td></tr>'; return; }
+                    tbody.innerHTML = snapshot.docs.map(doc => {
+                        const d = doc.data();
+                        const time = d.submittedAt?.toDate?.()?.toLocaleString('vi-VN') || 'N/A';
+                        return `<tr>
+                        <td>${d.studentName || 'N/A'}</td>
+                        <td>${d.className || 'N/A'}</td>
+                        <td>${d.examCode || 'N/A'}</td>
+                        <td><strong>${d.score?.toFixed(2) || '0.00'}</strong></td>
+                        <td>${time}</td>
+                    </tr>`;
+                    }).join('');
+                } catch (e) { console.error('Submissions error:', e); }
+            }
+        });
+    </script>
+</body>
+
+</html>

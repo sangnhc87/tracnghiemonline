@@ -69,7 +69,7 @@
         .katex { color: magenta !important; }
         .question-number-highlight { font-weight: 700; color: #0d6efd; background-color: #e7f1ff; padding: 2px 8px; border-radius: 4px; margin-right: 8px; }
     </style>
-<style>
+   <style>
     /* Container để chứa các ảnh trên cùng một hàng */
     .image-row {
         display: flex;
@@ -135,6 +135,9 @@
                         <!-- <button id="open-snippet-dialog-btn" class="btn btn-primary"><i class="fas fa-book-open"></i> Kho Snippet</button> -->
                         <button id="save-to-cloud-btn" class="btn btn-success">
         <i class="fas fa-cloud-upload-alt"></i> Lưu lên Cloud</button>
+         <button id="copy-all-latex-btn" class="btn btn-info" style="margin-left: 10px;">
+            <i class="fas fa-copy"></i> Sao chép Input
+        </button>
                     </div>
                     <div id="question-editor-container" class="question-editor-container">
                         <!-- Script sẽ điền các khung soạn thảo vào đây -->
@@ -186,11 +189,7 @@
         </main>
     </div>
 
-        <!-- ======================================================= -->
-    <!-- ==      THỨ TỰ NẠP SCRIPT ĐÚNG VÀ AN TOÀN           == -->
-    <!-- ======================================================= -->
-
-    <!-- BƯỚC 1: NẠP CÁC THƯ VIỆN FIREBASE -->
+     <!-- BƯỚC 1: NẠP CÁC THƯ VIỆN FIREBASE -->
     <script src="/__/firebase/9.10.0/firebase-app-compat.js"></script>
     <script src="/__/firebase/9.10.0/firebase-auth-compat.js"></script>
     <script src="/__/firebase/9.10.0/firebase-functions-compat.js"></script>

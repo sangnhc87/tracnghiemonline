@@ -1,7 +1,8 @@
-// pdftotext_v2.js
+// pdftotext_v3.js
 document.addEventListener('DOMContentLoaded', () => {
     // === CONSTANTS & DOM ELEMENTS ===
-    const EDITOR_CONTENT_KEY = 'latexEditorContent';
+    const SAVED_DRAFTS_KEY = 'latexEditorSavedDraftsTree';
+    const CURRENT_FILE_ID_KEY = 'latexEditorCurrentFileId';
     const fileInput = document.getElementById('file-input');
     const statusMessage = document.getElementById('status-message');
     const questionCounterSpan = document.getElementById('question-counter');
@@ -13,36 +14,44 @@ document.addEventListener('DOMContentLoaded', () => {
     const replaceAllButton = document.getElementById('replace-all-btn');
     const clearDraftButton = document.getElementById('clear-draft-btn');
     const includeSolutionCheckbox = document.getElementById('include-solution-checkbox');
-    const exportPdfButton = document.getElementById('export-pdf-btn'); 
+    const exportPdfButton = document.getElementById('export-pdf-btn');
+
+    // --- Elements for Tree View Modal ---
+    const manageDraftsBtn = document.getElementById('manage-drafts-btn');
+    const draftsModal = document.getElementById('drafts-modal');
+    const closeModalBtn = draftsModal.querySelector('.modal-close-btn');
+    const treeContainer = document.getElementById('drafts-tree-container');
+    const addFileBtn = document.getElementById('add-file-btn');
+    const addFolderBtn = document.getElementById('add-folder-btn');
+    const currentFileNameSpan = document.getElementById('current-file-name');
 
     let editor = null;
     let promptConfig = null;
     let customReplacements = [];
     let timerInterval = null;
+    let draftsTree = [];
+    let currentFileId = null;
 
     // === INITIALIZATION ===
     async function initializeApp() {
+        loadDraftsTree();
         await loadPrompts();
         await loadCustomReplacements();
         initializeEditor();
         initializeEventListeners();
         setInitialTheme();
+        updateCurrentFileInfo();
     }
 
     // === DATA LOADING FUNCTIONS ===
     async function loadPrompts() {
-        if (!window.jsyaml) {
-            statusMessage.textContent = 'Lỗi: Thư viện js-yaml chưa được tải.';
-            return;
-        }
+        if (!window.jsyaml) { statusMessage.textContent = 'Lỗi: Thư viện js-yaml chưa được tải.'; return; }
         try {
             const response = await fetch('prompts.yaml');
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const yamlText = await response.text();
             promptConfig = jsyaml.load(yamlText);
-        } catch (error) {
-            statusMessage.textContent = `Lỗi tải prompts.yaml: ${error.message}`;
-        }
+        } catch (error) { statusMessage.textContent = `Lỗi tải prompts.yaml: ${error.message}`; }
     }
 
     async function loadCustomReplacements() {
@@ -50,9 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('pdf_replace.json');
             if (!response.ok) return;
             customReplacements = await response.json();
-        } catch (error) {
-            console.warn("Could not load pdf_replace.json", error);
-        }
+        } catch (error) { console.warn("Could not load pdf_replace.json", error); }
     }
 
     // === CORE FUNCTIONS ===
@@ -65,8 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 delimiters: [
                     {left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false},
                     {left: '\\[', right: '\\]', display: true}, {left: '\\(', right: '\\)', display: false}
-                ],
-                throwOnError: false
+                ], throwOnError: false
             });
         }
     }
@@ -78,22 +84,17 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const regex = rule.isRegex ? new RegExp(rule.find, 'g') : new RegExp(escapeRegExp(rule.find), 'g');
                 newText = newText.replace(regex, rule.replace);
-            } catch (e) {
-                console.error(`Invalid regex in replacement rule:`, rule, e);
-            }
+            } catch (e) { console.error(`Invalid regex in replacement rule:`, rule, e); }
         });
         return newText;
     }
 
-    function escapeRegExp(string) {
-        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    }
+    function escapeRegExp(string) { return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
     // === INITIALIZERS ===
     function initializeEditor() {
         require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs' } });
         require(['vs/editor/editor.main'], function () {
-
             monaco.languages.register({ id: 'latex-enhanced' });
             monaco.languages.setMonarchTokensProvider('latex-enhanced', {
                 tokenizer: {
@@ -140,26 +141,34 @@ document.addEventListener('DOMContentLoaded', () => {
                     return ranges;
                 },
             });
-            
-            const savedContent = localStorage.getItem(EDITOR_CONTENT_KEY);
-            const defaultContent = `\\begin{ex}\n    Chào mừng! Tải tệp Ảnh hoặc PDF để bắt đầu.\n\\end{ex}`;
 
+            const lastOpenFile = currentFileId ? findNodeById(draftsTree, currentFileId) : null;
+            const initialContent = lastOpenFile ? lastOpenFile.content : `\\begin{ex}\n    Chào mừng! Tạo tệp mới từ menu 'Quản lý' để bắt đầu.\n\\end{ex}`;
+            
             editor = monaco.editor.create(editorContainer, {
-                value: savedContent || defaultContent,
+                value: initialContent,
                 language: 'latex-enhanced',
                 theme: 'vs',
                 fontSize: '14px',
-                folding: true, // Bật tính năng thu gọn
-                foldingStrategy: 'auto',
-                showFoldingControls: 'mouseover',
+                folding: true, foldingStrategy: 'auto', showFoldingControls: 'mouseover',
                 minimap: { enabled: true },
-                automaticLayout: true,
-                wordWrap: 'on'
+                automaticLayout: true, wordWrap: 'on'
             });
 
+            let saveTimeout;
             editor.onDidChangeModelContent(() => {
                 const currentCode = editor.getValue();
-                localStorage.setItem(EDITOR_CONTENT_KEY, currentCode);
+                // Auto-save with debounce
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(() => {
+                    if (currentFileId) {
+                        const fileNode = findNodeById(draftsTree, currentFileId);
+                        if (fileNode) {
+                            fileNode.content = currentCode;
+                            persistDraftsTree();
+                        }
+                    }
+                }, 500); // Lưu sau 500ms không gõ
                 updateRender(currentCode);
             });
             updateRender(editor.getValue());
@@ -169,10 +178,18 @@ document.addEventListener('DOMContentLoaded', () => {
     function initializeEventListeners() {
         themeToggleButton.addEventListener('click', toggleTheme);
         replaceAllButton.addEventListener('click', handleReplaceAll);
-        clearDraftButton.addEventListener('click', handleClearDraft);
+        clearDraftButton.addEventListener('click', handleClearAllData); // Đổi tên hàm
         fileInput.addEventListener('change', handleFileChange);
         renderContainer.addEventListener('click', handleSolutionToggle);
-        exportPdfButton.addEventListener('click', handleExportPdf); 
+        exportPdfButton.addEventListener('click', handleExportPdf);
+        // --- Tree View Listeners ---
+        manageDraftsBtn.addEventListener('click', openDraftsModal);
+        closeModalBtn.addEventListener('click', closeDraftsModal);
+        addFileBtn.addEventListener('click', () => handleAdd('file'));
+        addFolderBtn.addEventListener('click', () => handleAdd('folder'));
+        draftsModal.addEventListener('click', (event) => {
+            if (event.target === draftsModal) closeDraftsModal();
+        });
     }
 
     // === EVENT HANDLERS & HELPERS ===
@@ -368,6 +385,226 @@ document.addEventListener('DOMContentLoaded', () => {
             Swal.fire('Lỗi', 'Không thể tải module xuất PDF.', 'error');
         });
         }
+    
+
+    // ===== CÁC HÀM MỚI CHO QUẢN LÝ CÂY THƯ MỤC =====
+
+    // --- Data & Persistence ---
+    function loadDraftsTree() {
+        const treeData = localStorage.getItem(SAVED_DRAFTS_KEY);
+        draftsTree = treeData ? JSON.parse(treeData) : [];
+        currentFileId = localStorage.getItem(CURRENT_FILE_ID_KEY);
+    }
+    function persistDraftsTree() { localStorage.setItem(SAVED_DRAFTS_KEY, JSON.stringify(draftsTree)); }
+    function persistCurrentFileId() {
+        if (currentFileId) localStorage.setItem(CURRENT_FILE_ID_KEY, currentFileId);
+        else localStorage.removeItem(CURRENT_FILE_ID_KEY);
+    }
+    
+    // --- Node Finding Helpers ---
+    function findNodeById(nodes, id) {
+        for (const node of nodes) {
+            if (node.id === id) return node;
+            if (node.type === 'folder') {
+                const found = findNodeById(node.children, id);
+                if (found) return found;
+            }
+        }
+        return null;
+    }
+    function findParentNode(nodes, childId, parent = null) {
+        for (const node of nodes) {
+            if (node.id === childId) return parent;
+            if (node.type === 'folder') {
+                const found = findParentNode(node.children, childId, node);
+                if (found) return found;
+            }
+        }
+        return null;
+    }
+
+    // --- Rendering ---
+    function renderTree(nodes, container) {
+        container.innerHTML = '';
+        if (nodes.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color: #888; padding: 20px 0;">Không có tài liệu nào.</div>';
+        }
+        nodes.forEach(node => {
+            const nodeElement = document.createElement('div');
+            nodeElement.className = 'tree-node';
+            nodeElement.dataset.id = node.id;
+    
+            const itemElement = document.createElement('div');
+            itemElement.className = 'tree-item';
+            if (node.id === currentFileId) itemElement.classList.add('active');
+    
+            const iconSpan = document.createElement('span');
+            iconSpan.className = 'icon';
+            iconSpan.innerHTML = node.type === 'folder' ? '' : ''; // 📄
+    
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'name';
+            nameSpan.textContent = node.name;
+    
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'actions';
+            const renameBtn = document.createElement('button');
+            renameBtn.className = 'action-btn';
+            renameBtn.title = 'Đổi tên';
+            renameBtn.innerHTML = '✎'; // ✏️
+            renameBtn.onclick = (e) => { e.stopPropagation(); handleRename(node.id); };
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'action-btn';
+            deleteBtn.title = 'Xóa';
+            deleteBtn.innerHTML = ''; // 🗑️
+            deleteBtn.onclick = (e) => { e.stopPropagation(); handleDelete(node.id); };
+    
+            actionsDiv.appendChild(renameBtn);
+            actionsDiv.appendChild(deleteBtn);
+            
+            itemElement.appendChild(iconSpan);
+            itemElement.appendChild(nameSpan);
+            itemElement.appendChild(actionsDiv);
+            nodeElement.appendChild(itemElement);
+    
+            if (node.type === 'folder') {
+                nodeElement.classList.add('tree-folder');
+                if (node.isOpen) nodeElement.classList.add('open');
+                const childrenContainer = document.createElement('div');
+                childrenContainer.className = 'children';
+                nodeElement.appendChild(childrenContainer);
+                if (node.children) renderTree(node.children, childrenContainer);
+                itemElement.onclick = () => {
+                    node.isOpen = !node.isOpen;
+                    persistDraftsTree();
+                    renderTree(draftsTree, treeContainer);
+                };
+            } else { // It's a file
+                itemElement.onclick = () => {
+                    const fileNode = findNodeById(draftsTree, node.id);
+                    if (fileNode) {
+                        editor.setValue(fileNode.content || '');
+                        currentFileId = node.id;
+                        persistCurrentFileId();
+                        updateCurrentFileInfo();
+                        closeDraftsModal();
+                    }
+                };
+            }
+            container.appendChild(nodeElement);
+        });
+    }
+
+    // --- CRUD Handlers ---
+    function handleAdd(type) {
+        Swal.fire({
+            title: type === 'file' ? 'Tạo tệp mới' : 'Tạo thư mục mới',
+            input: 'text',
+            inputValue: type === 'file' ? 'Tệp không tên' : 'Thư mục mới',
+            showCancelButton: true, confirmButtonText: 'Tạo', cancelButtonText: 'Hủy',
+            inputValidator: (value) => !value && 'Tên không được để trống!'
+        }).then(result => {
+            if (result.isConfirmed) {
+                const newNode = {
+                    id: `${type}-${Date.now()}`, type: type, name: result.value,
+                    ...(type === 'folder' ? { children: [], isOpen: true } : 
+                                            { content: `\\begin{ex}\n    % ${result.value}\n\\end{ex}` })
+                };
+                draftsTree.unshift(newNode);
+                persistDraftsTree();
+                renderTree(draftsTree, treeContainer);
+                // If it's a new file, open it immediately
+                if (type === 'file') {
+                    editor.setValue(newNode.content);
+                    currentFileId = newNode.id;
+                    persistCurrentFileId();
+                    updateCurrentFileInfo();
+                    closeDraftsModal();
+                }
+            }
+        });
+    }
+
+    function handleDelete(id) {
+        const nodeToDelete = findNodeById(draftsTree, id);
+        if (!nodeToDelete) return;
+        Swal.fire({
+            title: `Xóa "${nodeToDelete.name}"?`,
+            text: nodeToDelete.type === 'folder' ? "Tất cả nội dung bên trong cũng sẽ bị xóa vĩnh viễn!" : "Hành động này không thể hoàn tác!",
+            icon: 'warning', showCancelButton: true,
+            confirmButtonColor: '#d33', confirmButtonText: 'Vâng, xóa nó!'
+        }).then(result => {
+            if (result.isConfirmed) {
+                const parent = findParentNode(draftsTree, id);
+                const container = parent ? parent.children : draftsTree;
+                const index = container.findIndex(n => n.id === id);
+                if (index > -1) container.splice(index, 1);
+                
+                if (id === currentFileId || (nodeToDelete.type === 'folder' && findNodeById([nodeToDelete], currentFileId))) {
+                    editor.setValue(`% Chọn một tệp khác để bắt đầu.`);
+                    currentFileId = null;
+                    persistCurrentFileId();
+                    updateCurrentFileInfo();
+                }
+                persistDraftsTree();
+                renderTree(draftsTree, treeContainer);
+                Swal.fire('Đã xóa!', `"${nodeToDelete.name}" đã được xóa.`, 'success');
+            }
+        });
+    }
+
+    function handleRename(id) {
+        const nodeToRename = findNodeById(draftsTree, id);
+        if (!nodeToRename) return;
+        Swal.fire({
+            title: 'Đổi tên', input: 'text', inputValue: nodeToRename.name,
+            showCancelButton: true, confirmButtonText: 'Lưu',
+            inputValidator: (value) => !value && 'Tên không được để trống!'
+        }).then(result => {
+            if (result.isConfirmed) {
+                nodeToRename.name = result.value;
+                persistDraftsTree();
+                renderTree(draftsTree, treeContainer);
+                updateCurrentFileInfo();
+            }
+        });
+    }
+
+    function handleClearAllData() {
+        Swal.fire({
+            title: 'Bạn có chắc chắn?',
+            text: "Toàn bộ cây thư mục và các tệp sẽ bị xóa vĩnh viễn!",
+            icon: 'warning', showCancelButton: true,
+            confirmButtonColor: '#d33', confirmButtonText: 'Vâng, xóa tất cả!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                draftsTree = [];
+                currentFileId = null;
+                persistDraftsTree();
+                persistCurrentFileId();
+                if (editor) editor.setValue(`\\begin{ex}\n    Toàn bộ dữ liệu đã được xóa. Tạo tệp mới để bắt đầu.\n\\end{ex}`);
+                updateCurrentFileInfo();
+                Swal.fire('Đã xóa!', 'Toàn bộ dữ liệu của bạn đã được xóa.', 'success');
+            }
+        });
+    }
+
+    // --- UI Update & Modal Control ---
+    function updateCurrentFileInfo() {
+        if (currentFileId) {
+            const fileNode = findNodeById(draftsTree, currentFileId);
+            currentFileNameSpan.textContent = fileNode ? fileNode.name : "Không tìm thấy";
+        } else {
+            currentFileNameSpan.textContent = "Chưa có";
+        }
+    }
+    function openDraftsModal() {
+        renderTree(draftsTree, treeContainer);
+        draftsModal.style.display = 'flex';
+    }
+    function closeDraftsModal() { draftsModal.style.display = 'none'; }
+
     // Bắt đầu ứng dụng
     initializeApp();
 });

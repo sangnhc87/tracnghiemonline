@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giáo Trình Online</title>
+    <!-- CSS (dùng chung file với trang giáo viên) -->
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.16/themes/default/style.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <link rel="stylesheet" href="css/curriculum-style.css">
+</head>
+<body>
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="spinner"></div><p>Đang tải...</p>
+    </div>
+
+    <div class="header-bar">
+        <h1>Giáo Trình Online</h1>
+        <div class="actions">
+             <a href="/index.html" class="btn btn-primary">Quay lại trang Thi</a>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- 1. Cây thư mục (Chỉ đọc) -->
+        <div id="tree-panel" class="panel">
+            <div id="tree-container"></div>
+        </div>
+
+        <!-- 2. Vùng hiển thị nội dung -->
+        <div id="preview-panel" class="panel">
+            <div id="preview-container">
+                 <p style="text-align: center; color: #888; margin-top: 50px;">
+                    Vui lòng chọn một bài học từ menu bên trái để xem nội dung.
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Firebase -->
+    <script src="/__/firebase/9.10.0/firebase-app-compat.js"></script>
+    <script src="/__/firebase/9.10.0/firebase-functions-compat.js"></script>
+    <script src="/__/firebase/init.js"></script>
+
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.16/jstree.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    
+    <!-- Custom Logic -->
+    <script src="js/latex-parser.js"></script>
+    <script src="js/giaotrinh.js"></script>
+</body>
+</html>

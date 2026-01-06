@@ -113,8 +113,7 @@ const functions = firebase.app().functions("asia-southeast1");
         renderUserTable(filteredUsers);
     }
 
-// file: js/admin.js
-
+    
 function renderUserTable(users) {
     if (!users || users.length === 0) {
         userListContainer.innerHTML = '<p class="loading-text">Không tìm thấy giáo viên nào.</p>';
@@ -155,10 +154,12 @@ function renderUserTable(users) {
                 <td>
                     <input type="date" class="date-input" id="date-${user.id}" value="${isoDateValue}">
                 </td>
-                <td>
+                <td class="action-buttons">
                     <button class="save-btn" onclick="updateUserTrial('${user.id}', document.getElementById('date-${user.id}').value)" title="Lưu ngày hết hạn"><i class="fas fa-save"></i> Lưu</button>
-                    
                     <a href="teacher-detail.html?uid=${user.id}" class="btn btn-info" title="Xem chi tiết"><i class="fas fa-eye"></i> Chi tiết</a>
+                    
+                    <!-- NÚT XÓA ĐƯỢC THÊM VÀO ĐÂY -->
+                    <button class="btn-delete" onclick="adminDeleteUser('${user.id}', '${user.email}')" title="Xóa người dùng này"><i class="fas fa-user-slash"></i> Xóa</button>
                 </td>
             </tr>
         `;
@@ -169,7 +170,7 @@ function renderUserTable(users) {
 
     flatpickr(".date-input", {
         dateFormat: "Y-m-d",
-        minDate: "today",
+        // minDate: "today", // Có thể tạm bỏ để test với các ngày cũ
     });
 }
     // Cập nhật ngày hết hạn cho người dùng
@@ -196,3 +197,31 @@ function renderUserTable(users) {
         }
     };
 });
+
+
+
+window.adminDeleteUser = (userId, userEmail) => {
+    Swal.fire({
+        title: 'Bạn có chắc chắn?',
+        html: `Hành động này sẽ xóa vĩnh viễn người dùng <b>${userEmail}</b> và TOÀN BỘ DỮ LIỆU của họ (đề thi, lớp học, file...).<br><b>HÀNH ĐỘNG NÀY KHÔNG THỂ HOÀN TÁC!</b>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonText: 'Hủy bỏ',
+        confirmButtonText: 'Vâng, xóa hết!'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            showLoading();
+            try {
+                const deleteUserCallable = functions.httpsCallable('adminDeleteUser');
+                const response = await deleteUserCallable({ userId: userId });
+                Swal.fire('Đã xóa!', response.data.message, 'success');
+                loadUsers(); // Tải lại danh sách sau khi xóa
+            } catch (error) {
+                Swal.fire('Lỗi!', `Không thể xóa người dùng: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+    });
+};

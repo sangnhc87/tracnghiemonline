@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kho Đề Thi - Giáo Viên</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../css/design-system.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+    <script defer src="/__/firebase/9.10.0/firebase-app-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-auth-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-firestore-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-storage-compat.js"></script>
+    <script defer src="/__/firebase/init.js"></script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, var(--gray-50), var(--primary-50));
+        }
+
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: white;
+            border-right: 1px solid var(--gray-200);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: var(--space-6);
+            border-bottom: 1px solid var(--gray-100);
+        }
+
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            color: var(--gray-800);
+            text-decoration: none;
+            font-weight: var(--font-bold);
+            font-size: var(--text-lg);
+        }
+
+        .sidebar-logo i {
+            color: var(--primary-500);
+            font-size: 1.5rem;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: var(--space-4);
+            overflow-y: auto;
+        }
+
+        .nav-section {
+            margin-bottom: var(--space-6);
+        }
+
+        .nav-section-title {
+            font-size: var(--text-xs);
+            font-weight: var(--font-semibold);
+            color: var(--gray-400);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0 var(--space-3);
+            margin-bottom: var(--space-2);
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: var(--space-3);
+            border-radius: var(--radius-lg);
+            color: var(--gray-600);
+            text-decoration: none;
+            font-size: var(--text-sm);
+            font-weight: var(--font-medium);
+            transition: all var(--transition-normal);
+        }
+
+        .nav-item:hover {
+            background: var(--gray-100);
+            color: var(--gray-800);
+        }
+
+        .nav-item.active {
+            background: var(--primary-50);
+            color: var(--primary-600);
+        }
+
+        .nav-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+        .sidebar-footer {
+            padding: var(--space-4);
+            border-top: 1px solid var(--gray-100);
+        }
+
+        .user-card {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: var(--space-3);
+            background: var(--gray-50);
+            border-radius: var(--radius-lg);
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-full);
+            background: var(--primary-500);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: var(--font-bold);
+        }
+
+        .user-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .user-name {
+            font-size: var(--text-sm);
+            font-weight: var(--font-medium);
+            color: var(--gray-800);
+        }
+
+        .user-email {
+            font-size: var(--text-xs);
+            color: var(--gray-500);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 260px;
+            padding: var(--space-6);
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-6);
+        }
+
+        .page-title {
+            font-size: var(--text-2xl);
+            font-weight: var(--font-bold);
+            color: var(--gray-800);
+        }
+
+        .page-subtitle {
+            font-size: var(--text-sm);
+            color: var(--gray-500);
+            margin-top: var(--space-1);
+        }
+
+        /* Toolbar */
+        .toolbar {
+            display: flex;
+            gap: var(--space-3);
+            margin-bottom: var(--space-6);
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-lg);
+            padding: 0 var(--space-3);
+            flex: 1;
+            max-width: 400px;
+        }
+
+        .search-box i {
+            color: var(--gray-400);
+        }
+
+        .search-box input {
+            border: none;
+            outline: none;
+            padding: var(--space-3);
+            flex: 1;
+            font-family: inherit;
+            font-size: var(--text-sm);
+        }
+
+        /* Exam Grid */
+        .exam-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: var(--space-4);
+        }
+
+        .exam-card {
+            background: white;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            transition: all var(--transition-normal);
+            border: 1px solid var(--gray-100);
+        }
+
+        .exam-card:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
+        }
+
+        .exam-card-header {
+            padding: var(--space-4);
+            border-bottom: 1px solid var(--gray-100);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .exam-code {
+            font-size: var(--text-lg);
+            font-weight: var(--font-bold);
+            color: var(--primary-600);
+        }
+
+        .exam-type-badge {
+            padding: var(--space-1) var(--space-2);
+            border-radius: var(--radius-md);
+            font-size: var(--text-xs);
+            font-weight: var(--font-medium);
+        }
+
+        .exam-type-badge.text {
+            background: var(--primary-100);
+            color: var(--primary-700);
+        }
+
+        .exam-type-badge.pdf {
+            background: var(--danger-100);
+            color: var(--danger-700);
+        }
+
+        .exam-card-body {
+            padding: var(--space-4);
+        }
+
+        .exam-meta {
+            display: flex;
+            gap: var(--space-4);
+            font-size: var(--text-sm);
+            color: var(--gray-500);
+            margin-bottom: var(--space-3);
+        }
+
+        .exam-meta span {
+            display: flex;
+            align-items: center;
+            gap: var(--space-1);
+        }
+
+        .exam-meta i {
+            color: var(--gray-400);
+        }
+
+        .exam-preview {
+            background: var(--gray-50);
+            padding: var(--space-3);
+            border-radius: var(--radius-md);
+            font-size: var(--text-sm);
+            color: var(--gray-600);
+            max-height: 80px;
+            overflow: hidden;
+            line-height: 1.6;
+        }
+
+        .exam-card-footer {
+            padding: var(--space-3) var(--space-4);
+            border-top: 1px solid var(--gray-100);
+            background: var(--gray-50);
+            display: flex;
+            gap: var(--space-2);
+        }
+
+        .exam-card-footer .btn {
+            flex: 1;
+            justify-content: center;
+        }
+
+        /* Stats */
+        .stats-bar {
+            display: flex;
+            gap: var(--space-4);
+            margin-bottom: var(--space-6);
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: var(--space-4);
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .stat-icon.blue {
+            background: var(--primary-100);
+            color: var(--primary-600);
+        }
+
+        .stat-icon.green {
+            background: var(--success-100);
+            color: var(--success-600);
+        }
+
+        .stat-icon.orange {
+            background: var(--warning-100);
+            color: var(--warning-600);
+        }
+
+        .stat-value {
+            font-size: var(--text-2xl);
+            font-weight: var(--font-bold);
+            color: var(--gray-800);
+        }
+
+        .stat-label {
+            font-size: var(--text-sm);
+            color: var(--gray-500);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .exam-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-bar {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="/" class="sidebar-logo">
+                    <i class="fas fa-graduation-cap"></i>
+                    <span>Quiz Online</span>
+                </a>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Tổng quan</div>
+                    <a href="/teacher/dashboard.html" class="nav-item">
+                        <i class="fas fa-home"></i> Dashboard
+                    </a>
+                    <a href="/teacher/exam-bank.html" class="nav-item active">
+                        <i class="fas fa-file-alt"></i> Kho Đề Thi
+                    </a>
+                    <a href="/" class="nav-item">
+                        <i class="fas fa-users"></i> Quản lý Lớp
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Công cụ</div>
+                    <a href="/editor_V3.html" class="nav-item">
+                        <i class="fas fa-wand-magic-sparkles"></i> Soạn Word Pro
+                    </a>
+                    <a href="/soan_latex_pro.html" class="nav-item">
+                        <i class="fas fa-superscript"></i> Soạn LaTeX
+                    </a>
+                    <a href="/code-bank.html" class="nav-item">
+                        <i class="fas fa-code"></i> Kho Mã Code
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Thống kê</div>
+                    <a href="/stats.html" class="nav-item">
+                        <i class="fas fa-chart-line"></i> Báo cáo
+                    </a>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-card">
+                    <div class="user-avatar" id="user-avatar">G</div>
+                    <div class="user-info">
+                        <div class="user-name" id="user-name">Giáo viên</div>
+                        <div class="user-email" id="user-email">email@example.com</div>
+                    </div>
+                    <button class="btn btn-ghost btn-icon" id="logout-btn" title="Đăng xuất">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Kho Đề Thi</h1>
+                    <p class="page-subtitle">Quản lý tất cả đề thi của bạn</p>
+                </div>
+                <div style="display:flex;gap:var(--space-2);">
+                    <button class="btn btn-secondary" onclick="loadExams()">
+                        <i class="fas fa-sync-alt"></i> Làm mới
+                    </button>
+                    <a href="/" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Thêm đề mới
+                    </a>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-bar">
+                <div class="stat-card">
+                    <div class="stat-icon blue"><i class="fas fa-file-alt"></i></div>
+                    <div>
+                        <div class="stat-value" id="total-exams">0</div>
+                        <div class="stat-label">Tổng đề thi</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green"><i class="fas fa-file-word"></i></div>
+                    <div>
+                        <div class="stat-value" id="text-exams">0</div>
+                        <div class="stat-label">Đề TEXT</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon orange"><i class="fas fa-file-pdf"></i></div>
+                    <div>
+                        <div class="stat-value" id="pdf-exams">0</div>
+                        <div class="stat-label">Đề PDF</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Toolbar -->
+            <div class="toolbar">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="search-input" placeholder="Tìm kiếm mã đề...">
+                </div>
+                <select class="form-select" id="filter-type" style="width:auto;">
+                    <option value="">Tất cả loại</option>
+                    <option value="TEXT">Đề TEXT</option>
+                    <option value="PDF">Đề PDF</option>
+                </select>
+                <select class="form-select" id="sort-order" style="width:auto;">
+                    <option value="newest">Mới nhất</option>
+                    <option value="oldest">Cũ nhất</option>
+                    <option value="code">Theo mã</option>
+                </select>
+            </div>
+
+            <!-- Exam Grid -->
+            <div class="exam-grid" id="exam-grid">
+                <div class="empty-state">
+                    <i class="fas fa-folder-open"></i>
+                    <p>Đang tải đề thi...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let db, auth, currentUser;
+            let allExams = [];
+
+            const initApp = setInterval(() => {
+                if (typeof firebase !== 'undefined' && firebase.apps.length) {
+                    clearInterval(initApp);
+                    auth = firebase.auth();
+                    db = firebase.firestore();
+                    setupAuth();
+                }
+            }, 100);
+
+            function setupAuth() {
+                document.getElementById('logout-btn').onclick = () => auth.signOut().then(() => location.href = '/');
+
+                auth.onAuthStateChanged(user => {
+                    if (user) {
+                        currentUser = user;
+                        document.getElementById('user-name').textContent = user.displayName || 'Giáo viên';
+                        document.getElementById('user-email').textContent = user.email;
+                        document.getElementById('user-avatar').textContent = (user.displayName || user.email)[0].toUpperCase();
+                        loadExams();
+                    } else {
+                        location.href = '/';
+                    }
+                });
+            }
+
+            async function loadExams() {
+                try {
+                    const snapshot = await db.collection('users').doc(currentUser.uid)
+                        .collection('exams').orderBy('createdAt', 'desc').get();
+
+                    allExams = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    updateStats();
+                    renderExams(allExams);
+                } catch (e) {
+                    console.error('Load exams error:', e);
+                    document.getElementById('exam-grid').innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Không thể tải đề thi: ${e.message}</p>
+                    </div>`;
+                }
+            }
+            window.loadExams = loadExams;
+
+            function updateStats() {
+                document.getElementById('total-exams').textContent = allExams.length;
+                document.getElementById('text-exams').textContent = allExams.filter(e => e.examType !== 'PDF').length;
+                document.getElementById('pdf-exams').textContent = allExams.filter(e => e.examType === 'PDF').length;
+            }
+
+            function renderExams(exams) {
+                const grid = document.getElementById('exam-grid');
+
+                if (exams.length === 0) {
+                    grid.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-folder-open"></i>
+                        <p>Chưa có đề thi nào. <a href="/">Tạo đề mới</a></p>
+                    </div>`;
+                    return;
+                }
+
+                grid.innerHTML = exams.map(exam => {
+                    const type = exam.examType || 'TEXT';
+                    const keys = exam.answerKeys?.split('|') || [];
+                    const date = exam.createdAt?.toDate?.()?.toLocaleDateString('vi-VN') || 'N/A';
+                    let preview = '';
+
+                    if (type === 'PDF') {
+                        preview = `<i class="fas fa-file-pdf"></i> ${exam.pdfUrl ? 'Có link PDF' : 'Chưa có link'}`;
+                    } else {
+                        const content = exam.content || exam.examContent || '';
+                        preview = content.substring(0, 120).replace(/<[^>]*>/g, '') + (content.length > 120 ? '...' : '');
+                    }
+
+                    return `
+                <div class="exam-card" data-id="${exam.id}">
+                    <div class="exam-card-header">
+                        <span class="exam-code">${exam.examCode || 'N/A'}</span>
+                        <span class="exam-type-badge ${type.toLowerCase()}">${type}</span>
+                    </div>
+                    <div class="exam-card-body">
+                        <div class="exam-meta">
+                            <span><i class="fas fa-list"></i> ${keys.length} câu</span>
+                            <span><i class="fas fa-clock"></i> ${exam.duration || 90} phút</span>
+                            <span><i class="fas fa-calendar"></i> ${date}</span>
+                        </div>
+                        <div class="exam-preview">${preview || 'Không có nội dung'}</div>
+                    </div>
+                    <div class="exam-card-footer">
+                        <button class="btn btn-secondary btn-sm" onclick="previewExam('${exam.id}')">
+                            <i class="fas fa-eye"></i> Xem
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="copyExam('${exam.id}')">
+                            <i class="fas fa-copy"></i> Sao chép
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteExam('${exam.id}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>`;
+                }).join('');
+            }
+
+            // Search and filter
+            document.getElementById('search-input').oninput = filterExams;
+            document.getElementById('filter-type').onchange = filterExams;
+            document.getElementById('sort-order').onchange = filterExams;
+
+            function filterExams() {
+                const search = document.getElementById('search-input').value.toLowerCase();
+                const type = document.getElementById('filter-type').value;
+                const sort = document.getElementById('sort-order').value;
+
+                let filtered = allExams.filter(exam => {
+                    const matchSearch = !search || (exam.examCode || '').toLowerCase().includes(search);
+                    const matchType = !type || exam.examType === type || (!exam.examType && type === 'TEXT');
+                    return matchSearch && matchType;
+                });
+
+                if (sort === 'oldest') {
+                    filtered.reverse();
+                } else if (sort === 'code') {
+                    filtered.sort((a, b) => (a.examCode || '').localeCompare(b.examCode || ''));
+                }
+
+                renderExams(filtered);
+            }
+
+            window.previewExam = async (id) => {
+                const exam = allExams.find(e => e.id === id);
+                if (!exam) return;
+
+                let content = exam.content || exam.examContent || '';
+
+                // If content is in Storage, fetch it
+                if (exam.contentStoragePath) {
+                    try {
+                        const storageRef = firebase.storage().ref(exam.contentStoragePath);
+                        const url = await storageRef.getDownloadURL();
+                        const response = await fetch(url);
+                        content = await response.text();
+                    } catch (e) {
+                        content = 'Không thể tải nội dung từ Storage';
+                    }
+                }
+
+                Swal.fire({
+                    title: `Đề ${exam.examCode}`,
+                    html: `<div style="text-align:left;max-height:400px;overflow-y:auto;font-size:0.875rem;white-space:pre-wrap;">${content.substring(0, 2000)}${content.length > 2000 ? '\n...(còn nữa)' : ''}</div>`,
+                    width: 700,
+                    showCloseButton: true
+                });
+            };
+
+            window.copyExam = async (id) => {
+                const exam = allExams.find(e => e.id === id);
+                if (!exam) return;
+
+                const { value: newCode } = await Swal.fire({
+                    title: 'Sao chép đề',
+                    input: 'text',
+                    inputLabel: 'Mã đề mới',
+                    inputValue: exam.examCode + '_copy',
+                    showCancelButton: true,
+                    cancelButtonText: 'Hủy',
+                    confirmButtonText: 'Sao chép'
+                });
+
+                if (newCode) {
+                    try {
+                        const newExam = { ...exam, examCode: newCode, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
+                        delete newExam.id;
+                        await db.collection('users').doc(currentUser.uid).collection('exams').add(newExam);
+                        Swal.fire({ icon: 'success', title: 'Đã sao chép!', timer: 1500, showConfirmButton: false });
+                        loadExams();
+                    } catch (e) {
+                        Swal.fire('Lỗi', e.message, 'error');
+                    }
+                }
+            };
+
+            window.deleteExam = async (id) => {
+                const exam = allExams.find(e => e.id === id);
+                if (!exam) return;
+
+                const result = await Swal.fire({
+                    title: `Xóa đề ${exam.examCode}?`,
+                    text: 'Hành động này không thể hoàn tác.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ef4444',
+                    cancelButtonText: 'Hủy',
+                    confirmButtonText: 'Xóa'
+                });
+
+                if (result.isConfirmed) {
+                    try {
+                        await db.collection('users').doc(currentUser.uid).collection('exams').doc(id).delete();
+                        Swal.fire({ icon: 'success', title: 'Đã xóa!', timer: 1500, showConfirmButton: false });
+                        loadExams();
+                    } catch (e) {
+                        Swal.fire('Lỗi', e.message, 'error');
+                    }
+                }
+            };
+        });
+    </script>
+</body>
+
+</html>

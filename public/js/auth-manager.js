@@ -1,51 +1,36 @@
-// File: public/js/auth-manager.js
+// public/js/auth-manager.js (PHIÊN BẢN ĐỔI TÊN AN TOÀN)
 
-// Biến toàn cục để lưu trạng thái người dùng hiện tại (giữ nguyên)
 let currentFirebaseUser = null;
 
-/**
- * Khởi tạo trình theo dõi trạng thái xác thực của Firebase.
- * @param {object} authInstance - Đối tượng auth đã được khởi tạo từ main.js
- * @param {function} onLogin - Callback sẽ được gọi khi người dùng đăng nhập.
- * @param {function} onLogout - Callback sẽ được gọi khi người dùng đăng xuất.
- */
-function initializeAuth(authInstance, onLogin, onLogout) {
-    // Không cần kiểm tra firebase.auth nữa, vì chúng ta đã nhận nó trực tiếp
-    
+function AuthHelper_initialize(authInstance, onLogin, onLogout) {
     authInstance.onAuthStateChanged(user => {
         if (user) {
-            console.log("AuthManager: Người dùng đã đăng nhập -", user.email);
             currentFirebaseUser = user;
-            if (typeof onLogin === 'function') {
-                onLogin(user);
-            }
+            if (typeof onLogin === 'function') onLogin(user);
         } else {
-            console.log("AuthManager: Người dùng đã đăng xuất.");
             currentFirebaseUser = null;
-            if (typeof onLogout === 'function') {
-                onLogout();
-            }
+            if (typeof onLogout === 'function') onLogout();
         }
     });
 }
 
-/**
- * Thực hiện đăng nhập bằng Google.
- * @param {object} authInstance - Đối tượng auth đã được khởi tạo từ main.js
- */
-function signInWithGoogle(authInstance) {
-    const provider = new firebase.auth.GoogleAuthProvider(); // Giữ nguyên, vì đây là class
+// trong auth-manager.js
+function AuthHelper_signInWithGoogle(authInstance) {
+    const provider = new firebase.auth.GoogleAuthProvider();
     authInstance.signInWithPopup(provider).catch(error => {
-        console.error("Lỗi đăng nhập Google:", error);
-        Swal.fire("Lỗi", "Lỗi đăng nhập Google: " + error.message, "error");
+        // Kiểm tra mã lỗi
+        if (error.code === 'auth/popup-closed-by-user') {
+            // Nếu người dùng tự đóng popup, chỉ cần log ra console và không làm phiền họ.
+            console.log('Đăng nhập Google đã bị người dùng hủy bỏ.');
+        } else {
+            // Đối với các lỗi khác (lỗi mạng, tài khoản bị vô hiệu hóa, ...), hãy hiển thị thông báo.
+            console.error("Lỗi đăng nhập Google:", error);
+            Swal.fire("Lỗi", "Lỗi đăng nhập Google: " + error.message, "error");
+        }
     });
 }
 
-/**
- * Thực hiện đăng xuất.
- * @param {object} authInstance - Đối tượng auth đã được khởi tạo từ main.js
- */
-function signOut(authInstance) {
+function AuthHelper_signOut(authInstance) {
     authInstance.signOut().catch(error => {
         console.error("Lỗi đăng xuất:", error);
         Swal.fire("Lỗi", "Lỗi khi đăng xuất: " + error.message, "error");

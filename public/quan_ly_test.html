@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FINAL TEST - V2</title>
+    <!-- THƯ VIỆN CẦN THIẾT -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.16/themes/default/style.min.css" />
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; }
+        .container { display: flex; height: 100vh; }
+        #tree-container { width: 300px; border-right: 1px solid #ccc; overflow: auto; }
+        #editor-container { flex-grow: 1; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div id="tree-container"></div>
+        <div id="editor-container"></div>
+    </div>
+
+    <!-- Firebase SDKs (Không cần cho bài test này, nhưng giữ lại) -->
+    <script src="/__/firebase/9.10.0/firebase-app-compat.js"></script>
+    <script src="/__/firebase/9.10.0/firebase-auth-compat.js"></script>
+    <script src="/__/firebase/init.js"></script>
+
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.16/jstree.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
+
+    <!-- LOGIC SCRIPT - PHIÊN BẢN SỬA LỖI XUNG ĐỘT SỰ KIỆN -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const auth = firebase.auth();
+            const treeContainer = $('#tree-container');
+            let editor;
+
+            function initMonacoEditor() {
+                return new Promise(resolve => {
+                    require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs' } });
+                    require(['vs/editor/editor.main'], () => {
+                        editor = monaco.editor.create(document.getElementById('editor-container'), {
+                            value: 'Vui lòng chọn một bài học...',
+                            readOnly: true
+                        });
+                        console.log("Monaco Editor Initialized and LOCKED.");
+                        resolve();
+                    });
+                });
+            }
+
+            function initJsTree() {
+                treeContainer.jstree({
+                    'core': {
+                        'data': [{ "id": "folder1", "text": "Thư mục gốc", "type": "default" }],
+                        'check_callback': true
+                    },
+                    'plugins': ['contextmenu', 'types'],
+                    'contextmenu': {
+                        'items': function(node) {
+                            const tree = $.jstree.reference(node);
+                            const menuItems = {
+                                "createFolder": {
+                                    "label": "Tạo Thư Mục Mới",
+                                    "action": function () {
+                                        tree.create_node(node, { text: 'Thư mục mới', type: 'default' }, "last");
+                                    }
+                                },
+                                "createFile": {
+                                    "label": "Tạo Bài Học Mới",
+                                    "action": function () {
+                                        tree.create_node(node, { text: 'Bài học mới', type: 'file' }, "last");
+                                    }
+                                },
+                                "rename": {
+                                    "label": "Đổi Tên",
+                                    "action": function () {
+                                        tree.edit(node);
+                                    }
+                                },
+                                "delete": {
+                                    "label": "Xóa",
+                                    "action": function () {
+                                        tree.delete_node(node);
+                                    }
+                                }
+                            };
+
+                            if (node.type === "file") {
+                                delete menuItems.createFolder;
+                                delete menuItems.createFile;
+                            }
+                            return menuItems;
+                        }
+                    },
+                    'types': {
+                        'default': { 'icon': 'jstree-folder' },
+                        'file': { 'icon': 'jstree-file' }
+                    }
+                });
+            }
+
+            // ==========================================================
+            // QUẢN LÝ SỰ KIỆN CỦA JSTREE - PHẦN SỬA ĐỔI QUAN TRỌNG
+            // ==========================================================
+
+            // Sự kiện KHI NODE ĐƯỢC CHỌN: Cập nhật editor
+            treeContainer.on('changed.jstree', (e, data) => {
+                if (!editor || !data.selected.length) {
+                    editor.updateOptions({ readOnly: true });
+                    editor.setValue('Vui lòng chọn một bài học...');
+                    return;
+                };
+                const node = data.instance.get_node(data.selected[0]);
+                const isFile = node.type === 'file';
+
+                console.log(`Node selected: ${node.text}, Type: ${node.type}. Setting readOnly to ${!isFile}`);
+                editor.updateOptions({ readOnly: !isFile });
+
+                if (isFile) {
+                    // Trong thực tế, bạn sẽ tải nội dung file từ server ở đây
+                    // Ví dụ: editor.setValue(`Nội dung của bài học: ${node.text}`);
+                    editor.setValue(`Đây là nội dung của: ${node.text}\n\nBạn có thể bắt đầu chỉnh sửa.`);
+                    editor.focus();
+                } else {
+                    editor.setValue(`Đây là thư mục "${node.text}". Không thể chỉnh sửa nội dung thư mục.`);
+                }
+            });
+
+            // Sự kiện KHI NODE MỚI ĐƯỢC TẠO: Bật chế độ sửa tên
+            treeContainer.on('create_node.jstree', function (e, data) {
+                console.log("Node created. Initiating edit mode for:", data.node.id);
+                data.instance.edit(data.node);
+            });
+
+            treeContainer.on('rename_node.jstree', function (e, data) {
+    console.log("Rename finished for:", data.node.id, "New text:", data.text);
+    // Gán lại type nếu node có text "Bài học mới"
+    if (data.text.startsWith("Bài học")) {
+        data.instance.set_type(data.node, "file");
+    }
+    // Sau đó select
+    data.instance.select_node(data.node);
+});
+
+
+            // ==========================================================
+            // CHẠY CHƯƠNG TRÌNH
+            // ==========================================================
+            auth.onAuthStateChanged(async (user) => {
+                if (user) {
+                    await initMonacoEditor();
+                    initJsTree();
+                } else {
+                    console.log("Vui lòng đăng nhập");
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>

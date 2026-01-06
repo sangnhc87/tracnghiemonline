@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Giáo Viên - Super Admin</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../css/design-system.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script defer src="/__/firebase/9.10.0/firebase-app-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-auth-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-firestore-compat.js"></script>
+    <script defer src="/__/firebase/init.js"></script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+            color: white;
+        }
+
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            position: fixed;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: var(--space-6);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            color: white;
+            text-decoration: none;
+            font-weight: var(--font-bold);
+            font-size: var(--text-lg);
+        }
+
+        .sidebar-logo i {
+            color: #60a5fa;
+            font-size: 1.5rem;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: var(--space-4);
+            overflow-y: auto;
+        }
+
+        .nav-section {
+            margin-bottom: var(--space-6);
+        }
+
+        .nav-section-title {
+            font-size: var(--text-xs);
+            color: rgba(255, 255, 255, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0 var(--space-3);
+            margin-bottom: var(--space-2);
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: var(--space-3);
+            border-radius: var(--radius-lg);
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-size: var(--text-sm);
+            transition: all var(--transition-normal);
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .nav-item.active {
+            background: var(--primary-600);
+            color: white;
+        }
+
+        .nav-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+        .pending-badge {
+            margin-left: auto;
+            background: var(--danger-500);
+            color: white;
+            padding: 2px 8px;
+            border-radius: var(--radius-full);
+            font-size: var(--text-xs);
+            font-weight: var(--font-bold);
+        }
+
+        .sidebar-footer {
+            padding: var(--space-4);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .user-card {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: var(--space-3);
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: var(--radius-lg);
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-full);
+            background: var(--primary-500);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: var(--font-bold);
+        }
+
+        .user-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .user-name {
+            font-size: var(--text-sm);
+            font-weight: var(--font-medium);
+        }
+
+        .user-role {
+            font-size: var(--text-xs);
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 260px;
+            padding: var(--space-6);
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-6);
+        }
+
+        .page-title {
+            font-size: var(--text-2xl);
+            font-weight: var(--font-bold);
+        }
+
+        .page-subtitle {
+            font-size: var(--text-sm);
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: var(--space-1);
+        }
+
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-4);
+            margin-bottom: var(--space-6);
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: var(--radius-xl);
+            padding: var(--space-5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            margin-bottom: var(--space-3);
+        }
+
+        .stat-icon.warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+        }
+
+        .stat-icon.success {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+        }
+
+        .stat-icon.danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+        }
+
+        .stat-icon.blue {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+        }
+
+        .stat-value {
+            font-size: var(--text-3xl);
+            font-weight: var(--font-bold);
+        }
+
+        .stat-label {
+            font-size: var(--text-sm);
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Sections */
+        .section {
+            margin-bottom: var(--space-6);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-4);
+        }
+
+        .section-title {
+            font-size: var(--text-lg);
+            font-weight: var(--font-semibold);
+        }
+
+        /* Cards */
+        .data-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: var(--radius-xl);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+
+        .data-card-header {
+            padding: var(--space-4) var(--space-5);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Table */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: var(--space-4) var(--space-5);
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .data-table th {
+            font-size: var(--text-xs);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: rgba(255, 255, 255, 0.5);
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .data-table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .teacher-info {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+
+        .teacher-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-full);
+            background: var(--gray-600);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: var(--font-bold);
+        }
+
+        .teacher-name {
+            font-weight: var(--font-medium);
+        }
+
+        .teacher-email {
+            font-size: var(--text-sm);
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .status-badge {
+            padding: var(--space-1) var(--space-3);
+            border-radius: var(--radius-full);
+            font-size: var(--text-xs);
+            font-weight: var(--font-medium);
+        }
+
+        .status-badge.pending {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+        }
+
+        .status-badge.approved {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+        }
+
+        .status-badge.rejected {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+        }
+
+        .action-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: var(--space-2) var(--space-4);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: var(--text-sm);
+            transition: all var(--transition-normal);
+        }
+
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .action-btn.approve {
+            border-color: var(--success-500);
+            color: var(--success-500);
+        }
+
+        .action-btn.approve:hover {
+            background: var(--success-500);
+            color: white;
+        }
+
+        .action-btn.reject {
+            border-color: var(--danger-500);
+            color: var(--danger-500);
+        }
+
+        .action-btn.reject:hover {
+            background: var(--danger-500);
+            color: white;
+        }
+
+        .empty-row {
+            text-align: center;
+            padding: var(--space-8) !important;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Login */
+        .login-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: var(--radius-xl);
+            padding: var(--space-8);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .login-icon {
+            font-size: 4rem;
+            color: #60a5fa;
+            margin-bottom: var(--space-4);
+        }
+
+        .login-title {
+            font-size: var(--text-xl);
+            font-weight: var(--font-bold);
+            margin-bottom: var(--space-2);
+        }
+
+        .login-subtitle {
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: var(--space-6);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: var(--space-4);
+            background: var(--primary-500);
+            color: white;
+            border: none;
+            border-radius: var(--radius-lg);
+            font-size: var(--text-base);
+            font-weight: var(--font-medium);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-2);
+            transition: all var(--transition-normal);
+        }
+
+        .login-btn:hover {
+            background: var(--primary-600);
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-screen">
+        <div class="login-card">
+            <i class="fas fa-shield-halved login-icon"></i>
+            <h1 class="login-title">Super Admin</h1>
+            <p class="login-subtitle">Đăng nhập để quản lý hệ thống</p>
+            <button class="login-btn" id="login-btn">
+                <i class="fab fa-google"></i> Đăng nhập với Google
+            </button>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="admin-dashboard" class="layout" style="display:none;">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="/" class="sidebar-logo">
+                    <i class="fas fa-shield-halved"></i>
+                    <span>Super Admin</span>
+                </a>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Dashboard</div>
+                    <a href="/super-admin.html" class="nav-item">
+                        <i class="fas fa-chart-pie"></i> Tổng quan
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Quản lý</div>
+                    <a href="/admin/teachers.html" class="nav-item active">
+                        <i class="fas fa-users"></i> Giáo viên
+                        <span class="pending-badge" id="pending-count">0</span>
+                    </a>
+                    <a href="/super-admin.html" class="nav-item">
+                        <i class="fas fa-file-alt"></i> Đề thi
+                    </a>
+                    <a href="/super-admin.html" class="nav-item">
+                        <i class="fas fa-paper-plane"></i> Bài nộp
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Hệ thống</div>
+                    <a href="#" class="nav-item">
+                        <i class="fas fa-cog"></i> Cài đặt
+                    </a>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-card">
+                    <div class="user-avatar" id="admin-avatar">A</div>
+                    <div class="user-info">
+                        <div class="user-name" id="admin-name">Admin</div>
+                        <div class="user-role">Super Admin</div>
+                    </div>
+                </div>
+                <button class="action-btn" style="width:100%;margin-top:var(--space-3);" id="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Đăng xuất
+                </button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Quản Lý Giáo Viên</h1>
+                    <p class="page-subtitle">Duyệt tài khoản và quản lý quyền truy cập</p>
+                </div>
+                <div style="display:flex;gap:12px;align-items:center;">
+                    <input type="text" id="search-input" placeholder="Tìm kiếm giáo viên..."
+                        style="padding:10px 16px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:white;width:250px;"
+                        oninput="filterTeachers()">
+                    <a href="/hdsd-admin.html" target="_blank" class="action-btn" style="text-decoration:none;">
+                        <i class="fas fa-question-circle"></i> Hướng dẫn
+                    </a>
+                    <button class="action-btn" onclick="loadTeachers()">
+                        <i class="fas fa-sync-alt"></i> Làm mới
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon warning"><i class="fas fa-clock"></i></div>
+                    <div class="stat-value" id="stat-pending">0</div>
+                    <div class="stat-label">Chờ duyệt</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon success"><i class="fas fa-check-circle"></i></div>
+                    <div class="stat-value" id="stat-approved">0</div>
+                    <div class="stat-label">Đã duyệt</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon danger"><i class="fas fa-times-circle"></i></div>
+                    <div class="stat-value" id="stat-rejected">0</div>
+                    <div class="stat-label">Từ chối</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon blue"><i class="fas fa-users"></i></div>
+                    <div class="stat-value" id="stat-total">0</div>
+                    <div class="stat-label">Tổng cộng</div>
+                </div>
+            </div>
+
+            <!-- Pending Section -->
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title"><i class="fas fa-clock" style="color:#fbbf24;margin-right:8px;"></i> Chờ
+                        Duyệt</h2>
+                </div>
+                <div class="data-card">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Giáo viên</th>
+                                <th>Mã GV</th>
+                                <th>Ngày đăng ký</th>
+                                <th>Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pending-table">
+                            <tr>
+                                <td colspan="4" class="empty-row">Đang tải...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Approved Section -->
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title"><i class="fas fa-check-circle"
+                            style="color:#4ade80;margin-right:8px;"></i> Đã Duyệt</h2>
+                </div>
+                <div class="data-card">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Giáo viên</th>
+                                <th>Mã GV</th>
+                                <th>Subscription</th>
+                                <th>Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="approved-table">
+                            <tr>
+                                <td colspan="4" class="empty-row">Đang tải...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let db, auth;
+            let allTeachers = [];
+
+            // Super Admin whitelist
+            const SUPER_ADMINS = ['sangnhc@gmail.com', 'nguyensangnhc@gmail.com'];
+
+            const initApp = setInterval(() => {
+                if (typeof firebase !== 'undefined' && firebase.apps.length) {
+                    clearInterval(initApp);
+                    auth = firebase.auth();
+                    db = firebase.firestore();
+                    setupAuth();
+                }
+            }, 100);
+
+            function setupAuth() {
+                document.getElementById('login-btn').onclick = () => {
+                    const provider = new firebase.auth.GoogleAuthProvider();
+                    auth.signInWithPopup(provider);
+                };
+
+                document.getElementById('logout-btn').onclick = () => auth.signOut();
+
+                auth.onAuthStateChanged(user => {
+                    if (user && SUPER_ADMINS.includes(user.email)) {
+                        document.getElementById('login-screen').style.display = 'none';
+                        document.getElementById('admin-dashboard').style.display = 'flex';
+                        document.getElementById('admin-name').textContent = user.displayName || 'Admin';
+                        document.getElementById('admin-avatar').textContent = (user.displayName || 'A')[0].toUpperCase();
+                        loadTeachers();
+                    } else if (user) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Không có quyền',
+                            text: 'Tài khoản của bạn không phải Super Admin.'
+                        }).then(() => auth.signOut());
+                    } else {
+                        document.getElementById('login-screen').style.display = 'flex';
+                        document.getElementById('admin-dashboard').style.display = 'none';
+                    }
+                });
+            }
+
+            async function loadTeachers() {
+                try {
+                    const snapshot = await db.collection('users').get();
+                    allTeachers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                    // Auto-approve super admins if not already approved
+                    for (const teacher of allTeachers) {
+                        if (SUPER_ADMINS.includes(teacher.email) && teacher.status !== 'approved') {
+                            await db.collection('users').doc(teacher.id).update({
+                                status: 'approved',
+                                approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                subscriptionDays: 9999,
+                                isSuperAdmin: true
+                            });
+                            teacher.status = 'approved';
+                            teacher.subscriptionDays = 9999;
+                            teacher.isSuperAdmin = true;
+                        }
+                    }
+
+                    // Filter out super admins from the lists (they manage themselves)
+                    const regularTeachers = allTeachers.filter(t => !SUPER_ADMINS.includes(t.email));
+
+                    const pending = regularTeachers.filter(t => t.status === 'pending' || !t.status);
+                    const approved = regularTeachers.filter(t => t.status === 'approved');
+                    const rejected = regularTeachers.filter(t => t.status === 'rejected');
+
+                    // Update stats
+                    document.getElementById('stat-pending').textContent = pending.length;
+                    document.getElementById('stat-approved').textContent = approved.length;
+                    document.getElementById('stat-rejected').textContent = rejected.length;
+                    document.getElementById('stat-total').textContent = regularTeachers.length;
+                    document.getElementById('pending-count').textContent = pending.length;
+
+                    // Store for filtering
+                    window.pendingTeachers = pending;
+                    window.approvedTeachers = approved;
+
+                    renderPending(pending);
+                    renderApproved(approved);
+                } catch (e) {
+                    console.error('Load teachers error:', e);
+                }
+            }
+            window.loadTeachers = loadTeachers;
+
+            // Search/Filter function
+            window.filterTeachers = function () {
+                const query = document.getElementById('search-input').value.toLowerCase().trim();
+                if (!query) {
+                    renderPending(window.pendingTeachers || []);
+                    renderApproved(window.approvedTeachers || []);
+                    return;
+                }
+                const filterFn = t =>
+                    (t.displayName || '').toLowerCase().includes(query) ||
+                    (t.email || '').toLowerCase().includes(query) ||
+                    (t.teacherAlias || '').toLowerCase().includes(query);
+
+                renderPending((window.pendingTeachers || []).filter(filterFn));
+                renderApproved((window.approvedTeachers || []).filter(filterFn));
+            };
+
+            function renderPending(teachers) {
+                const tbody = document.getElementById('pending-table');
+                if (teachers.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="empty-row">Không có yêu cầu chờ duyệt</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = teachers.map(t => {
+                    const date = t.createdAt?.toDate?.()?.toLocaleDateString('vi-VN') || 'N/A';
+                    const name = t.displayName || t.email?.split('@')[0] || 'Chưa có tên';
+                    return `
+                <tr data-id="${t.id}">
+                    <td>
+                        <div class="teacher-info">
+                            <div class="teacher-avatar">${name[0].toUpperCase()}</div>
+                            <div>
+                                <div class="teacher-name">${name}</div>
+                                <div class="teacher-email">${t.email || 'N/A'}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td><strong>${t.teacherAlias || 'Chưa có'}</strong></td>
+                    <td>${date}</td>
+                    <td>
+                        <button class="action-btn approve" onclick="approveTeacher('${t.id}')">
+                            <i class="fas fa-check"></i> Duyệt
+                        </button>
+                        <button class="action-btn reject" onclick="rejectTeacher('${t.id}')" style="margin-left:8px;">
+                            <i class="fas fa-times"></i> Từ chối
+                        </button>
+                        <button class="action-btn" onclick="deleteTeacher('${t.id}', '${name}')" style="margin-left:8px;" title="Xóa vĩnh viễn">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+                }).join('');
+            }
+
+            function renderApproved(teachers) {
+                const tbody = document.getElementById('approved-table');
+                if (teachers.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="empty-row">Chưa có giáo viên được duyệt</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = teachers.map(t => {
+                    const days = t.subscriptionDays || 0;
+                    const statusClass = days > 30 ? 'approved' : (days > 0 ? 'pending' : 'rejected');
+                    const statusText = days > 30 ? `${days} ngày` : (days > 0 ? `${days} ngày (sắp hết)` : 'Hết hạn');
+                    const name = t.displayName || t.email?.split('@')[0] || 'Chưa có tên';
+
+                    return `
+                <tr data-id="${t.id}">
+                    <td>
+                        <div class="teacher-info">
+                            <div class="teacher-avatar" style="background:var(--success-600);">${name[0].toUpperCase()}</div>
+                            <div>
+                                <div class="teacher-name">${name}</div>
+                                <div class="teacher-email">${t.email || 'N/A'}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td><strong>${t.teacherAlias || 'Chưa có'}</strong></td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    <td>
+                        <button class="action-btn" onclick="editTeacher('${t.id}')" title="Sửa thông tin">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="action-btn" onclick="extendSubscription('${t.id}')" style="margin-left:6px;" title="Gia hạn">
+                            <i class="fas fa-plus"></i> Thêm ngày
+                        </button>
+                        <button class="action-btn reject" onclick="revokeAccess('${t.id}')" style="margin-left:6px;" title="Tạm dừng">
+                            <i class="fas fa-pause"></i> Stop
+                        </button>
+                        <button class="action-btn" onclick="deleteTeacher('${t.id}', '${name}')" style="margin-left:6px;" title="Xóa vĩnh viễn">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+                }).join('');
+            }
+
+            window.approveTeacher = async (uid) => {
+                const { value: days } = await Swal.fire({
+                    title: 'Duyệt giáo viên',
+                    html: '<p>Nhập số ngày subscription:</p>',
+                    input: 'number',
+                    inputValue: 30,
+                    inputAttributes: { min: 1, step: 1 },
+                    showCancelButton: true,
+                    confirmButtonColor: '#22c55e',
+                    cancelButtonText: 'Hủy',
+                    confirmButtonText: 'Duyệt',
+                    inputValidator: (value) => {
+                        if (!value || value < 1) return 'Vui lòng nhập số ngày hợp lệ!';
+                    }
+                });
+
+                if (days) {
+                    try {
+                        await db.collection('users').doc(uid).update({
+                            status: 'approved',
+                            approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            subscriptionDays: parseInt(days)
+                        });
+                        Swal.fire({ icon: 'success', title: `Đã duyệt với ${days} ngày!`, timer: 1500, showConfirmButton: false });
+                        loadTeachers();
+                    } catch (e) {
+                        Swal.fire('Lỗi', e.message, 'error');
+                    }
+                }
+            };
+
+            window.rejectTeacher = async (uid) => {
+                const { value: reason } = await Swal.fire({
+                    title: 'Từ chối giáo viên?',
+                    input: 'text',
+                    inputLabel: 'Lý do (tùy chọn)',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ef4444',
+                    cancelButtonText: 'Hủy',
+                    confirmButtonText: 'Từ chối'
+                });
+
+                if (reason !== undefined) {
+                    try {
+                        await db.collection('users').doc(uid).update({
+                            status: 'rejected',
+                            rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            rejectionReason: reason || ''
+                        });
+                        Swal.fire({ icon: 'success', title: 'Đã từ chối!', timer: 1500, showConfirmButton: false });
+                        loadTeachers();
+                    } catch (e) {
+                        Swal.fire('Lỗi', e.message, 'error');
+                    }
+                }
+            };
+
+            window.extendSubscription = async (uid) => {
+                const { value: days } = await Swal.fire({
+                    title: 'Gia hạn subscription',
+                    input: 'number',
+                    inputLabel: 'Số ngày thêm',
+                    inputValue: 30,
+                    inputAttributes: { min: 1 },
+                    showCancelButton: true,
+                    confirmButtonText: 'Gia hạn',
+                    cancelButtonText: 'Hủy'
+                });
+
+                if (days) {
+                    try {
+                        const teacher = allTeachers.find(t => t.id === uid);
+                        const currentDays = teacher?.subscriptionDays || 0;
+                        await db.collection('users').doc(uid).update({
+                            subscriptionDays: currentDays + parseInt(days)
+                        });
+                        Swal.fire({ icon: 'success', title: `Đã thêm ${days} ngày!`, timer: 1500, showConfirmButton: false });
+                        loadTeachers();
+                    } catch (e) {
+                        Swal.fire('Lỗi', e.message, 'error');
+                    }
+                }
+            };
+
+            window.revokeAccess = async (uid) => {
+                const result = await Swal.fire({
+                    title: 'Tạm dừng tài khoản?',
+                    text: 'Giáo viên sẽ không thể sử dụng hệ thống cho đến khi được kích hoạt lại.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ef4444',
+                    cancelButtonText: 'Hủy',
+                    confirmButtonText: 'Tạm dừng'
+                });
+
+                if (result.isConfirmed) {
+                    try {
+                        await db.collection('users').doc(uid).update({
+                            status: 'pending',
+                            subscriptionDays: 0
+                        });
+                        Swal.fire({ icon: 'success', title: 'Đã tạm dừng!', timer: 1500, showConfirmButton: false });
+                        loadTeachers();
+                    } catch (e) {
+                        Swal.fire('Lỗi', e.message, 'error');
+                    }
+                }
+            };
+
+            window.editTeacher = async (uid) => {
+                const teacher = allTeachers.find(t => t.id === uid);
+                if (!teacher) return;
+
+                const { value: formValues } = await Swal.fire({
+                    title: 'Sửa thông tin giáo viên',
+                    html: `
+                        <div style="text-align:left;margin-bottom:12px;">
+                            <label style="display:block;margin-bottom:4px;font-weight:500;">Tên hiển thị:</label>
+                            <input id="edit-name" class="swal2-input" value="${teacher.displayName || ''}" style="margin:0;width:100%;">
+                        </div>
+                        <div style="text-align:left;margin-bottom:12px;">
+                            <label style="display:block;margin-bottom:4px;font-weight:500;">Mã giáo viên:</label>
+                            <input id="edit-alias" class="swal2-input" value="${teacher.teacherAlias || ''}" style="margin:0;width:100%;">
+                        </div>
+                        <div style="text-align:left;">
+                            <label style="display:block;margin-bottom:4px;font-weight:500;">Số ngày subscription:</label>
+                            <input id="edit-days" type="number" class="swal2-input" value="${teacher.subscriptionDays || 0}" style="margin:0;width:100%;">
+                        </div>
+                    `,
+                    focusConfirm: false,
+                    showCancelButton: true,
+                    confirmButtonText: 'Lưu',
+                    cancelButtonText: 'Hủy',
+                    preConfirm: () => ({
+                        displayName: document.getElementById('edit-name').value.trim(),
+                        teacherAlias: document.getElementById('edit-alias').value.trim(),
+                        subscriptionDays: parseInt(document.getElementById('edit-days').value) || 0
+                    })
+                });
+
+                if (formValues) {
+                    try {
+                        await db.collection('users').doc(uid).update(formValues);
+                        Swal.fire({ icon: 'success', title: 'Đã cập nhật!', timer: 1500, showConfirmButton: false });
+                        loadTeachers();
+                    } catch (e) {
+                        Swal.fire('Lỗi', e.message, 'error');
+                    }
+                }
+            };
+
+            window.deleteTeacher = async (uid, name) => {
+                const result = await Swal.fire({
+                    title: 'Xóa vĩnh viễn?',
+                    html: `<p>Bạn có chắc muốn xóa giáo viên <strong>${name}</strong>?</p><p style="color:#ef4444;font-size:0.9em;">Hành động này không thể hoàn tác!</p>`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ef4444',
+                    cancelButtonText: 'Hủy',
+                    confirmButtonText: 'Xóa vĩnh viễn',
+                    input: 'text',
+                    inputPlaceholder: 'Nhập "XOA" để xác nhận',
+                    inputValidator: (value) => {
+                        if (value !== 'XOA') return 'Vui lòng nhập "XOA" để xác nhận!';
+                    }
+                });
+
+                if (result.isConfirmed) {
+                    try {
+                        await db.collection('users').doc(uid).delete();
+                        Swal.fire({ icon: 'success', title: 'Đã xóa!', timer: 1500, showConfirmButton: false });
+                        loadTeachers();
+                    } catch (e) {
+                        Swal.fire('Lỗi', e.message, 'error');
+                    }
+                }
+            };
+        });
+    </script>
+</body>
+
+</html>

@@ -250,38 +250,60 @@ async function handleBackupToCloud() {
 
 
 // ==========================================================
-// BƯỚC 3: KHỞI CHẠY ỨNG DỤNG SAU KHI TẢI XONG
+// BƯỚC 3: KHỞI CHẠY ỨNG DỤNG (PHIÊN BẢN ĐÃ SỬA LỖI)
 // ==========================================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    // --- KHỞI TẠO XÁC THỰC ---
+    
+    // --- Lấy các phần tử DOM cần thiết cho việc xác thực ---
     const userInfoSpan = document.getElementById('user-info');
     const authBtn = document.getElementById('auth-btn');
+    const saveToCloudBtn = document.getElementById('save-to-cloud-btn'); 
 
-    // Gọi hàm từ auth-manager.js và truyền vào đối tượng auth hợp lệ
-    initializeAuth(
+    // --- Gán sự kiện cho nút Đăng nhập/Đăng xuất chính ---
+    if (authBtn) {
+        authBtn.addEventListener('click', () => {
+            // Kiểm tra trạng thái hiện tại để quyết định hành động
+            if (auth.currentUser) {
+                // Nếu đã đăng nhập, nút này sẽ thực hiện đăng xuất
+                AuthHelper_signOut(auth);
+            } else {
+                // Nếu chưa đăng nhập, nút này sẽ thực hiện đăng nhập
+                AuthHelper_signInWithGoogle(auth);
+            }
+        });
+    }
+
+    // --- KHỞI TẠO LOGIC XÁC THỰC ---
+    // Gọi đến TÊN HÀM MỚI trong auth-manager.js: AuthHelper_initialize
+    AuthHelper_initialize(
         auth, 
-        (user) => { // onLogin
-            if (userInfoSpan) userInfoSpan.innerHTML = `Đã đăng nhập với: <strong>${user.email}</strong>`;
+        (user) => { // onLogin Callback: Xử lý khi đăng nhập thành công
+            if (userInfoSpan) userInfoSpan.innerHTML = `Đã đăng nhập: <strong>${user.email}</strong>`;
             if (authBtn) {
                 authBtn.textContent = 'Đăng xuất';
                 authBtn.style.display = 'inline-block';
-                authBtn.onclick = () => signOut(auth); // Truyền auth vào signOut
             }
+            // Kích hoạt các tính năng cần đăng nhập
             initializeCloudBackupFeature();
         },
-        () => { // onLogout
+        () => { // onLogout Callback: Xử lý khi đăng xuất
             if (userInfoSpan) userInfoSpan.textContent = 'Bạn cần đăng nhập để sử dụng các tính năng Cloud.';
             if (authBtn) {
                 authBtn.textContent = 'Đăng nhập với Google';
                 authBtn.style.display = 'inline-block';
-                authBtn.onclick = () => signInWithGoogle(auth); // Truyền auth vào signIn
+            }
+            // Vô hiệu hóa các tính năng cần đăng nhập
+            if (saveToCloudBtn) {
+                // Gán lại sự kiện click để hiện thông báo thay vì thực hiện hành động
+                saveToCloudBtn.onclick = () => Swal.fire('Cảnh báo', 'Vui lòng đăng nhập để sử dụng tính năng này.', 'warning');
             }
         }
     );
 
     // --- KHỞI TẠO CÁC TÍNH NĂNG KHÁC CỦA TRANG ---
-    (function initializeAdvancedFeatures() {
+    // (Hàm này không thay đổi)
+    function initializePageFeatures() {
         const loadAndProcessBtn = document.getElementById('load-and-process-tikz-btn');
         if (!loadAndProcessBtn) return;
         
@@ -299,9 +321,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 reader.onload = (e) => processTexFileWithTikZ(e.target.result);
                 reader.readAsText(file);
             }
-            event.target.value = null; // Reset để có thể chọn lại cùng file
+            event.target.value = null;
         });
+
+        if (typeof window.initializeAppConverter === 'function') {
+            window.initializeAppConverter();
+        }
         
-        console.log("Tích hợp TikZ Converter phiên bản Firebase đã sẵn sàng!");
-    })();
+        console.log("Các tính năng của trang Soạn thảo đã sẵn sàng!");
+    }
+    
+    // Chạy hàm khởi tạo các tính năng của trang
+    initializePageFeatures();
 });

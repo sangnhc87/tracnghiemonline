@@ -43,8 +43,8 @@ function renderKatexInElement(element) {
         try {
             window.renderMathInElement(element, {
                 delimiters: [
-                    {left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false},
-                    {left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true}
+                    { left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false },
+                    { left: '\\(', right: '\\)', display: false }, { left: '\\[', right: '\\]', display: true }
                 ],
                 throwOnError: false
             });
@@ -78,16 +78,16 @@ const showStudentLoginScreen = () => showScreen("loginScreen");
 const showTeacherLoginScreen = () => showScreen("teacherLogin");
 
 // --- CÁC HÀM LIÊN QUAN ĐẾN XÁC THỰC VÀ GIÁO VIÊN ---
-// === DÁN ĐỊNH NGHĨA CỦA BẠN VÀO ĐÚNG CHỖ NÀY LÀ HỢP LÝ NHẤT ===
-function initializeAuth(authService, onLoginCallback, onLogoutCallback) {
-    authService.onAuthStateChanged(user => {
-        if (user) {
-            onLoginCallback(user);
-        } else {
-            onLogoutCallback();
-        }
-    });
-}
+// // === DÁN ĐỊNH NGHĨA CỦA BẠN VÀO ĐÚNG CHỖ NÀY LÀ HỢP LÝ NHẤT ===
+// function initializeAuth(authService, onLoginCallback, onLogoutCallback) {
+//     authService.onAuthStateChanged(user => {
+//         if (user) {
+//             onLoginCallback(user);
+//         } else {
+//             onLogoutCallback();
+//         }
+//     });
+// }
 // === PHIÊN BẢN HOÀN CHỈNH CUỐI CÙNG ===
 async function updateTeacherUI(user) {
     showLoading();
@@ -107,20 +107,27 @@ async function updateTeacherUI(user) {
             else if (profile.trialEndDate._seconds) trialDate = new Date(profile.trialEndDate._seconds * 1000);
             else trialDate = new Date(profile.trialEndDate);
         }
-        
+
         const trialDays = trialDate ? Math.max(0, Math.ceil((trialDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0;
-        
+
         const userInfoHtml = `
             <p style="margin: 5px 0;"><strong>Tài khoản:</strong> ${user.displayName || user.email}</p>
             <p style="margin: 5px 0;"><strong>Mã Giáo Viên:</strong> <span id="currentAliasDisplay" style="font-weight: bold; color: #007bff;">${profile.teacherAlias || "Chưa có"}</span></p>
             <p style="margin: 5px 0;"><strong>Trạng thái:</strong> 
                 ${trialDays > 0 ? `<span style="color: #28a745; font-weight: bold;">Còn ${trialDays} ngày</span>` : `<span style="color: #dc3545; font-weight: bold;">Đã hết hạn</span>`}
             </p>`;
-        
+
         if (getEl("teacherInfo")) { getEl("teacherInfo").innerHTML = userInfoHtml; getEl("teacherInfo").style.display = "block"; }
         if (getEl("teacherActions")) getEl("teacherActions").style.display = "flex";
         if (getEl("teacherAliasInput")) getEl("teacherAliasInput").value = profile.teacherAlias || "";
         if (getEl("teacherDashboardName")) getEl("teacherDashboardName").textContent = user.displayName || user.email;
+
+        // Premium Dashboard bindings
+        const displayName = user.displayName || user.email.split('@')[0];
+        if (getEl("premiumGreeting")) getEl("premiumGreeting").textContent = displayName;
+        if (getEl("premiumUserName")) getEl("premiumUserName").textContent = displayName;
+        if (getEl("premiumUserAvatar")) getEl("premiumUserAvatar").textContent = displayName.charAt(0).toUpperCase();
+        if (getEl("premiumStatDays")) getEl("premiumStatDays").textContent = trialDays > 0 ? trialDays : '∞';
 
     } catch (error) {
         console.error("Lỗi khi gọi handleTeacherLogin hoặc cập nhật UI:", error);
@@ -469,7 +476,7 @@ async function startExam() {
         // SỬA Ở ĐÂY: Dùng biến 'functions' đã được cấu hình đúng
         const result = await functions.httpsCallable("loadExamForStudent")({ teacherAlias, examCode });
         let examDetails = result.data;
-        
+
         if (examDetails.examType === 'PDF') {
             sessionStorage.setItem('studentInfoForPdf', JSON.stringify({ teacherAlias, examCode, studentName, className }));
             window.location.href = '/pdf-exam.html';
@@ -482,12 +489,12 @@ async function startExam() {
             // Lưu ý: Hàm getContentUrl của bạn cần examId, không phải path
             // Mình sẽ sửa lại logic này cho đúng luôn
             const examId = examSnapshot.docs[0].id; // Giả sử bạn lấy được id từ bước trước
-            const urlResult = await getContentUrl({ examId: examId }); 
+            const urlResult = await getContentUrl({ examId: examId });
             const response = await fetch(urlResult.data.contentUrl);
             if (!response.ok) throw new Error(`Không thể tải nội dung (status: ${response.status})`);
             examDetails.content = await response.text();
         }
-        
+
         hideLoading();
         if (examDetails.examType === 'TEXT' && !examDetails.content) {
             Swal.fire("Lỗi", `Đề thi ${examCode} không có nội dung.`, "error").then(showStudentLoginScreen);
@@ -506,9 +513,9 @@ async function startExam() {
     }
 }
 
-function startTimer(minutes){ 
-    const endTime = Date.now() + minutes * 60 * 1000; 
-    getEl("timer-container").style.display = "block"; 
+function startTimer(minutes) {
+    const endTime = Date.now() + minutes * 60 * 1000;
+    getEl("timer-container").style.display = "block";
     timerInterval = setInterval(() => {
         let timeRemaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
         const m = Math.floor(timeRemaining / 60);
@@ -517,7 +524,7 @@ function startTimer(minutes){
         if (timeRemaining <= 0) {
             clearInterval(timerInterval);
             Swal.fire({ icon: "warning", title: "Hết giờ!", text: "Bài thi sẽ tự động nộp.", timer: 3000, timerProgressBar: true, showConfirmButton: false })
-               .then(() => gradeQuiz(false));
+                .then(() => gradeQuiz(false));
         }
     }, 1000);
     // Cập nhật ngay lần đầu
@@ -766,7 +773,7 @@ async function gradeQuiz(isCheating = false) {
             if (!isAnswered) unanswered.push(`Câu ${newIndex + 1}`);
         });
         if (unanswered.length > 0) {
-            Swal.fire({ icon:"info", title:"Chưa làm xong", html:`<p>Bạn chưa trả lời các câu sau:</p><ul style="text-align:left; max-height: 200px; overflow-y:auto;">${unanswered.map(q=>`<li>${q}</li>`).join("")}</ul>`, confirmButtonText:"OK" });
+            Swal.fire({ icon: "info", title: "Chưa làm xong", html: `<p>Bạn chưa trả lời các câu sau:</p><ul style="text-align:left; max-height: 200px; overflow-y:auto;">${unanswered.map(q => `<li>${q}</li>`).join("")}</ul>`, confirmButtonText: "OK" });
             return;
         }
     }
@@ -829,7 +836,7 @@ async function gradeQuiz(isCheating = false) {
                 correctAnswerSpan.textContent = `Đáp án đúng: ${resultForQ.correctAnswer}`;
                 numericInputDiv.appendChild(correctAnswerSpan);
                 if (resultForQ.scoreEarned > 0) inputEl.classList.add('correct-answer-highlight');
-                else if(resultForQ.userAnswer && resultForQ.userAnswer.trim() !== '') inputEl.classList.add('incorrect-answer-highlight');
+                else if (resultForQ.userAnswer && resultForQ.userAnswer.trim() !== '') inputEl.classList.add('incorrect-answer-highlight');
             }
             const toggleBtn = questionDiv.querySelector('.toggle-explanation');
             if (toggleBtn) toggleBtn.style.display = 'inline-block';
@@ -842,19 +849,19 @@ async function gradeQuiz(isCheating = false) {
     }
 }
 
-function showUnansweredDialog(unanswered){
-    Swal.fire({ icon:"info", title:"Chưa làm xong", html:`<p>Bạn chưa trả lời các câu sau:</p><ul style="text-align:left; max-height: 200px; overflow-y:auto;">${unanswered.map(q=>`<li>${q}</li>`).join("")}</ul>`, confirmButtonText:"OK" });
+function showUnansweredDialog(unanswered) {
+    Swal.fire({ icon: "info", title: "Chưa làm xong", html: `<p>Bạn chưa trả lời các câu sau:</p><ul style="text-align:left; max-height: 200px; overflow-y:auto;">${unanswered.map(q => `<li>${q}</li>`).join("")}</ul>`, confirmButtonText: "OK" });
 }
 
-
 // =================================================================
-// BƯỚC 3: KHỞI CHẠY ỨNG DỤNG VÀ GÁN SỰ KIỆN
+// BƯỚC 3: KHỞI CHẠY ỨNG DỤNG VÀ GÁN SỰ KIỆN (PHIÊN BẢN HOÀN CHỈNH 100%)
 // =================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    // --- GÁN CÁC HÀM VÀO WINDOW ĐỂ HTML CÓ THỂ GỌI ---
-    window.signInWithGoogle = () => signInWithGoogle(auth);
-    window.signOut = () => signOut(auth);
+
+    // --- PHẦN 1: GÁN CÁC HÀM VÀO `window` ĐỂ HTML CÓ THỂ GỌI ---
+
+    // Gán tất cả các hàm được định nghĩa trong main.js mà file HTML của bạn có sử dụng
     window.updateTeacherAlias = updateTeacherAlias;
     window.showTeacherDashboard = showTeacherDashboard;
     window.hideTeacherDashboard = hideTeacherDashboard;
@@ -870,47 +877,104 @@ document.addEventListener('DOMContentLoaded', () => {
     window.deleteExam = deleteExam;
     window.editClass = editClass;
     window.deleteClass = deleteClass;
-    window.showTeacherLogin = showTeacherLoginScreen; 
+    window.showTeacherLogin = showTeacherLoginScreen;
     window.showStudentLogin = showStudentLoginScreen;
     window.toggleExamFormFields = toggleExamFormFields;
 
-    // --- KHỞI TẠO LOGIC XÁC THỰC ---
-    initializeAuth(
-        auth,
-        (user) => { // onLogin
+    // Tạo các "hàm bọc" (wrapper) để gọi đến TÊN HÀM MỚI trong auth-manager.js
+    // Cách này đảm bảo không có xung đột tên và không gây ra đệ quy.
+
+    // Khi HTML gọi onclick="signInWithGoogle()", nó sẽ thực thi hàm này.
+    window.signInWithGoogle = function () {
+        // Gọi đến hàm có tên mới: AuthHelper_signInWithGoogle
+        AuthHelper_signInWithGoogle(auth);
+    };
+
+    // Khi HTML gọi onclick="signOut()"
+    window.signOut = function () {
+        // Gọi đến hàm có tên mới: AuthHelper_signOut
+        AuthHelper_signOut(auth);
+    };
+
+
+    // --- PHẦN 2: KHỞI TẠO LOGIC XÁC THỰC VÀ CHUYỂN HƯỚNG ---
+
+    // Gọi đến TÊN HÀM MỚI trong auth-manager.js: AuthHelper_initialize
+    AuthHelper_initialize(
+        auth, // Biến auth toàn cục của main.js
+
+        // 2.1 - Callback onLogin: Sẽ chạy KHI người dùng đăng nhập thành công
+        (user) => {
+            // KIỂM TRA CHUYỂN HƯỚNG TRƯỚC TIÊN
+            const urlParams = new URLSearchParams(window.location.search);
+            const returnToUrl = urlParams.get('returnTo');
+
+            if (returnToUrl) {
+                // Nếu có URL để quay lại, thực hiện chuyển hướng ngay và kết thúc
+                console.log("Phát hiện URL để quay lại, đang chuyển hướng đến:", returnToUrl);
+                window.history.replaceState({}, document.title, window.location.pathname);
+                window.location.href = returnToUrl;
+                return; // Rất quan trọng: Dừng hàm ở đây
+            }
+
+            // Nếu không có URL chuyển hướng, thực hiện luồng đăng nhập bình thường
+            console.log("Không có URL chuyển hướng, thực hiện luồng đăng nhập bình thường.");
+            currentTeacherId = user.uid; // Đảm bảo gán vào biến toàn cục
             const signInButton = document.querySelector('button[onclick*="signInWithGoogle"]');
-            currentTeacherId = user.uid;
             if (signInButton) signInButton.style.display = 'none';
             showTeacherLoginScreen();
             updateTeacherUI(user);
-        }, 
-        () => { // onLogout
+        },
+
+        // 2.2 - Callback onLogout: Sẽ chạy KHI người dùng đăng xuất
+        () => {
+            currentTeacherId = null; // Đảm bảo gán lại là null
             const teacherInfoDiv = getEl("teacherInfo");
             const teacherActionsDiv = getEl("teacherActions");
             const signInButton = document.querySelector('button[onclick*="signInWithGoogle"]');
-            currentTeacherId = null;
+
             if (teacherInfoDiv) teacherInfoDiv.style.display = "none";
             if (teacherActionsDiv) teacherActionsDiv.style.display = "none";
             if (signInButton) signInButton.style.display = 'inline-flex';
+
             showStudentLoginScreen();
         }
     );
 
-    // --- GÁN CÁC EVENT LISTENER KHÁC ---
+    // --- PHẦN 3: GÁN CÁC EVENT LISTENER KHÁC ---
+
+    // Gán sự kiện cho input "Mã Giáo viên" của học sinh
     const teacherAliasInput = getEl("teacherAlias");
     if (teacherAliasInput) {
         teacherAliasInput.addEventListener("change", initializeClassDataForStudent);
     }
 
-    let tabSwitchCount=0;
-    document.addEventListener("visibilitychange", function() {
-        if (getEl("quiz") && getEl("quiz").style.display === 'block' && document.hidden) {
+    // Logic xử lý chống gian lận khi chuyển tab
+    let tabSwitchCount = 0;
+    document.addEventListener("visibilitychange", function () {
+        // Kiểm tra xem người dùng có đang trong màn hình làm bài thi không
+        if (getEl("quiz")?.style.display === 'block' && document.hidden) {
             tabSwitchCount++;
             if (tabSwitchCount >= 3) {
-                Swal.fire({ icon:"warning", title:"Chuyển tab quá nhiều!", text:"Bài thi của bạn sẽ tự động bị nộp với 0 điểm.", timer:3000, timerProgressBar:true, showConfirmButton:false })
-                   .then(()=>gradeQuiz(true));
+                // Tự động nộp bài với 0 điểm nếu gian lận
+                Swal.fire({
+                    icon: "warning",
+                    title: "Gian lận!",
+                    text: "Bạn đã chuyển tab quá nhiều lần. Bài thi sẽ bị nộp với 0 điểm.",
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true
+                }).then(() => gradeQuiz(true));
             } else {
-                Swal.fire({ icon:"warning", title:"Cảnh báo chuyển tab", text:`Bạn đã chuyển tab ${tabSwitchCount} lần. Chuyển 3 lần, bài thi sẽ tự động bị nộp.`, timer:2000, timerProgressBar:true, showConfirmButton:false });
+                // Cảnh báo người dùng
+                Swal.fire({
+                    icon: "warning",
+                    title: "Cảnh báo",
+                    text: `Bạn đã chuyển tab ${tabSwitchCount} lần. Chuyển 3 lần sẽ bị tính là gian lận.`,
+                    showConfirmButton: false,
+                    timer: 2000,
+                    timerProgressBar: true
+                });
             }
         }
     });

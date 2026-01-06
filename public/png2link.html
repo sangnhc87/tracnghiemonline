@@ -311,7 +311,7 @@
                 if (transforms) {
                     transformedUrl = originalUrl.replace('/upload/', `/upload/${transforms}/`);
                 }
-                const imgTag = `<img src='${transformedUrl}' alt='Uploaded to Cloudinary'>`;
+                const imgTag = `<img src='${transformedUrl}' style="height: auto; max-height: 60vh; display: block; margin: auto;" , class='img-center'>`;
                 textarea.value = imgTag;
                 imgPreview.src = transformedUrl;
                 imgPreview.alt = 'Ảnh xem trước';

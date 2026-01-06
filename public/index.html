@@ -1,26 +1,35 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hệ thống Thi Online</title>
-    
+
     <!-- Fonts, Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css" integrity="sha512-xh6O/CkQoPOWDdYTDqeRdPCVd1SpvCA9XXcUnZS2FmJNp1coAFzvtCN9BmamE+4aHK8yyUHUSCcJHgXloTyT2A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css"
+        integrity="sha512-xh6O/CkQoPOWDdYTDqeRdPCVd1SpvCA9XXcUnZS2FmJNp1coAFzvtCN9BmamE+4aHK8yyUHUSCcJHgXloTyT2A=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+
     <!-- CSS -->
     <link rel="stylesheet" href="css/style.css" />
     <link rel="stylesheet" href="css/quiz-parser.css" />
-    
+
     <!-- Thư viện bên thứ ba -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU07EWHeAOgpuTO/lA+K/BIhfEpजगीU0T4goEBCYoWru/gGu4ydfrAN" crossorigin="anonymous">
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+        integrity="sha384-n8MVd4RsNIU07EWHeAOgpuTO/lA+K/BIhfEpजगीU0T4goEBCYoWru/gGu4ydfrAN" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"
+        integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8"
+        crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+        integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05"
+        crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    
+
     <!-- THƯ VIỆN PDF.JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
@@ -32,98 +41,110 @@
     <script defer src="/__/firebase/9.10.0/firebase-functions-compat.js"></script>
     <script defer src="/__/firebase/init.js"></script>
     <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/favicon-16x16.png">
-<link rel="manifest" href="/favicon_io/site.webmanifest">
-<style>
-    /* Sử dụng Biến CSS để có thể thay đổi màu KaTeX một cách linh hoạt */
-    :root {
-        --katex-color: #ff00ff; /* Màu mặc định là magenta (dạng HEX) */
-    }
-    .katex {
-        color: var(--katex-color) !important;
-    }
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/favicon-16x16.png">
+    <link rel="manifest" href="/favicon_io/site.webmanifest">
+    <style>
+        /* Sử dụng Biến CSS để có thể thay đổi màu KaTeX một cách linh hoạt */
+        :root {
+            --katex-color: #ff00ff;
+            /* Màu mặc định là magenta (dạng HEX) */
+        }
 
-    /* === CSS CHO KHU VỰC ACTIONS GỌN NHẸ === */
-    .dashboard-actions {
-        display: flex;
-        justify-content: flex-end;
-        align-items: center;
-        gap: 25px;
-        margin-top: 20px;
-        padding-top: 20px;
-        border-top: 1px solid #eee;
-    }
-    .color-picker-group {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    #katex-color-picker {
-        -webkit-appearance: none;
-        -moz-appearance: none;
-        appearance: none;
-        width: 30px;
-        height: 30px;
-        background-color: transparent;
-        border: none;
-        cursor: pointer;
-        padding: 0;
-    }
-    #katex-color-picker::-webkit-color-swatch {
-        border-radius: 50%;
-        border: 2px solid #ddd;
-    }
-    #katex-color-picker::-moz-color-swatch {
-        border-radius: 50%;
-        border: 2px solid #ddd;
-    }
-</style>
- <style>
-    /* Container để chứa các ảnh trên cùng một hàng */
-    .image-row {
-        display: flex;
-        justify-content: center; /* Nhóm các ảnh lại ở giữa */
-        align-items: center;
-        gap: 15px; /* Đặt lại khoảng cách mong muốn, ví dụ 15px */
-        margin-top: 1em;
-        margin-bottom: 1em;
-    }
+        .katex {
+            color: var(--katex-color) !important;
+        }
 
-    /* 
+        /* === CSS CHO KHU VỰC ACTIONS GỌN NHẸ === */
+        .dashboard-actions {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 25px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .color-picker-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #katex-color-picker {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 30px;
+            height: 30px;
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        #katex-color-picker::-webkit-color-swatch {
+            border-radius: 50%;
+            border: 2px solid #ddd;
+        }
+
+        #katex-color-picker::-moz-color-swatch {
+            border-radius: 50%;
+            border: 2px solid #ddd;
+        }
+    </style>
+    <style>
+        /* Container để chứa các ảnh trên cùng một hàng */
+        .image-row {
+            display: flex;
+            justify-content: center;
+            /* Nhóm các ảnh lại ở giữa */
+            align-items: center;
+            gap: 15px;
+            /* Đặt lại khoảng cách mong muốn, ví dụ 15px */
+            margin-top: 1em;
+            margin-bottom: 1em;
+        }
+
+        /* 
      * [SỬA LỖI QUAN TRỌNG] Ghi đè lên các style cũ của thẻ <img>
      * khi nó nằm bên trong .image-row.
      */
-    .image-row img {
-        /* Reset lại margin để chúng không tự đẩy nhau ra xa */
-        margin: 0 !important; 
+        .image-row img {
+            /* Reset lại margin để chúng không tự đẩy nhau ra xa */
+            margin: 0 !important;
 
-        /* Giới hạn chiều rộng để chúng có thể đứng cạnh nhau */
-        /* Nếu có 2 ảnh, 48% là một giá trị tốt */
-        max-width: 48%; 
-        height: auto; /* Giữ tỷ lệ ảnh */
+            /* Giới hạn chiều rộng để chúng có thể đứng cạnh nhau */
+            /* Nếu có 2 ảnh, 48% là một giá trị tốt */
+            max-width: 48%;
+            height: auto;
+            /* Giữ tỷ lệ ảnh */
 
-        /* Giữ lại các style đẹp mắt khác */
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    }
+            /* Giữ lại các style đẹp mắt khác */
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
 
-    /* Các style cũ vẫn cần để xử lý các ảnh đứng một mình */
-    .img-center { 
-        margin-left: auto; 
-        margin-right: auto; 
-    }
-    .question-statement img, .explanation img { 
-        display: block; 
-        max-width: 100%; 
-        height: auto; 
-        margin-top: 1em; 
-        margin-bottom: 1em; 
-        border-radius: 8px; 
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
-    }
-</style>
+        /* Các style cũ vẫn cần để xử lý các ảnh đứng một mình */
+        .img-center {
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .question-statement img,
+        .explanation img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            margin-top: 1em;
+            margin-bottom: 1em;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+    </style>
 </head>
+
 <body>
 
     <div id="app">
@@ -131,16 +152,20 @@
         <div id="teacherLogin" class="container card" style="display: none;">
             <h2>Chào mừng Giáo viên</h2>
             <!-- <div id="teacherInfo" style="display: none;"></div> -->
-             <div id="teacherInfo" style="display: none; text-align: left; padding: 15px; background-color: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
-    <!-- JavaScript sẽ điền nội dung vào đây -->
-</div>
-            <button onclick="signInWithGoogle()" class="btn btn-google"><i class="fab fa-google"></i> Đăng nhập với Google</button>
+            <div id="teacherInfo"
+                style="display: none; text-align: left; padding: 15px; background-color: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
+                <!-- JavaScript sẽ điền nội dung vào đây -->
+            </div>
+            <button onclick="signInWithGoogle()" class="btn btn-google"><i class="fab fa-google"></i> Đăng nhập với
+                Google</button>
             <div id="teacherActions" style="display: none; flex-direction: column; gap: 10px;">
                 <label for="teacherAliasInput">Mã giáo viên của bạn:</label>
                 <input type="text" id="teacherAliasInput" placeholder="Ví dụ: sangmath" />
                 <button onclick="updateTeacherAlias()" class="btn btn-primary">Cập nhật Mã giáo viên</button>
-                <button onclick="showTeacherDashboard()" class="btn btn-secondary"><i class="fas fa-tasks"></i> Vào trang quản lý</button>
-                <button onclick="signOut()" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i> Đăng xuất</button>
+                <button onclick="showTeacherDashboard()" class="btn btn-secondary"><i class="fas fa-tasks"></i> Vào
+                    trang quản lý</button>
+                <button onclick="signOut()" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i> Đăng
+                    xuất</button>
                 <p class="form-link"><a href="#" onclick="showStudentLoginScreen()">Quay lại trang học sinh</a></p>
             </div>
         </div>
@@ -158,16 +183,21 @@
             </div>
             <div class="form-group">
                 <label for="classSelect">Chọn Lớp:</label>
-                <select id="classSelect"><option value="">-- Chọn lớp --</option></select>
+                <select id="classSelect">
+                    <option value="">-- Chọn lớp --</option>
+                </select>
             </div>
             <div class="form-group">
                 <label for="studentSelect">Chọn Họ tên:</label>
-                <select id="studentSelect"><option value="">-- Chọn tên --</option></select>
+                <select id="studentSelect">
+                    <option value="">-- Chọn tên --</option>
+                </select>
             </div>
             <!-- [SỬA ĐỔI] Gọi hàm mới -->
             <!-- <button onclick="startExamWithStorage()" class="btn btn-primary btn-full"><i class="fas fa-play-circle"></i> Bắt đầu thi</button> -->
-             <!-- Sửa lại để gọi hàm đã được hợp nhất trong main.js -->
-<button onclick="startExam()" class="btn btn-primary btn-full"><i class="fas fa-play-circle"></i> Bắt đầu thi</button>
+            <!-- Sửa lại để gọi hàm đã được hợp nhất trong main.js -->
+            <button onclick="startExam()" class="btn btn-primary btn-full"><i class="fas fa-play-circle"></i> Bắt đầu
+                thi</button>
             <p class="form-link">Bạn là giáo viên? <a href="#" onclick="showTeacherLogin()">Đăng nhập tại đây</a></p>
         </div>
 
@@ -176,12 +206,15 @@
             <div class="spinner"></div>
             <p>Đang tải...</p>
         </div>
-        <div id="timer-container" class="timer-container" style="display:none;"><div id="timer"></div></div>
-        
+        <div id="timer-container" class="timer-container" style="display:none;">
+            <div id="timer"></div>
+        </div>
+
         <!-- Vùng làm bài thi -->
         <div id="quiz" class="quiz-container" style="display:none;"></div>
-        <button id="gradeBtn" style="display:none;" class="btn btn-success btn-full" onclick="gradeQuiz()"><i class="fas fa-check-circle"></i> Chấm điểm & Nộp bài</button>
-        
+        <button id="gradeBtn" style="display:none;" class="btn btn-success btn-full" onclick="gradeQuiz()"><i
+                class="fas fa-check-circle"></i> Chấm điểm & Nộp bài</button>
+
         <!-- Màn hình kết quả -->
         <div id="result-container" class="container card" style="display:none;">
             <h2>Kết quả bài thi</h2>
@@ -194,53 +227,783 @@
                 <p><span><i class="fas fa-chalkboard-user"></i> Lớp</span><strong id="student-class"></strong></p>
                 <p><span><i class="fas fa-file-alt"></i> Mã đề</span><strong id="exam-code"></strong></p>
             </div>
-            <button onclick="showStudentLoginScreen()" class="btn btn-primary btn-full"><i class="fas fa-home"></i> Quay lại trang chủ</button>
+            <button onclick="showStudentLoginScreen()" class="btn btn-primary btn-full"><i class="fas fa-home"></i> Quay
+                lại trang chủ</button>
             <!-- <h4 class="details-title">Xem chi tiết bài làm</h4> -->
         </div>
 
-        <!-- Dashboard Giáo viên -->
-        <div id="teacherDashboard" class="dashboard-container" style="display:none;">
-            <h2>Bảng điều khiển Giáo viên</h2>
-            <p>Chào mừng, <span id="teacherDashboardName"></span>!</p>
-           
-            <div class="dashboard-main-actions" style="display: flex; gap: 10px; justify-content: center; margin-bottom: 20px;">
-                <a href="/pdf-teacher.html" target="_blank" class="btn btn-info"><i class="fas fa-file-pdf"></i>Kho Đề PDF</a>
-                <a href="/stats.html" class="btn btn-primary"><i class="fas fa-chart-line"></i>Thống Kê</a>
-                <!-- Các nút mới được thêm vào -->
-    <a href="/hdsd.html" target="_blank" class="btn btn-secondary"><i class="fas fa-book-open"></i>Hướng dẫn</a>
-    <a href="/editor_V2.html" target="_blank" class="btn btn-warning"><i class="fas fa-pencil-alt"></i>Soạn Word</a>
-    <a href="/soan_latex_pro.html" target="_blank" class="btn btn-dark"><i class="fas fa-exchange-alt"></i>Soạn Latex 1</a>
-    <a href="/soan_flyio_pro.html" target="_blank" class="btn btn-dark"><i class="fas fa-exchange-alt"></i>Soạn Latex 2</a>
-            </div>
-            
-            <div class="dashboard-sections">
-                <div class="dashboard-section">
-                    <h3>Quản lý Đề thi</h3>
-                    <button class="btn btn-primary" onclick="showExamForm()"><i class="fas fa-plus-circle"></i> Thêm đề thi</button>
-                    <div id="exam-list" class="list-group"></div>
+        <!-- Dashboard Giáo viên - PREMIUM REDESIGN -->
+        <div id="teacherDashboard" class="premium-dashboard" style="display:none;">
+            <style>
+                /* === PREMIUM DASHBOARD STYLES === */
+                .premium-dashboard {
+                    min-height: 100vh;
+                    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #312e81 100%);
+                    display: flex;
+                    position: fixed;
+                    inset: 0;
+                    z-index: 1000;
+                    overflow: hidden;
+                }
+
+                /* Animated Background */
+                .premium-dashboard::before {
+                    content: '';
+                    position: absolute;
+                    inset: 0;
+                    background:
+                        radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+                        radial-gradient(circle at 40% 40%, rgba(236, 72, 153, 0.1) 0%, transparent 40%);
+                    animation: bgPulse 10s ease-in-out infinite;
+                }
+
+                @keyframes bgPulse {
+
+                    0%,
+                    100% {
+                        opacity: 1;
+                    }
+
+                    50% {
+                        opacity: 0.7;
+                    }
+                }
+
+                /* Sidebar */
+                .premium-sidebar {
+                    width: 280px;
+                    background: rgba(0, 0, 0, 0.3);
+                    backdrop-filter: blur(20px);
+                    border-right: 1px solid rgba(255, 255, 255, 0.1);
+                    display: flex;
+                    flex-direction: column;
+                    z-index: 10;
+                    position: relative;
+                }
+
+                .sidebar-brand {
+                    padding: 24px;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                }
+
+                .brand-logo {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    color: white;
+                    text-decoration: none;
+                }
+
+                .brand-icon {
+                    width: 48px;
+                    height: 48px;
+                    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+                    border-radius: 12px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 1.5rem;
+                    box-shadow: 0 8px 32px rgba(59, 130, 246, 0.3);
+                }
+
+                .brand-text {
+                    font-size: 1.25rem;
+                    font-weight: 700;
+                    background: linear-gradient(135deg, #fff, #cbd5e1);
+                    background-clip: text;
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                }
+
+                .brand-badge {
+                    font-size: 0.65rem;
+                    background: rgba(59, 130, 246, 0.3);
+                    color: #60a5fa;
+                    padding: 2px 8px;
+                    border-radius: 20px;
+                    margin-top: 2px;
+                }
+
+                .sidebar-nav {
+                    flex: 1;
+                    padding: 16px;
+                    overflow-y: auto;
+                }
+
+                .nav-group {
+                    margin-bottom: 24px;
+                }
+
+                .nav-group-title {
+                    font-size: 0.7rem;
+                    text-transform: uppercase;
+                    letter-spacing: 0.1em;
+                    color: rgba(255, 255, 255, 0.4);
+                    padding: 0 12px;
+                    margin-bottom: 8px;
+                }
+
+                .nav-link {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 12px 16px;
+                    border-radius: 10px;
+                    color: rgba(255, 255, 255, 0.7);
+                    text-decoration: none;
+                    font-size: 0.9rem;
+                    font-weight: 500;
+                    transition: all 0.2s ease;
+                    margin-bottom: 4px;
+                }
+
+                .nav-link:hover {
+                    background: rgba(255, 255, 255, 0.1);
+                    color: white;
+                    transform: translateX(4px);
+                }
+
+                .nav-link.active {
+                    background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(139, 92, 246, 0.3));
+                    color: white;
+                    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.2);
+                }
+
+                .nav-link i {
+                    width: 20px;
+                    text-align: center;
+                    font-size: 1rem;
+                }
+
+                .nav-badge {
+                    margin-left: auto;
+                    background: #ef4444;
+                    color: white;
+                    font-size: 0.7rem;
+                    padding: 2px 8px;
+                    border-radius: 20px;
+                    font-weight: 600;
+                }
+
+                .sidebar-footer {
+                    padding: 16px;
+                    border-top: 1px solid rgba(255, 255, 255, 0.1);
+                }
+
+                .user-profile {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 12px;
+                    background: rgba(255, 255, 255, 0.05);
+                    border-radius: 12px;
+                }
+
+                .user-avatar-premium {
+                    width: 44px;
+                    height: 44px;
+                    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+                    border-radius: 12px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-weight: 700;
+                    font-size: 1.1rem;
+                }
+
+                .user-details {
+                    flex: 1;
+                    min-width: 0;
+                }
+
+                .user-name-premium {
+                    color: white;
+                    font-size: 0.9rem;
+                    font-weight: 600;
+                }
+
+                .user-role {
+                    color: rgba(255, 255, 255, 0.5);
+                    font-size: 0.75rem;
+                }
+
+                /* Main Content */
+                .premium-main {
+                    flex: 1;
+                    overflow-y: auto;
+                    padding: 32px;
+                    position: relative;
+                }
+
+                .main-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    margin-bottom: 32px;
+                }
+
+                .greeting-text {
+                    color: white;
+                }
+
+                .greeting-hello {
+                    font-size: 0.9rem;
+                    color: rgba(255, 255, 255, 0.6);
+                    margin-bottom: 4px;
+                }
+
+                .greeting-name {
+                    font-size: 2rem;
+                    font-weight: 700;
+                    background: linear-gradient(135deg, #fff, #60a5fa);
+                    background-clip: text;
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                }
+
+                .header-actions {
+                    display: flex;
+                    gap: 12px;
+                }
+
+                .header-btn {
+                    width: 44px;
+                    height: 44px;
+                    background: rgba(255, 255, 255, 0.1);
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    border-radius: 12px;
+                    color: white;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+
+                .header-btn:hover {
+                    background: rgba(255, 255, 255, 0.2);
+                    transform: translateY(-2px);
+                }
+
+                /* Stats Grid */
+                .stats-grid {
+                    display: grid;
+                    grid-template-columns: repeat(4, 1fr);
+                    gap: 20px;
+                    margin-bottom: 32px;
+                }
+
+                .stat-card-premium {
+                    background: rgba(255, 255, 255, 0.05);
+                    backdrop-filter: blur(10px);
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    border-radius: 20px;
+                    padding: 24px;
+                    transition: all 0.3s ease;
+                    position: relative;
+                    overflow: hidden;
+                }
+
+                .stat-card-premium::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    height: 3px;
+                    background: var(--stat-color);
+                    opacity: 0.8;
+                }
+
+                .stat-card-premium:hover {
+                    transform: translateY(-4px);
+                    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+                    border-color: rgba(255, 255, 255, 0.2);
+                }
+
+                .stat-card-premium.blue {
+                    --stat-color: linear-gradient(90deg, #3b82f6, #60a5fa);
+                }
+
+                .stat-card-premium.green {
+                    --stat-color: linear-gradient(90deg, #22c55e, #4ade80);
+                }
+
+                .stat-card-premium.orange {
+                    --stat-color: linear-gradient(90deg, #f59e0b, #fbbf24);
+                }
+
+                .stat-card-premium.purple {
+                    --stat-color: linear-gradient(90deg, #8b5cf6, #a78bfa);
+                }
+
+                .stat-icon-premium {
+                    width: 48px;
+                    height: 48px;
+                    border-radius: 12px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 1.25rem;
+                    margin-bottom: 16px;
+                }
+
+                .stat-card-premium.blue .stat-icon-premium {
+                    background: rgba(59, 130, 246, 0.2);
+                    color: #60a5fa;
+                }
+
+                .stat-card-premium.green .stat-icon-premium {
+                    background: rgba(34, 197, 94, 0.2);
+                    color: #4ade80;
+                }
+
+                .stat-card-premium.orange .stat-icon-premium {
+                    background: rgba(245, 158, 11, 0.2);
+                    color: #fbbf24;
+                }
+
+                .stat-card-premium.purple .stat-icon-premium {
+                    background: rgba(139, 92, 246, 0.2);
+                    color: #a78bfa;
+                }
+
+                .stat-value-premium {
+                    font-size: 2.5rem;
+                    font-weight: 700;
+                    color: white;
+                    line-height: 1;
+                    margin-bottom: 4px;
+                }
+
+                .stat-label-premium {
+                    font-size: 0.85rem;
+                    color: rgba(255, 255, 255, 0.5);
+                }
+
+                /* Quick Actions */
+                .section-title-premium {
+                    color: white;
+                    font-size: 1.1rem;
+                    font-weight: 600;
+                    margin-bottom: 16px;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+
+                .section-title-premium i {
+                    color: #60a5fa;
+                }
+
+                .quick-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+                    gap: 16px;
+                    margin-bottom: 32px;
+                }
+
+                .quick-card {
+                    background: rgba(255, 255, 255, 0.05);
+                    backdrop-filter: blur(10px);
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    border-radius: 16px;
+                    padding: 24px 16px;
+                    text-align: center;
+                    text-decoration: none;
+                    transition: all 0.3s ease;
+                }
+
+                .quick-card:hover {
+                    background: rgba(255, 255, 255, 0.1);
+                    transform: translateY(-4px);
+                    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+                }
+
+                .quick-card i {
+                    font-size: 2rem;
+                    margin-bottom: 12px;
+                    display: block;
+                }
+
+                .quick-card.blue i {
+                    color: #60a5fa;
+                }
+
+                .quick-card.green i {
+                    color: #4ade80;
+                }
+
+                .quick-card.orange i {
+                    color: #fbbf24;
+                }
+
+                .quick-card.purple i {
+                    color: #a78bfa;
+                }
+
+                .quick-card.pink i {
+                    color: #f472b6;
+                }
+
+                .quick-card.cyan i {
+                    color: #22d3ee;
+                }
+
+                .quick-card span {
+                    color: rgba(255, 255, 255, 0.9);
+                    font-size: 0.85rem;
+                    font-weight: 500;
+                }
+
+                /* Content Grid */
+                .content-grid {
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 24px;
+                }
+
+                .content-panel {
+                    background: rgba(255, 255, 255, 0.05);
+                    backdrop-filter: blur(10px);
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    border-radius: 20px;
+                    overflow: hidden;
+                }
+
+                .panel-header {
+                    padding: 20px 24px;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+
+                .panel-title {
+                    color: white;
+                    font-size: 1rem;
+                    font-weight: 600;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+
+                .panel-title i {
+                    color: #60a5fa;
+                }
+
+                .panel-action {
+                    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+                    color: white;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 8px;
+                    font-size: 0.8rem;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                }
+
+                .panel-action:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+                }
+
+                .panel-body {
+                    padding: 16px;
+                    max-height: 300px;
+                    overflow-y: auto;
+                }
+
+                .list-item-premium {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 12px;
+                    border-radius: 12px;
+                    transition: background 0.2s;
+                    margin-bottom: 8px;
+                }
+
+                .list-item-premium:hover {
+                    background: rgba(255, 255, 255, 0.05);
+                }
+
+                .item-icon {
+                    width: 40px;
+                    height: 40px;
+                    background: rgba(59, 130, 246, 0.2);
+                    border-radius: 10px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: #60a5fa;
+                }
+
+                .item-info {
+                    flex: 1;
+                    min-width: 0;
+                }
+
+                .item-title {
+                    color: white;
+                    font-size: 0.9rem;
+                    font-weight: 500;
+                }
+
+                .item-meta {
+                    color: rgba(255, 255, 255, 0.5);
+                    font-size: 0.75rem;
+                    margin-top: 2px;
+                }
+
+                .item-actions {
+                    display: flex;
+                    gap: 8px;
+                }
+
+                .item-btn {
+                    width: 32px;
+                    height: 32px;
+                    background: rgba(255, 255, 255, 0.1);
+                    border: none;
+                    border-radius: 8px;
+                    color: rgba(255, 255, 255, 0.7);
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                .item-btn:hover {
+                    background: rgba(255, 255, 255, 0.2);
+                    color: white;
+                }
+
+                .item-btn.danger:hover {
+                    background: rgba(239, 68, 68, 0.3);
+                    color: #f87171;
+                }
+
+                .empty-state-premium {
+                    text-align: center;
+                    padding: 40px 20px;
+                    color: rgba(255, 255, 255, 0.4);
+                }
+
+                .empty-state-premium i {
+                    font-size: 2.5rem;
+                    margin-bottom: 12px;
+                    display: block;
+                }
+
+                /* Responsive */
+                @media (max-width: 1200px) {
+                    .stats-grid {
+                        grid-template-columns: repeat(2, 1fr);
+                    }
+
+                    .content-grid {
+                        grid-template-columns: 1fr;
+                    }
+                }
+
+                @media (max-width: 768px) {
+                    .premium-sidebar {
+                        display: none;
+                    }
+
+                    .stats-grid {
+                        grid-template-columns: 1fr;
+                    }
+
+                    .quick-grid {
+                        grid-template-columns: repeat(2, 1fr);
+                    }
+                }
+            </style>
+
+            <!-- Sidebar -->
+            <aside class="premium-sidebar">
+                <div class="sidebar-brand">
+                    <a href="/" class="brand-logo">
+                        <div class="brand-icon"><i class="fas fa-graduation-cap"></i></div>
+                        <div>
+                            <div class="brand-text">Quiz Online</div>
+                            <div class="brand-badge">Premium</div>
+                        </div>
+                    </a>
                 </div>
-                <div class="dashboard-section">
-                    <h3>Quản lý Lớp học</h3>
-                    <button class="btn btn-primary" onclick="showClassForm()"><i class="fas fa-plus-circle"></i> Thêm lớp học</button>
-                    <div id="class-list" class="list-group"></div>
+
+                <nav class="sidebar-nav">
+                    <div class="nav-group">
+                        <div class="nav-group-title">Tổng quan</div>
+                        <a href="#" class="nav-link active"><i class="fas fa-home"></i> Dashboard</a>
+                        <a href="/teacher/exam-bank.html" class="nav-link"><i class="fas fa-folder-open"></i> Kho Đề
+                            Thi</a>
+                        <a href="/stats.html" class="nav-link"><i class="fas fa-chart-line"></i> Thống Kê</a>
+                    </div>
+
+                    <div class="nav-group">
+                        <div class="nav-group-title">Công cụ</div>
+                        <a href="/editor_V3.html" target="_blank" class="nav-link"><i
+                                class="fas fa-wand-magic-sparkles"></i> Soạn Word Pro</a>
+                        <a href="/soan_latex_pro.html" target="_blank" class="nav-link"><i
+                                class="fas fa-superscript"></i> Soạn LaTeX</a>
+                        <a href="/code-bank.html" target="_blank" class="nav-link"><i class="fas fa-code"></i> Kho
+                            Code</a>
+                    </div>
+
+                    <div class="nav-group">
+                        <div class="nav-group-title">Tài nguyên</div>
+                        <a href="/hdsd.html" target="_blank" class="nav-link"><i class="fas fa-book"></i> Hướng dẫn</a>
+                        <a href="/bank_V1_2025.html" target="_blank" class="nav-link"><i class="fas fa-database"></i>
+                            Ngân hàng CH</a>
+                        <a href="/png2link.html" target="_blank" class="nav-link"><i class="fas fa-image"></i> Lấy Link
+                            Ảnh</a>
+                    </div>
+                </nav>
+
+                <div class="sidebar-footer">
+                    <div class="user-profile">
+                        <div class="user-avatar-premium" id="premiumUserAvatar">G</div>
+                        <div class="user-details">
+                            <div class="user-name-premium" id="premiumUserName">Giáo viên</div>
+                            <div class="user-role">Teacher Pro</div>
+                        </div>
+                        <button class="header-btn" onclick="signOut()" title="Đăng xuất">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
                 </div>
-                <div class="dashboard-section">
-                    <h3>Bài nộp gần đây</h3>
-                    <div id="submission-list" class="list-group"></div>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="premium-main">
+                <div class="main-header">
+                    <div class="greeting-text">
+                        <div class="greeting-hello">Xin chào 👋</div>
+                        <div class="greeting-name" id="premiumGreeting">Giáo viên</div>
+                    </div>
+                    <div class="header-actions">
+                        <div class="color-picker-group"
+                            style="background:rgba(255,255,255,0.1);border-radius:12px;padding:8px 16px;display:flex;align-items:center;gap:8px;">
+                            <label style="color:rgba(255,255,255,0.6);font-size:0.8rem;">Màu KaTeX:</label>
+                            <input type="color" id="katex-color-picker"
+                                style="width:28px;height:28px;border:none;cursor:pointer;border-radius:6px;">
+                        </div>
+                        <button class="header-btn" onclick="loadTeacherData()" title="Làm mới"><i
+                                class="fas fa-sync-alt"></i></button>
+                    </div>
                 </div>
-            </div>
-           <!-- ĐOẠN CODE MỚI ĐÃ TỐI ƯU -->
-<div class="dashboard-actions">
-    <!-- Nhóm cài đặt màu gọn nhẹ -->
-    <div class="color-picker-group">
-        <label for="katex-color-picker">Màu công thức:</label>
-        <input type="color" id="katex-color-picker" title="Chọn màu cho công thức KaTeX">
-    </div>
-    <a href="/bank_V1_2025.html" target="_blank" class="btn btn-dark"><i class="fas fa-exchange-alt"></i>Mở Ngân Hàng Câu Hỏi</a>
-    <a href="/png2link.html" target="_blank" class="btn btn-dark"><i class="fas fa-exchange-alt"></i>Lấy Link Ảnh</a>
-    <!-- Nút Đăng xuất -->
-    <button onclick="signOut()" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i> Đăng xuất</button>
-</div>
+
+                <!-- Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card-premium blue">
+                        <div class="stat-icon-premium"><i class="fas fa-file-alt"></i></div>
+                        <div class="stat-value-premium" id="premiumStatExams">0</div>
+                        <div class="stat-label-premium">Đề thi</div>
+                    </div>
+                    <div class="stat-card-premium green">
+                        <div class="stat-icon-premium"><i class="fas fa-users"></i></div>
+                        <div class="stat-value-premium" id="premiumStatClasses">0</div>
+                        <div class="stat-label-premium">Lớp học</div>
+                    </div>
+                    <div class="stat-card-premium orange">
+                        <div class="stat-icon-premium"><i class="fas fa-paper-plane"></i></div>
+                        <div class="stat-value-premium" id="premiumStatSubmissions">0</div>
+                        <div class="stat-label-premium">Bài nộp</div>
+                    </div>
+                    <div class="stat-card-premium purple">
+                        <div class="stat-icon-premium"><i class="fas fa-calendar-check"></i></div>
+                        <div class="stat-value-premium" id="premiumStatDays">∞</div>
+                        <div class="stat-label-premium">Ngày còn lại</div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <h3 class="section-title-premium"><i class="fas fa-bolt"></i> Thao tác nhanh</h3>
+                <div class="quick-grid">
+                    <a href="#" onclick="showExamForm();return false;" class="quick-card blue">
+                        <i class="fas fa-plus-circle"></i>
+                        <span>Thêm đề thi</span>
+                    </a>
+                    <a href="#" onclick="showClassForm();return false;" class="quick-card green">
+                        <i class="fas fa-user-plus"></i>
+                        <span>Thêm lớp học</span>
+                    </a>
+                    <a href="/editor_V3.html" target="_blank" class="quick-card purple">
+                        <i class="fas fa-wand-magic-sparkles"></i>
+                        <span>Soạn Word Pro</span>
+                    </a>
+                    <a href="/teacher/exam-bank.html" class="quick-card orange">
+                        <i class="fas fa-folder-open"></i>
+                        <span>Kho đề thi</span>
+                    </a>
+                    <a href="/stats.html" class="quick-card cyan">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Thống kê</span>
+                    </a>
+                    <a href="/soan_latex_pro.html" target="_blank" class="quick-card pink">
+                        <i class="fas fa-superscript"></i>
+                        <span>Soạn LaTeX</span>
+                    </a>
+                </div>
+
+                <!-- Content Panels -->
+                <div class="content-grid">
+                    <!-- Exams Panel -->
+                    <div class="content-panel">
+                        <div class="panel-header">
+                            <div class="panel-title"><i class="fas fa-file-alt"></i> Đề thi</div>
+                            <button class="panel-action" onclick="showExamForm()"><i class="fas fa-plus"></i>
+                                Thêm</button>
+                        </div>
+                        <div class="panel-body" id="exam-list">
+                            <div class="empty-state-premium">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <p>Đang tải...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Classes Panel -->
+                    <div class="content-panel">
+                        <div class="panel-header">
+                            <div class="panel-title"><i class="fas fa-users"></i> Lớp học</div>
+                            <button class="panel-action" onclick="showClassForm()"><i class="fas fa-plus"></i>
+                                Thêm</button>
+                        </div>
+                        <div class="panel-body" id="class-list">
+                            <div class="empty-state-premium">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <p>Đang tải...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submissions Panel -->
+                    <div class="content-panel">
+                        <div class="panel-header">
+                            <div class="panel-title"><i class="fas fa-paper-plane"></i> Bài nộp gần đây</div>
+                            <a href="/stats.html" class="panel-action"><i class="fas fa-external-link-alt"></i> Xem tất
+                                cả</a>
+                        </div>
+                        <div class="panel-body" id="submission-list">
+                            <div class="empty-state-premium">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <p>Đang tải...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
         </div>
 
         <!-- Modal Form Đề thi -->
@@ -249,59 +1012,64 @@
                 <h2 id="examFormTitle"></h2>
                 <div class="modal-form-scrollable-area">
                     <!-- [SỬA ĐỔI] Gọi hàm mới -->
-                     <form id="examForm" onsubmit="event.preventDefault(); handleExamFormSubmit();"></form>
-                        <input type="hidden" id="examId" />
+                    <form id="examForm" onsubmit="event.preventDefault(); handleExamFormSubmit();"></form>
+                    <input type="hidden" id="examId" />
+                    <div class="form-group">
+                        <label for="examFormType">Loại đề thi:</label>
+                        <select id="examFormType" onchange="toggleExamFormFields()">
+                            <option value="TEXT" selected>Đề dạng Văn bản (Soạn trực tiếp)</option>
+                            <option value="PDF">Đề dạng PDF (Từ link)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="examFormCode">Mã đề thi:</label>
+                        <input type="text" id="examFormCode" required placeholder="Đề TEXT: T... | Đề PDF: PDF-..." />
+                    </div>
+                    <div class="form-group">
+                        <label for="examFormTime">Thời gian làm bài (phút):</label>
+                        <input type="number" id="examFormTime" value="90" min="1" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="examFormKeys">Đáp án (phân tách bằng |):</label>
+                        <input type="text" id="examFormKeys" required
+                            placeholder="A|D|D|B|B|B|A|C|D|D|C|A|TFTT|FTFT|FTFF|TTTF|0.15|600|0.25|2.12|210|0.17" />
+                    </div>
+                    <div class="form-group">
+                        <label for="examFormCores">Điểm từng câu (phân tách bằng |):</label>
+                        <input type="text" id="examFormCores" required
+                            placeholder="0.25|0.25|0.25|0.25|0.25|0.25|0.25|0.25|0.25|0.25|0.25|0.25|0.25,0.5,0.75,1|0.25,0.5,0.75,1|0.25,0.5,0.75,1|0.25,0.5,0.75,1|0.5|0.5|0.5|0.5|0.5|0.5" />
+                    </div>
+                    <div id="textExamFields">
                         <div class="form-group">
-                            <label for="examFormType">Loại đề thi:</label>
-                            <select id="examFormType" onchange="toggleExamFormFields()">
-                                <option value="TEXT" selected>Đề dạng Văn bản (Soạn trực tiếp)</option>
-                                <option value="PDF">Đề dạng PDF (Từ link)</option>
-                            </select>
+                            <label for="examFormContent">Nội dung đề thi (Soạn trực tiếp):</label>
+                            <textarea id="examFormContent" rows="15" required placeholder="Soạn nội dung..."></textarea>
+                        </div>
+                        <div class="form-group form-check" style="display: none;">
+                            <input type="checkbox" class="form-check-input" id="useStorageCheckbox" checked>
+                            <label class="form-check-label" for="useStorageCheckbox">
+                                Lưu nội dung lên Storage (Tối ưu cho đề dài)
+                            </label>
+                        </div>
+                    </div>
+                    <div id="pdfExamFields" style="display:none;">
+                        <div class="form-group">
+                            <label for="examFormPdfUrl">Link Đề thi PDF:</label>
+                            <input type="text" id="examFormPdfUrl" placeholder="Dán link đến file PDF của đề thi" />
+                            <small>Link phải cho phép truy cập công khai. Ví dụ từ Google Drive, Dropbox.</small>
                         </div>
                         <div class="form-group">
-                            <label for="examFormCode">Mã đề thi:</label>
-                            <input type="text" id="examFormCode" required placeholder="Đề TEXT: T... | Đề PDF: PDF-..." />
+                            <label for="examFormSolutionUrl">Link Lời giải PDF (tùy chọn):</label>
+                            <input type="text" id="examFormSolutionUrl"
+                                placeholder="Dán link đến file PDF của lời giải" />
                         </div>
-                        <div class="form-group">
-                            <label for="examFormTime">Thời gian làm bài (phút):</label>
-                            <input type="number" id="examFormTime" value="90" min="1" required />
-                        </div>
-                        <div class="form-group">
-                            <label for="examFormKeys">Đáp án (phân tách bằng |):</label>
-                            <input type="text" id="examFormKeys" required placeholder="A|D|D|B|B|B|A|C|D|D|C|A|TFTT|FTFT|FTFF|TTTF|0.15|600|0.25|2.12|210|0.17" />
-                        </div>
-                        <div class="form-group">
-                            <label for="examFormCores">Điểm từng câu (phân tách bằng |):</label>
-                            <input type="text" id="examFormCores" required placeholder="0.25|0.25|0.25|0.25|0.25|0.25|0.25|0.25|0.25|0.25|0.25|0.25|0.25,0.5,0.75,1|0.25,0.5,0.75,1|0.25,0.5,0.75,1|0.25,0.5,0.75,1|0.5|0.5|0.5|0.5|0.5|0.5" />
-                        </div>
-                        <div id="textExamFields">
-                            <div class="form-group">
-                                <label for="examFormContent">Nội dung đề thi (Soạn trực tiếp):</label>
-                                <textarea id="examFormContent" rows="15" required placeholder="Soạn nội dung..."></textarea>
-                            </div>
-                            <div class="form-group form-check" style="display: none;">
-    <input type="checkbox" class="form-check-input" id="useStorageCheckbox" checked>
-    <label class="form-check-label" for="useStorageCheckbox">
-        Lưu nội dung lên Storage (Tối ưu cho đề dài)
-    </label>
-</div>
-                        </div>
-                        <div id="pdfExamFields" style="display:none;">
-                            <div class="form-group">
-                                <label for="examFormPdfUrl">Link Đề thi PDF:</label>
-                                <input type="text" id="examFormPdfUrl" placeholder="Dán link đến file PDF của đề thi" />
-                                <small>Link phải cho phép truy cập công khai. Ví dụ từ Google Drive, Dropbox.</small>
-                            </div>
-                            <div class="form-group">
-                                <label for="examFormSolutionUrl">Link Lời giải PDF (tùy chọn):</label>
-                                <input type="text" id="examFormSolutionUrl" placeholder="Dán link đến file PDF của lời giải" />
-                            </div>
-                        </div>
+                    </div>
                     </form>
                 </div>
                 <div class="modal-actions">
-                    <button type="submit" form="examForm" class="btn btn-primary"><i class="fas fa-save"></i> Lưu</button>
-                    <button type="button" onclick="hideExamForm()" class="btn btn-secondary"><i class="fas fa-times-circle"></i> Hủy</button>
+                    <button type="submit" form="examForm" class="btn btn-primary"><i class="fas fa-save"></i>
+                        Lưu</button>
+                    <button type="button" onclick="hideExamForm()" class="btn btn-secondary"><i
+                            class="fas fa-times-circle"></i> Hủy</button>
                 </div>
             </div>
         </div>
@@ -313,18 +1081,23 @@
                 <div class="modal-form-scrollable-area">
                     <form id="classForm" onsubmit="event.preventDefault(); handleClassFormSubmit();">
                         <input type="hidden" id="classId" />
-                        <div class="form-group"><label for="classFormName">Tên lớp:</label><input type="text" id="classFormName" required placeholder="Ví dụ: 10A1" /></div>
-                        <div class="form-group"><label for="classFormStudents">Danh sách học sinh (mỗi tên một dòng):</label><textarea id="classFormStudents" rows="10" placeholder="Nguyễn Văn A\nTrần Thị B..."></textarea></div>
+                        <div class="form-group"><label for="classFormName">Tên lớp:</label><input type="text"
+                                id="classFormName" required placeholder="Ví dụ: 10A1" /></div>
+                        <div class="form-group"><label for="classFormStudents">Danh sách học sinh (mỗi tên một
+                                dòng):</label><textarea id="classFormStudents" rows="10"
+                                placeholder="Nguyễn Văn A\nTrần Thị B..."></textarea></div>
                     </form>
                 </div>
                 <div class="modal-actions">
-                    <button type="submit" form="classForm" class="btn btn-primary"><i class="fas fa-save"></i> Lưu</button>
-                    <button type="button" onclick="hideClassForm()" class="btn btn-secondary"><i class="fas fa-times-circle"></i> Hủy</button>
+                    <button type="submit" form="classForm" class="btn btn-primary"><i class="fas fa-save"></i>
+                        Lưu</button>
+                    <button type="button" onclick="hideClassForm()" class="btn btn-secondary"><i
+                            class="fas fa-times-circle"></i> Hủy</button>
                 </div>
             </div>
         </div>
     </div>
-    
+
     <!-- Thứ tự nạp Script quan trọng -->
     <script defer src="js/quiz-parser.js"></script>
     <!-- <script defer src="js/redirect.js"></script>  -->
@@ -332,32 +1105,33 @@
     <script defer src="js/main.js"></script>
     <!-- <script defer src="js/storage_handler.js"></script> -->
     <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const colorPicker = document.getElementById('katex-color-picker');
-        const KATEK_COLOR_KEY = 'katexUserColor';
-        const DEFAULT_COLOR = '#ff00ff'; // Sửa ở đây
+        document.addEventListener('DOMContentLoaded', () => {
+            const colorPicker = document.getElementById('katex-color-picker');
+            const KATEK_COLOR_KEY = 'katexUserColor';
+            const DEFAULT_COLOR = '#ff00ff'; // Sửa ở đây
 
-        function applyKatexColor(color) {
-            if (color) {
-                document.documentElement.style.setProperty('--katex-color', color);
+            function applyKatexColor(color) {
+                if (color) {
+                    document.documentElement.style.setProperty('--katex-color', color);
+                }
             }
-        }
 
-        const initialColor = localStorage.getItem(KATEK_COLOR_KEY) || DEFAULT_COLOR;
-        applyKatexColor(initialColor);
+            const initialColor = localStorage.getItem(KATEK_COLOR_KEY) || DEFAULT_COLOR;
+            applyKatexColor(initialColor);
 
-        if (colorPicker) {
-            colorPicker.value = initialColor;
-        }
+            if (colorPicker) {
+                colorPicker.value = initialColor;
+            }
 
-        if (colorPicker) {
-            colorPicker.addEventListener('input', (event) => {
-                const newColor = event.target.value;
-                applyKatexColor(newColor);
-                localStorage.setItem(KATEK_COLOR_KEY, newColor);
-            });
-        }
-    });
+            if (colorPicker) {
+                colorPicker.addEventListener('input', (event) => {
+                    const newColor = event.target.value;
+                    applyKatexColor(newColor);
+                    localStorage.setItem(KATEK_COLOR_KEY, newColor);
+                });
+            }
+        });
     </script>
 </body>
+
 </html>

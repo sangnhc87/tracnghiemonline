@@ -1,6 +1,6 @@
 {
   "functions": {
-    "source": "firebase-functions"
+    "source": "functions"
   },
   "hosting": {
     "public": "public",
@@ -8,6 +8,17 @@
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Cross-Origin-Opener-Policy",
+            "value": "same-origin-allow-popups"
+          }
+        ]
+      }
     ]
   },
   "firestore": {

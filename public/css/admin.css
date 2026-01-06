@@ -25,7 +25,7 @@ body {
 }
 
 .admin-dashboard-container {
-    max-width: 1200px;
+    max-width: 1300px;
     margin: 30px auto;
     background-color: var(--surface-color);
     border-radius: 15px;
@@ -248,4 +248,22 @@ body {
 }
 .btn-info:hover {
     background-color: #138496;
+}
+
+/* Thêm vào css/admin.css */
+.btn-delete {
+    background-color: var(--danger-color);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+.btn-delete:hover {
+    background-color: #c82333;
+}
+.action-buttons { /* Giúp các nút có khoảng cách đều nhau */
+    display: flex;
+    gap: 5px;
 }

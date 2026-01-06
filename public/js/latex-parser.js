@@ -1,4 +1,4 @@
-// File: pdf-latex.js
+// File: latex-parser.js (ĐÃ SỬA LỖI RENDER)
 
 /**
  * Hàm hỗ trợ để tìm nội dung của một khối lệnh LaTeX có cặp ngoặc nhọn cân bằng.

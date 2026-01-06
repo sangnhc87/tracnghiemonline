@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const replaceImagesBtn = getEl("replace-images-btn");
     const linkTikzCounter = getEl("link-tikz-counter");
     const createExamBtn = getEl("create-exam-btn");
-
+const copyAllLatexBtn = getEl("copy-all-latex-btn"); 
     if (!questionEditorContainer || !addQuestionBtn || !loadFileBtn) {
         console.error("Lỗi: Các phần tử HTML cốt lõi không được tìm thấy. Script dừng lại.");
         return;
@@ -738,7 +738,33 @@ function initializeApp() {
     addSafeListener(copyOutputBtn, 'click', createCopyHandler(converterOutputArea, 'nội dung Output'));
     addSafeListener(copyKeysBtn, 'click', createCopyHandler(extractedKeysInput, 'Keys'));
     addSafeListener(copyCoresBtn, 'click', createCopyHandler(extractedCoresInput, 'Cores'));
+// === BẮT ĐẦU THÊM KHỐI CODE MỚI VÀO ĐÂY ===
+        addSafeListener(copyAllLatexBtn, 'click', () => {
+            // Kiểm tra xem có câu hỏi nào không
+            if (!questions || questions.length === 0) {
+                Swal.fire('Thông tin', 'Không có nội dung LaTeX để sao chép.', 'info');
+                return;
+            }
 
+            // Dùng biến state 'questions' để lấy dữ liệu, ngăn cách bằng 2 dấu xuống dòng
+            // Đây là cách đáng tin cậy nhất, khớp với cách bạn xử lý ở `runFullConversion`
+            const combinedContent = questions.join('\n\n');
+
+            navigator.clipboard.writeText(combinedContent).then(() => {
+                // Sử dụng Swal để thông báo, đồng bộ với các hành động khác trong app
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Đã sao chép!',
+                    text: 'Toàn bộ nội dung LaTeX từ các ô soạn thảo đã được sao chép.',
+                    timer: 1500, // Tự động đóng sau 1.5 giây
+                    showConfirmButton: false
+                });
+            }).catch(err => {
+                console.error('Lỗi khi sao chép nội dung LaTeX:', err);
+                Swal.fire('Lỗi', 'Không thể sao chép nội dung. Vui lòng thử lại.', 'error');
+            });
+        });
+        // === KẾT THÚC KHỐI CODE MỚI ===
     // --- Gán sự kiện cho các tính năng phụ (TikZ, input...) ---
 
     addSafeListener(replaceImagesBtn, 'click', performImageReplacement);

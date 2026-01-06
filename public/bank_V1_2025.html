@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Ngân Hàng Latex Cục Bộ</title> <!-- MODIFICATION: Updated title -->
+    <title>Ngân Hàng Latex</title> <!-- MODIFICATION: Updated title -->
     <base target="_top">
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
@@ -261,12 +261,12 @@
 
     </style>
     <!-- Firebase SDK (Rất quan trọng) -->
-<script defer src="/__/firebase/9.10.0/firebase-app-compat.js"></script>
-<script defer src="/__/firebase/9.10.0/firebase-auth-compat.js"></script>
-<script defer src="/__/firebase/9.10.0/firebase-functions-compat.js"></script>
-<script defer src="/__/firebase/9.10.0/firebase-storage-compat.js"></script> <!-- Thêm SDK của Storage -->
-<script defer src="/__/firebase/init.js"></script>
-<script defer src="js/auth-manager.js"></script>
+<script src="/__/firebase/9.10.0/firebase-app-compat.js"></script>
+<script src="/__/firebase/9.10.0/firebase-auth-compat.js"></script>
+<script src="/__/firebase/9.10.0/firebase-functions-compat.js"></script>
+<script src="/__/firebase/9.10.0/firebase-storage-compat.js"></script> 
+<script src="/__/firebase/init.js"></script>
+<script src="js/auth-manager.js"></script>
 </head>
 <body 
 class="container-fluid pt-3">
@@ -3394,7 +3394,7 @@ async function syncDownFromCloud() {
     
     try {
         // 1. Gọi function mới để lấy danh sách tất cả file
-        const getListFunction = firebase.functions().httpsCallable('getListOfBankFiles');
+        const getListFunction = firebase.app().functions("asia-southeast1").httpsCallable('getListOfBankFiles');
         const listResult = await getListFunction();
         const filesToDownload = listResult.data.files;
 
@@ -3476,7 +3476,7 @@ async function syncUpToCloud() {
         const consolidatedContent = JSON.stringify(consolidatedData);
 
         showLoading(true, "Đang hợp nhất trên Cloud...");
-        const consolidateFunction = firebase.functions().httpsCallable('consolidateBank');
+        const consolidateFunction = firebase.app().functions("asia-southeast1").httpsCallable('consolidateBank');
         const consolidateResult = await consolidateFunction({ consolidatedContent });
 
         showLoading(false);
@@ -3617,7 +3617,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Sử dụng Trình quản lý xác thực
-    initializeAuth(
+     AuthHelper_initialize(
+         firebase.auth(), 
         (user) => { // Khi đăng nhập thành công
             if (userInfoSpan) userInfoSpan.textContent = user.email;
             if (authBtn) {

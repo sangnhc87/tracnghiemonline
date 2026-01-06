@@ -1613,3 +1613,217 @@ exports.adminGetExamContent = onRequest(async (req, res) => {
         }
     });
 });
+
+// Thêm hàm này vào cuối file index.js
+
+exports.adminDeleteUser = onRequest({ timeoutSeconds: 300, memory: '512MB' }, async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            // 1. Xác thực quyền Admin
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
+                throw new Error('Missing Auth Token');
+            }
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            if (decodedToken.email !== 'nguyensangnhc@gmail.com') { // Thay email admin của bạn
+                throw new Error("Bạn không có quyền truy cập chức năng này.");
+            }
+
+            // 2. Lấy userId cần xóa từ request body
+            const { userId } = req.body; // Sửa thành req.body
+            if (!userId) {
+                throw new Error("Thiếu ID của người dùng cần xóa.");
+            }
+
+            console.log(`Bắt đầu quá trình xóa cho người dùng: ${userId}`);
+            const batchSize = 100; // Xóa theo lô để tránh quá tải bộ nhớ
+
+            // Hàm xóa các document trong một collection theo lô
+            const deleteCollection = async (collectionRef, limit) => {
+                let query = collectionRef.limit(limit);
+                let deleted = 0;
+                while (true) {
+                    const snapshot = await query.get();
+                    if (snapshot.size === 0) break;
+
+                    const batch = db.batch();
+                    snapshot.docs.forEach(doc => batch.delete(doc.ref));
+                    await batch.commit();
+                    deleted += snapshot.size;
+
+                    if (snapshot.size < limit) break;
+                }
+                return deleted;
+            };
+
+            // 3. Xóa dữ liệu liên quan trong Firestore
+            console.log("Đang xóa các bài nộp...");
+            const deletedSubmissions = await deleteCollection(db.collection('submissions').where('teacherId', '==', userId), batchSize);
+            console.log(`Đã xóa ${deletedSubmissions} bài nộp.`);
+
+            console.log("Đang xóa các lớp học...");
+            const deletedClasses = await deleteCollection(db.collection('classes').where('teacherId', '==', userId), batchSize);
+            console.log(`Đã xóa ${deletedClasses} lớp học.`);
+            
+            console.log("Đang xóa các đề thi...");
+            const deletedExams = await deleteCollection(db.collection('exams').where('teacherId', '==', userId), batchSize);
+            console.log(`Đã xóa ${deletedExams} đề thi.`);
+
+            console.log("Đang xóa document người dùng...");
+            await db.collection('users').doc(userId).delete();
+            
+            // 4. Xóa file trong Cloud Storage
+            console.log("Đang xóa file trên Storage...");
+            const bucket = storage.bucket();
+            await bucket.deleteFiles({ prefix: `exam_content/${userId}/` });
+            await bucket.deleteFiles({ prefix: `question_bank_backups/${userId}/` });
+            
+            // 5. Xóa tài khoản trong Firebase Authentication
+            console.log("Đang xóa tài khoản Authentication...");
+            await admin.auth().deleteUser(userId);
+            
+            console.log(`Đã xóa hoàn toàn người dùng ${userId}.`);
+            res.status(200).json({ data: { success: true, message: `Đã xóa hoàn toàn người dùng và dữ liệu liên quan.` } });
+
+        } catch (error) {
+            console.error("Lỗi nghiêm trọng khi xóa người dùng:", error);
+            res.status(500).json({ error: { message: `Lỗi máy chủ khi xóa người dùng: ${error.message}` } });
+        }
+    });
+});
+
+
+// =================================================================
+// ==   CÁC HÀM MỚI CHO TÍNH NĂNG QUẢN LÝ GIÁO TRÌNH           ==
+// =================================================================
+
+/**
+ * [GV] Lấy cây thư mục của giáo viên đang đăng nhập.
+ * Yêu cầu xác thực.
+ */
+exports.getCurriculumTree = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
+                throw new Error('Chưa đăng nhập');
+            }
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid;
+
+            const doc = await db.collection("curriculums").doc(uid).get();
+            
+            if (!doc.exists) {
+                // Nếu chưa có, trả về cây rỗng để client có thể bắt đầu
+                return res.status(200).json({ data: { treeData: [] } });
+            }
+            // Trả về dữ liệu cây đã có
+            res.status(200).json({ data: doc.data() });
+
+        } catch (error) {
+            console.error("Lỗi trong getCurriculumTree:", error);
+            res.status(401).json({ error: { message: error.message } });
+        }
+    });
+});
+
+/**
+ * [GV] Lưu cấu trúc cây thư mục.
+ * Yêu cầu xác thực.
+ */
+exports.saveCurriculumTree = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
+                throw new Error('Chưa đăng nhập');
+            }
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid;
+
+            const { treeData } = req.body.data;
+            if (!treeData) {
+                throw new Error("Thiếu dữ liệu cây thư mục (treeData).");
+            }
+
+            const curriculumRef = db.collection("curriculums").doc(uid);
+            await curriculumRef.set({
+                teacherId: uid,
+                treeData: treeData,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            }, { merge: true }); // Dùng merge để không ghi đè các trường khác nếu có
+
+            res.status(200).json({ data: { success: true, message: "Đã lưu cấu trúc giáo trình thành công." } });
+        } catch (error) {
+            console.error("Lỗi trong saveCurriculumTree:", error);
+            res.status(400).json({ error: { message: error.message } });
+        }
+    });
+});
+
+
+/**
+ * [HS] Lấy cây thư mục của một giáo viên dựa vào alias.
+ * Không yêu cầu xác thực.
+ */
+exports.getCurriculumTreeForStudent = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            const { teacherAlias } = req.body.data;
+            if (!teacherAlias) {
+                throw new Error("Thiếu mã giáo viên (teacherAlias).");
+            }
+
+            // Tìm uid của giáo viên từ alias
+            const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
+            if (teacherSnapshot.empty) {
+                throw new Error("Không tìm thấy giáo viên với mã này.");
+            }
+            const teacherId = teacherSnapshot.docs[0].id;
+
+            // Lấy cây thư mục bằng uid đã tìm được
+            const doc = await db.collection("curriculums").doc(teacherId).get();
+            if (!doc.exists) {
+                return res.status(200).json({ data: { treeData: [] } });
+            }
+            res.status(200).json({ data: doc.data() });
+
+        } catch (error) {
+            console.error("Lỗi trong getCurriculumTreeForStudent:", error);
+            res.status(400).json({ error: { message: error.message } });
+        }
+    });
+});
+
+/**
+ * [HS] Lấy nội dung file .tex từ Storage.
+ * Không yêu cầu xác thực.
+ */
+exports.getCurriculumContent = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            const { path } = req.body.data; // Client sẽ gửi lên contentPath
+            if (!path) {
+                throw new Error("Thiếu đường dẫn đến file nội dung (path).");
+            }
+            
+            // Cần khởi tạo storage nếu chưa có ở đầu file
+            const bucket = admin.storage().bucket(); 
+            const file = bucket.file(path);
+            
+            const [exists] = await file.exists();
+            if (!exists) {
+                throw new Error("File không tồn tại.");
+            }
+
+            const [contentBuffer] = await file.download();
+            const content = contentBuffer.toString('utf8');
+
+            res.status(200).json({ data: { content: content } });
+
+        } catch (error) {
+            console.error("Lỗi trong getCurriculumContent:", error);
+            res.status(400).json({ error: { message: error.message } });
+        }
+    });
+});

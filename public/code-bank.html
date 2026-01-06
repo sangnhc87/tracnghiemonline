@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Kho Mã Code - Giáo Viên</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script defer src="/__/firebase/9.10.0/firebase-app-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-auth-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-firestore-compat.js"></script>
+    <script defer src="/__/firebase/9.10.0/firebase-storage-compat.js"></script>
+    <script defer src="/__/firebase/init.js"></script>
+
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-400: #9ca3af;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --font: 'Be Vietnam Pro', sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font);
+            background: linear-gradient(135deg, var(--gray-100), #e0e7ff);
+            min-height: 100vh;
+        }
+
+        .header {
+            background: white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header-left i {
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+
+        .header-left h1 {
+            font-size: 1.25rem;
+            color: var(--gray-800);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--gray-100);
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            font-size: 0.875rem;
+        }
+
+        .user-badge i {
+            color: var(--primary);
+        }
+
+        .main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-left {
+            display: flex;
+            gap: 0.5rem;
+            flex: 1;
+        }
+
+        .toolbar-right {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 0.5rem;
+            padding: 0 1rem;
+            flex: 1;
+            max-width: 400px;
+        }
+
+        .search-box i {
+            color: var(--gray-400);
+        }
+
+        .search-box input {
+            border: none;
+            outline: none;
+            padding: 0.75rem;
+            flex: 1;
+            font-family: inherit;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--gray-700);
+            border: 1px solid var(--gray-200);
+        }
+
+        .btn-secondary:hover {
+            background: var(--gray-50);
+        }
+
+        .btn-danger {
+            background: white;
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
+        .btn-danger:hover {
+            background: #fef2f2;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .code-card {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+
+        .code-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .code-card-header {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--gray-100);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .code-card-title {
+            font-weight: 600;
+            color: var(--gray-800);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .code-card-title i {
+            color: var(--primary);
+        }
+
+        .code-card-badge {
+            font-size: 0.7rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 1rem;
+            background: #dbeafe;
+            color: var(--primary-dark);
+        }
+
+        .code-card-body {
+            padding: 1.25rem;
+        }
+
+        .code-preview {
+            background: var(--gray-800);
+            color: #e5e7eb;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            line-height: 1.6;
+            max-height: 150px;
+            overflow: auto;
+            white-space: pre-wrap;
+            margin-bottom: 1rem;
+        }
+
+        .code-meta {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.75rem;
+            color: var(--gray-600);
+            margin-bottom: 1rem;
+        }
+
+        .code-meta span {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .code-card-footer {
+            padding: 1rem 1.25rem;
+            border-top: 1px solid var(--gray-100);
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .code-card-footer .btn {
+            flex: 1;
+            justify-content: center;
+            padding: 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        .tag {
+            display: inline-block;
+            background: var(--gray-100);
+            color: var(--gray-600);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            margin-right: 0.25rem;
+            margin-bottom: 0.25rem;
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 1rem;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 1rem;
+            max-width: 700px;
+            width: 100%;
+            max-height: 90vh;
+            overflow: auto;
+        }
+
+        .modal-header {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-size: 1.25rem;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray-400);
+        }
+
+        .modal-body {
+            padding: 1.25rem;
+        }
+
+        .modal-footer {
+            padding: 1.25rem;
+            border-top: 1px solid var(--gray-200);
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: var(--gray-700);
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--gray-200);
+            border-radius: 0.5rem;
+            font-family: inherit;
+            font-size: 0.875rem;
+        }
+
+        .form-group textarea {
+            min-height: 200px;
+            font-family: var(--mono);
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--gray-600);
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            color: var(--gray-300);
+            margin-bottom: 1rem;
+        }
+
+        /* Login */
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .login-card {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .login-card i {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        .login-card h1 {
+            margin-bottom: 0.5rem;
+            color: var(--gray-800);
+        }
+
+        .login-card p {
+            color: var(--gray-600);
+            margin-bottom: 1.5rem;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-container">
+        <div class="login-card">
+            <i class="fas fa-code"></i>
+            <h1>Kho Mã Code</h1>
+            <p>Đăng nhập để quản lý snippets và mã code của bạn</p>
+            <button class="btn btn-primary" id="login-btn" style="width:100%;">
+                <i class="fab fa-google"></i> Đăng nhập với Google
+            </button>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="main-app" style="display:none;">
+        <header class="header">
+            <div class="header-left">
+                <i class="fas fa-code"></i>
+                <h1>Kho Mã Code</h1>
+            </div>
+            <div class="header-right">
+                <div class="user-badge">
+                    <i class="fas fa-user"></i>
+                    <span id="user-email">user@example.com</span>
+                </div>
+                <button class="btn btn-secondary" id="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </header>
+
+        <main class="main">
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="search-input" placeholder="Tìm kiếm code...">
+                    </div>
+                    <select class="btn btn-secondary" id="filter-category">
+                        <option value="">Tất cả loại</option>
+                        <option value="latex">LaTeX</option>
+                        <option value="javascript">JavaScript</option>
+                        <option value="css">CSS</option>
+                        <option value="html">HTML</option>
+                        <option value="python">Python</option>
+                        <option value="other">Khác</option>
+                    </select>
+                </div>
+                <div class="toolbar-right">
+                    <button class="btn btn-primary" id="add-code-btn">
+                        <i class="fas fa-plus"></i> Thêm mới
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid" id="codes-grid">
+                <div class="empty-state">
+                    <i class="fas fa-code"></i>
+                    <p>Chưa có mã code nào. Nhấn "Thêm mới" để bắt đầu!</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div class="modal" id="code-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Thêm Code Mới</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="code-id">
+                <div class="form-group">
+                    <label>Tiêu đề *</label>
+                    <input type="text" id="code-title" placeholder="VD: Hàm tính tích phân">
+                </div>
+                <div class="form-group">
+                    <label>Loại code</label>
+                    <select id="code-category">
+                        <option value="latex">LaTeX</option>
+                        <option value="javascript">JavaScript</option>
+                        <option value="css">CSS</option>
+                        <option value="html">HTML</option>
+                        <option value="python">Python</option>
+                        <option value="other">Khác</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Tags (phân tách bằng dấu phẩy)</label>
+                    <input type="text" id="code-tags" placeholder="VD: toán, tích phân, hàm số">
+                </div>
+                <div class="form-group">
+                    <label>Nội dung code *</label>
+                    <textarea id="code-content" placeholder="Dán mã code vào đây..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Ghi chú</label>
+                    <input type="text" id="code-note" placeholder="Ghi chú thêm (tùy chọn)">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Hủy</button>
+                <button class="btn btn-primary" id="save-code-btn">
+                    <i class="fas fa-save"></i> Lưu
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let db, auth, currentUser;
+            let allCodes = [];
+
+            const initApp = setInterval(() => {
+                if (typeof firebase !== 'undefined' && firebase.apps.length) {
+                    clearInterval(initApp);
+                    auth = firebase.auth();
+                    db = firebase.firestore();
+                    setupAuth();
+                }
+            }, 100);
+
+            function setupAuth() {
+                document.getElementById('login-btn').onclick = () => {
+                    const provider = new firebase.auth.GoogleAuthProvider();
+                    auth.signInWithPopup(provider);
+                };
+
+                document.getElementById('logout-btn').onclick = () => auth.signOut();
+
+                auth.onAuthStateChanged(user => {
+                    if (user) {
+                        currentUser = user;
+                        document.getElementById('login-screen').style.display = 'none';
+                        document.getElementById('main-app').style.display = 'block';
+                        document.getElementById('user-email').textContent = user.email;
+                        loadCodes();
+                    } else {
+                        document.getElementById('login-screen').style.display = 'flex';
+                        document.getElementById('main-app').style.display = 'none';
+                    }
+                });
+            }
+
+            async function loadCodes() {
+                try {
+                    const snapshot = await db.collection('users').doc(currentUser.uid)
+                        .collection('codeBank').orderBy('updatedAt', 'desc').get();
+
+                    allCodes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    renderCodes(allCodes);
+                } catch (e) {
+                    console.error('Load codes error:', e);
+                }
+            }
+
+            function renderCodes(codes) {
+                const grid = document.getElementById('codes-grid');
+
+                if (codes.length === 0) {
+                    grid.innerHTML = `<div class="empty-state"><i class="fas fa-code"></i><p>Chưa có mã code nào. Nhấn "Thêm mới" để bắt đầu!</p></div>`;
+                    return;
+                }
+
+                grid.innerHTML = codes.map(code => {
+                    const tags = (code.tags || []).map(t => `<span class="tag">${t}</span>`).join('');
+                    const preview = (code.content || '').substring(0, 200) + ((code.content || '').length > 200 ? '...' : '');
+                    const date = code.updatedAt?.toDate?.()?.toLocaleDateString('vi-VN') || 'N/A';
+
+                    return `
+                <div class="code-card" data-id="${code.id}">
+                    <div class="code-card-header">
+                        <span class="code-card-title"><i class="fas fa-file-code"></i> ${code.title || 'Không tiêu đề'}</span>
+                        <span class="code-card-badge">${code.category || 'other'}</span>
+                    </div>
+                    <div class="code-card-body">
+                        <div class="code-preview">${escapeHtml(preview)}</div>
+                        <div>${tags}</div>
+                        <div class="code-meta">
+                            <span><i class="fas fa-calendar"></i> ${date}</span>
+                            <span><i class="fas fa-code"></i> ${(code.content || '').length} ký tự</span>
+                        </div>
+                    </div>
+                    <div class="code-card-footer">
+                        <button class="btn btn-secondary" onclick="copyCode('${code.id}')"><i class="fas fa-copy"></i> Sao chép</button>
+                        <button class="btn btn-secondary" onclick="editCode('${code.id}')"><i class="fas fa-edit"></i> Sửa</button>
+                        <button class="btn btn-danger" onclick="deleteCode('${code.id}')"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>`;
+                }).join('');
+            }
+
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            // Search and filter
+            document.getElementById('search-input').oninput = filterCodes;
+            document.getElementById('filter-category').onchange = filterCodes;
+
+            function filterCodes() {
+                const search = document.getElementById('search-input').value.toLowerCase();
+                const category = document.getElementById('filter-category').value;
+
+                const filtered = allCodes.filter(code => {
+                    const matchSearch = !search ||
+                        (code.title || '').toLowerCase().includes(search) ||
+                        (code.content || '').toLowerCase().includes(search) ||
+                        (code.tags || []).some(t => t.toLowerCase().includes(search));
+                    const matchCategory = !category || code.category === category;
+                    return matchSearch && matchCategory;
+                });
+
+                renderCodes(filtered);
+            }
+
+            // Modal functions
+            document.getElementById('add-code-btn').onclick = () => {
+                document.getElementById('modal-title').textContent = 'Thêm Code Mới';
+                document.getElementById('code-id').value = '';
+                document.getElementById('code-title').value = '';
+                document.getElementById('code-category').value = 'latex';
+                document.getElementById('code-tags').value = '';
+                document.getElementById('code-content').value = '';
+                document.getElementById('code-note').value = '';
+                document.getElementById('code-modal').classList.add('active');
+            };
+
+            window.closeModal = () => {
+                document.getElementById('code-modal').classList.remove('active');
+            };
+
+            window.editCode = (id) => {
+                const code = allCodes.find(c => c.id === id);
+                if (!code) return;
+
+                document.getElementById('modal-title').textContent = 'Sửa Code';
+                document.getElementById('code-id').value = id;
+                document.getElementById('code-title').value = code.title || '';
+                document.getElementById('code-category').value = code.category || 'other';
+                document.getElementById('code-tags').value = (code.tags || []).join(', ');
+                document.getElementById('code-content').value = code.content || '';
+                document.getElementById('code-note').value = code.note || '';
+                document.getElementById('code-modal').classList.add('active');
+            };
+
+            window.copyCode = async (id) => {
+                const code = allCodes.find(c => c.id === id);
+                if (!code) return;
+
+                try {
+                    await navigator.clipboard.writeText(code.content || '');
+                    Swal.fire({ icon: 'success', title: 'Đã sao chép!', timer: 1500, showConfirmButton: false });
+                } catch (e) {
+                    Swal.fire('Lỗi', 'Không thể sao chép', 'error');
+                }
+            };
+
+            window.deleteCode = async (id) => {
+                const result = await Swal.fire({
+                    title: 'Xóa code này?',
+                    text: 'Hành động này không thể hoàn tác.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ef4444',
+                    cancelButtonText: 'Hủy',
+                    confirmButtonText: 'Xóa'
+                });
+
+                if (result.isConfirmed) {
+                    try {
+                        await db.collection('users').doc(currentUser.uid)
+                            .collection('codeBank').doc(id).delete();
+                        Swal.fire({ icon: 'success', title: 'Đã xóa!', timer: 1500, showConfirmButton: false });
+                        loadCodes();
+                    } catch (e) {
+                        Swal.fire('Lỗi', 'Không thể xóa: ' + e.message, 'error');
+                    }
+                }
+            };
+
+            document.getElementById('save-code-btn').onclick = async () => {
+                const id = document.getElementById('code-id').value;
+                const title = document.getElementById('code-title').value.trim();
+                const content = document.getElementById('code-content').value.trim();
+
+                if (!title || !content) {
+                    Swal.fire('Lỗi', 'Vui lòng nhập tiêu đề và nội dung code', 'warning');
+                    return;
+                }
+
+                const data = {
+                    title,
+                    category: document.getElementById('code-category').value,
+                    tags: document.getElementById('code-tags').value.split(',').map(t => t.trim()).filter(t => t),
+                    content,
+                    note: document.getElementById('code-note').value.trim(),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                try {
+                    const ref = db.collection('users').doc(currentUser.uid).collection('codeBank');
+                    if (id) {
+                        await ref.doc(id).update(data);
+                    } else {
+                        data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                        await ref.add(data);
+                    }
+
+                    Swal.fire({ icon: 'success', title: 'Đã lưu!', timer: 1500, showConfirmButton: false });
+                    closeModal();
+                    loadCodes();
+                } catch (e) {
+                    Swal.fire('Lỗi', 'Không thể lưu: ' + e.message, 'error');
+                }
+            };
+
+            // Close modal on outside click
+            document.getElementById('code-modal').onclick = (e) => {
+                if (e.target.id === 'code-modal') closeModal();
+            };
+        });
+    </script>
+</body>
+
+</html>
