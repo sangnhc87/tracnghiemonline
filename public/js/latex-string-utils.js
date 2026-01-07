@@ -11,7 +11,7 @@ const LatexStringUtils = {
      * @param {string} text - Chuỗi cần xử lý.
      * @returns {string} Chuỗi đã thay thế.
      */
-    replaceVecToOverrightarrow: function(text) {
+    replaceVecToOverrightarrow: function (text) {
         if (!text) return text;
         return text.replace(/(?:\\vec)\s*(\{[\s\S]*?\})/g, '\\overrightarrow$1');
     },
@@ -21,7 +21,7 @@ const LatexStringUtils = {
      * @param {string} text - Chuỗi cần xử lý.
      * @returns {string} Chuỗi đã thay thế.
      */
-    replaceTextbfToStrong: function(text) {
+    replaceTextbfToStrong: function (text) {
         if (!text) return text;
         return text.replace(/(?:\\textbf)\s*(\{([\s\S]*?)\})/g, (match, fullBraceContent, innerContent) => {
             return `<strong>${innerContent.trim()}</strong>`;
@@ -33,11 +33,11 @@ const LatexStringUtils = {
      * @param {string} keyString - Chuỗi keys cần xử lý.
      * @returns {string} Chuỗi keys đã xử lý.
      */
-    processKeyNumericFormat: function(keyString) {
+    processKeyNumericFormat: function (keyString) {
         if (!keyString) return '';
-        let processed = keyString.replace(/\{\s*,\s*\}/g, ''); 
-        processed = processed.replace(/\\,/g, ''); 
-        processed = processed.replace(/,/g, '.'); 
+        let processed = keyString.replace(/\{\s*,\s*\}/g, '');
+        processed = processed.replace(/\\,/g, '');
+        processed = processed.replace(/,/g, '.');
         return processed;
     },
 
@@ -46,18 +46,22 @@ const LatexStringUtils = {
      * @param {string} text - Chuỗi cần xử lý.
      * @returns {string} Chuỗi đã thay thế.
      */
-    removeCenterEnvironment: function(text) {
+    removeCenterEnvironment: function (text) {
         if (!text) return text;
         return text.replace(/\\begin\{center\}([\s\S]*?)\\end\{center\}/gi, '$1');
     },
 
     /**
      * Xóa môi trường \begin{tikz}...\end{tikz} và thay thế bằng "HÌNH Ở ĐÂY".
+     * LƯU Ý: Nếu TikZ đã được xử lý thành <img>, không thay thế nữa.
      * @param {string} text - Chuỗi cần xử lý.
      * @returns {string} Chuỗi đã thay thế.
      */
-    replaceTikzEnvironment: function(text) {
+    replaceTikzEnvironment: function (text) {
         if (!text) return text;
+        // Chỉ thay thế nếu TikZ chưa được render thành <img>
+        // Nếu text không chứa \begin{tikzpicture} thì không cần xử lý
+        if (!text.includes('\\begin{tikzpicture}')) return text;
         return text.replace(/\\begin\{tikzpicture\}([\s\S]*?)\\end\{tikzpicture\}/gi, '<span style="color:red;">HÌNH Ở ĐÂY</span>');
     },
 
@@ -67,43 +71,43 @@ const LatexStringUtils = {
      * @param {string} text - Chuỗi cần xử lý.
      * @returns {string} Chuỗi HTML table.
      */
-    replaceTabularToHtmlTable: function(text) {
-    if (!text) return text;
+    replaceTabularToHtmlTable: function (text) {
+        if (!text) return text;
 
-    const tabularRegex = /\\begin\{tabular\}(\{[^}]*\})?([\s\S]*?)\\end\{tabular\}/g;
+        const tabularRegex = /\\begin\{tabular\}(\{[^}]*\})?([\s\S]*?)\\end\{tabular\}/g;
 
-    return text.replace(tabularRegex, (match, alignmentSpec, tableContent) => {
-        let htmlTable = '<table border="1" style="margin: auto;">\n';
+        return text.replace(tabularRegex, (match, alignmentSpec, tableContent) => {
+            let htmlTable = '<table border="1" style="margin: auto;">\n';
 
-        // Xóa \hline
-        tableContent = tableContent.replace(/\\hline/g, '');
+            // Xóa \hline
+            tableContent = tableContent.replace(/\\hline/g, '');
 
-        // Tách dòng bởi \\\\
-        const rows = tableContent.split(/\\\\/);
+            // Tách dòng bởi \\\\
+            const rows = tableContent.split(/\\\\/);
 
-        rows.forEach(row => {
-            row = row.trim();
-            if (!row) return;
+            rows.forEach(row => {
+                row = row.trim();
+                if (!row) return;
 
-            htmlTable += '  <tr>';
-            const cols = row.split('&');
-            cols.forEach(col => {
-                col = col.replace(/\\centering|\\raggedright|\\raggedleft/g, '').trim();
+                htmlTable += '  <tr>';
+                const cols = row.split('&');
+                cols.forEach(col => {
+                    col = col.replace(/\\centering|\\raggedright|\\raggedleft/g, '').trim();
 
-                // Nếu có hàm xử lý lệnh LaTeX trong ô thì gọi
-                if (typeof LatexStringUtils !== 'undefined' && LatexStringUtils.applyCommonLatexReplacements) {
-                    col = LatexStringUtils.applyCommonLatexReplacements(col);
-                }
+                    // Nếu có hàm xử lý lệnh LaTeX trong ô thì gọi
+                    if (typeof LatexStringUtils !== 'undefined' && LatexStringUtils.applyCommonLatexReplacements) {
+                        col = LatexStringUtils.applyCommonLatexReplacements(col);
+                    }
 
-                htmlTable += `<td style="text-align: center; padding: 4px;">${col}</td>`;
+                    htmlTable += `<td style="text-align: center; padding: 4px;">${col}</td>`;
+                });
+                htmlTable += '</tr>\n';
             });
-            htmlTable += '</tr>\n';
-        });
 
-        htmlTable += '</table>';
-        return htmlTable;
-    });
-},
+            htmlTable += '</table>';
+            return htmlTable;
+        });
+    },
 
 
     /**
@@ -112,7 +116,7 @@ const LatexStringUtils = {
      * @param {string} text - Chuỗi cần xử lý.
      * @returns {string} Chuỗi HTML list.
      */
-    replaceListEnvironments: function(text) {
+    replaceListEnvironments: function (text) {
         if (!text) return text;
 
         // Hàm đệ quy để xử lý các danh sách lồng nhau
@@ -132,7 +136,7 @@ const LatexStringUtils = {
                     item = processList(item); // Gọi đệ quy
 
                     // Áp dụng các thay thế chung cho nội dung item
-                    item = LatexStringUtils.applyCommonLatexReplacementsWithoutListProcessing(item); 
+                    item = LatexStringUtils.applyCommonLatexReplacementsWithoutListProcessing(item);
 
                     htmlListContent += `<li>${item}</li>`;
                 });
@@ -150,20 +154,20 @@ const LatexStringUtils = {
      * @param {string} text - Chuỗi cần xử lý.
      * @returns {string} Chuỗi đã thay thế.
      */
-    replaceDoubleBackslashToBrGGG: function(text) {
+    replaceDoubleBackslashToBrGGG: function (text) {
         if (!text) return text;
         let result = '';
         let lastIndex = 0;
         const fullMathBlockRegex = /(\$\$[\s\S]*?\$\$|\$[\s\S]*?\$\\|\\[[\s\S]*?\\]|\\\([\s\S]*?\\\))/g;
         let match;
-        
+
         while ((match = fullMathBlockRegex.exec(text)) !== null) {
             // Phần văn bản trước khối toán học hiện tại
             let nonMathPart = text.substring(lastIndex, match.index);
             // Thay thế \\ bằng <br> trong phần không phải toán học này
             nonMathPart = nonMathPart.replace(/\\\\/g, '<br>');
             result += nonMathPart;
-            
+
             // Thêm khối toán học nguyên vẹn
             result += match[0];
             lastIndex = fullMathBlockRegex.lastIndex;
@@ -176,9 +180,9 @@ const LatexStringUtils = {
 
         return result;
     },
-// File: js/latex-string-utils.js
+    // File: js/latex-string-utils.js
 
-// ... (Các hàm khác giữ nguyên) ...
+    // ... (Các hàm khác giữ nguyên) ...
 
     /**
      * Thay thế '\\' bằng '<br>' nhưng KHÔNG can thiệp vào bên trong MỌI môi trường toán học
@@ -186,8 +190,8 @@ const LatexStringUtils = {
      * @param {string} text - Chuỗi cần xử lý.
      * @returns {string} Chuỗi đã thay thế.
      */
-    
-    replaceDoubleBackslashToBr: function(text) {
+
+    replaceDoubleBackslashToBr: function (text) {
         if (!text) return text;
         // const mathBlocksRegex = /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\$[\s\S]*?\$|\\\([\s\S]*?\\\))/g;
         // - khối tabular: \begin{tabular}...\end{tabular}
@@ -214,16 +218,17 @@ const LatexStringUtils = {
      * @param {string} text - Chuỗi cần xử lý.
      * @returns {string} Chuỗi đã được xử lý.
      */
-    applyCommonLatexReplacements: function(text) {
+    applyCommonLatexReplacements: function (text) {
         if (!text) return text;
         let processedText = text;
         processedText = this.replaceListEnvironments(processedText); // Xử lý list trước
         processedText = this.replaceDoubleBackslashToBr(processedText); // Xử lý xuống dòng
         processedText = this.replaceVecToOverrightarrow(processedText);
         processedText = this.replaceTextbfToStrong(processedText);
-        processedText = this.removeCenterEnvironment(processedText); 
-        processedText = this.replaceTikzEnvironment(processedText); 
-        processedText = this.replaceTabularToHtmlTable(processedText); 
+        processedText = this.removeCenterEnvironment(processedText);
+        // Đã tắt: TikZ được xử lý riêng bởi soan.js với QuickLaTeX API
+        // processedText = this.replaceTikzEnvironment(processedText);
+        processedText = this.replaceTabularToHtmlTable(processedText);
         // Các thay thế khác có thể được thêm ở đây
         return processedText;
     },
@@ -234,16 +239,17 @@ const LatexStringUtils = {
      * @param {string} text - Chuỗi cần xử lý.
      * @returns {string} Chuỗi đã được xử lý.
      */
-    applyCommonLatexReplacementsWithoutListProcessing: function(text) {
+    applyCommonLatexReplacementsWithoutListProcessing: function (text) {
         if (!text) return text;
         let processedText = text;
         // Không gọi this.replaceListEnvironments(processedText); ở đây
         // Không gọi this.replaceDoubleBackslashToBr(processedText); ở đây
         processedText = this.replaceVecToOverrightarrow(processedText);
         processedText = this.replaceTextbfToStrong(processedText);
-        processedText = this.removeCenterEnvironment(processedText); 
-        processedText = this.replaceTikzEnvironment(processedText); 
-        processedText = this.replaceTabularToHtmlTable(processedText); 
+        processedText = this.removeCenterEnvironment(processedText);
+        // Đã tắt: TikZ được xử lý riêng bởi soan.js với QuickLaTeX API
+        // processedText = this.replaceTikzEnvironment(processedText);
+        processedText = this.replaceTabularToHtmlTable(processedText);
         return processedText;
     }
 };

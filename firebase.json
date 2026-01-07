@@ -1,6 +1,6 @@
 {
   "functions": {
-    "source": "functions"
+    "source": "firebase-functions"
   },
   "hosting": {
     "public": "public",
@@ -24,5 +24,8 @@
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
   }
 }

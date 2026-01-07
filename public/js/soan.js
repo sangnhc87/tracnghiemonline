@@ -6,7 +6,7 @@
 const auth = firebase.auth();
 const storage = firebase.storage();
 // Quan trọng: Trỏ functions đến đúng region Singapore
-const functions = firebase.app().functions("asia-southeast1"); 
+const functions = firebase.app().functions("asia-southeast1");
 
 // Các biến toàn cục
 let timerInterval;
@@ -54,7 +54,7 @@ async function handleIncludeGraphicsUpload(currentContent) {
     if (matches.length === 0) return currentContent;
 
     updateSwalProgress('Xử lý ảnh có sẵn', `Phát hiện <strong>${matches.length}</strong> ảnh. Chuẩn bị giao diện...`);
-    
+
     return new Promise((resolve) => {
         const foundImages = matches.map(match => ({ fullCommand: match[0], path: match[1].trim(), newUrl: null }));
         let uploadHtml = `<p style="margin-bottom: 10px;">Vui lòng tải lên các tệp ảnh tương ứng:</p><ul id="image-upload-list" style="list-style: none; padding: 0; text-align: left; max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px;">`;
@@ -62,7 +62,7 @@ async function handleIncludeGraphicsUpload(currentContent) {
             uploadHtml += `<li style="display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid #eee;"><span style="font-family: monospace; font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${img.path}">${img.path}</span><div id="upload-status-${index}"><input type="file" accept="image/*" class="swal-upload-input" data-index="${index}" style="display:none;"><button onclick="document.querySelector('.swal-upload-input[data-index=\\'${index}\\']').click()" class="swal2-styled swal2-xs">Chọn</button></div></li>`;
         });
         uploadHtml += `</ul><button id="finish-upload-btn" class="swal2-styled swal2-confirm" style="display:none; margin-top:10px;">Hoàn tất Upload</button>`;
-        
+
         const messageEl = document.getElementById('swal-message');
         if (messageEl) messageEl.innerHTML = uploadHtml;
 
@@ -135,32 +135,36 @@ async function processTexFileWithTikZ(fileContent) {
         updateSwalProgress('Đang xử lý tệp...', 'Phân tích hình vẽ TikZ...');
         const tikzRegex = /\\begin{tikzpicture}[\s\S]*?\\end{tikzpicture}/g;
         const tikzBlocks = content.match(tikzRegex);
+
         if (tikzBlocks && tikzBlocks.length > 0) {
-            updateSwalProgress(`Đang dịch ${tikzBlocks.length} hình TikZ...`, 'Gửi yêu cầu đến server...');
-            
-            // SỬA Ở ĐÂY: Dùng biến `functions` đã được cấu hình đúng
-            const processTikz = functions.httpsCallable('processTikzProxy');
-            
+            updateSwalProgress(`Đang dịch ${tikzBlocks.length} hình TikZ...`, 'Gửi yêu cầu đến tikz4web.fly.dev...');
+
+            // Gọi qua Firebase Function proxy (để tránh lỗi CORS)
+            const processTikz = functions.httpsCallable('processTikzFlyioProxy');
             const tikzOnlyText = tikzBlocks.join('\n\n');
             const result = await processTikz({ fileContent: tikzOnlyText });
             const data = result.data;
-            if (!data.success) throw new Error(data.error || 'Lỗi từ dịch vụ TikZ.');
 
-            updateSwalProgress(`Đang dịch ${tikzBlocks.length} hình TikZ...`, 'Đã nhận link, đang thay thế...');
+            if (!data.success) {
+                throw new Error(data.error || 'Lỗi từ dịch vụ TikZ trên Fly.io.');
+            }
+
+            updateSwalProgress(`Đang dịch ${tikzBlocks.length} hình TikZ...`, 'Đã nhận link ảnh, đang thay thế...');
             data.images.forEach((image, index) => {
                 if (tikzBlocks[index] && image.secure_url) {
+                    // Áp dụng transform Cloudinary để tối ưu ảnh
                     const urlParts = image.secure_url.split('/upload/');
                     const transformedUrl = `${urlParts[0]}/upload/q_auto,f_auto,h_250/${urlParts[1]}`;
                     content = content.replace(tikzBlocks[index], `<img src='${transformedUrl}' class="img-center">`);
                 }
             });
         }
-        
+
         content = await handleIncludeGraphicsUpload(content);
         stopTimer();
         window.app.populateQuestionsFromText(content);
         Swal.fire({ icon: 'success', title: 'Hoàn tất!', text: 'Đã xử lý và tải tệp thành công.' });
-    
+
     } catch (error) {
         stopTimer();
         Swal.fire({ icon: 'error', title: 'Xử lý thất bại', text: error ? error.message : 'Lỗi không xác định', footer: 'Nội dung gốc sẽ được tải vào các khung soạn thảo.' });
@@ -171,7 +175,7 @@ async function processTexFileWithTikZ(fileContent) {
 // --- CÁC HÀM XỬ LÝ SAO LƯU CLOUD ---
 
 function initializeCloudBackupFeature() {
-    const saveToCloudBtn = document.getElementById('save-to-cloud-btn'); 
+    const saveToCloudBtn = document.getElementById('save-to-cloud-btn');
     if (saveToCloudBtn) {
         saveToCloudBtn.addEventListener('click', handleBackupToCloud);
     }
@@ -182,7 +186,7 @@ function extractBlocksAndInternalId_Client(content) {
     const blocks = [];
     const blockRegex = /\\begin\{\s*(ex|vd|bt)\s*\}(.*?)\\end\{\s*\1\s*\}/gs;
     const matches = [...content.matchAll(blockRegex)];
-    const allTagsRegex = /%\[(.*?)\]/g; 
+    const allTagsRegex = /%\[(.*?)\]/g;
     const specificIdContentRegex = /^\s*(\d[A-Z]\d[A-Z0-9]\d-\d+)\s*$/;
     matches.forEach((match) => {
         const fullBlock = match[0];
@@ -190,7 +194,7 @@ function extractBlocksAndInternalId_Client(content) {
         let blockInternalId = null;
         const allTagMatches = [...innerContent.matchAll(allTagsRegex)];
         for (const tagMatch of allTagMatches) {
-            const tagContent = tagMatch[1]; 
+            const tagContent = tagMatch[1];
             const specificIdMatch = tagContent.match(specificIdContentRegex);
             if (specificIdMatch) { blockInternalId = specificIdMatch[1]; break; }
         }
@@ -236,10 +240,10 @@ async function handleBackupToCloud() {
         const blob = new Blob([jsonString], { type: 'application/json' });
         const firstId = Object.keys(bankData)[0];
         const backupFilePath = `question_bank_backups/${user.uid}/${firstId}_${Date.now()}.json`;
-        
+
         // SỬA Ở ĐÂY: Dùng biến `storage` đã khai báo
         const storageRef = storage.ref(backupFilePath);
-        
+
         await storageRef.put(blob);
         Swal.fire({ icon: 'success', title: 'Hoàn tất!', text: `Đã lưu thành công ${Object.keys(bankData).length} ID câu hỏi.` });
     } catch (error) {
@@ -254,11 +258,11 @@ async function handleBackupToCloud() {
 // ==========================================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    
+
     // --- Lấy các phần tử DOM cần thiết cho việc xác thực ---
     const userInfoSpan = document.getElementById('user-info');
     const authBtn = document.getElementById('auth-btn');
-    const saveToCloudBtn = document.getElementById('save-to-cloud-btn'); 
+    const saveToCloudBtn = document.getElementById('save-to-cloud-btn');
 
     // --- Gán sự kiện cho nút Đăng nhập/Đăng xuất chính ---
     if (authBtn) {
@@ -277,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- KHỞI TẠO LOGIC XÁC THỰC ---
     // Gọi đến TÊN HÀM MỚI trong auth-manager.js: AuthHelper_initialize
     AuthHelper_initialize(
-        auth, 
+        auth,
         (user) => { // onLogin Callback: Xử lý khi đăng nhập thành công
             if (userInfoSpan) userInfoSpan.innerHTML = `Đã đăng nhập: <strong>${user.email}</strong>`;
             if (authBtn) {
@@ -305,32 +309,123 @@ document.addEventListener('DOMContentLoaded', () => {
     // (Hàm này không thay đổi)
     function initializePageFeatures() {
         const loadAndProcessBtn = document.getElementById('load-and-process-tikz-btn');
-        if (!loadAndProcessBtn) return;
-        
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = '.tex,.txt';
-        fileInput.style.display = 'none';
-        document.body.appendChild(fileInput);
-        
-        loadAndProcessBtn.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => processTexFileWithTikZ(e.target.result);
-                reader.readAsText(file);
-            }
-            event.target.value = null;
-        });
+        const processTikzInlineBtn = document.getElementById('process-tikz-inline-btn');
+
+        // --- Xử lý nút Upload File .Tex ---
+        if (loadAndProcessBtn) {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.tex,.txt';
+            fileInput.style.display = 'none';
+            document.body.appendChild(fileInput);
+
+            loadAndProcessBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => processTexFileWithTikZ(e.target.result);
+                    reader.readAsText(file);
+                }
+                event.target.value = null;
+            });
+        }
+
+        // --- Xử lý nút "Xử lý TikZ" (từ nội dung trong khung soạn thảo) ---
+        if (processTikzInlineBtn) {
+            processTikzInlineBtn.addEventListener('click', async () => {
+                // Lấy tất cả nội dung từ các textarea
+                const editorContainer = document.getElementById('question-editor-container');
+                if (!editorContainer) {
+                    Swal.fire('Lỗi', 'Không tìm thấy khung soạn thảo.', 'error');
+                    return;
+                }
+
+                const textareas = editorContainer.querySelectorAll('textarea.question-textarea');
+                if (textareas.length === 0) {
+                    Swal.fire('Trống', 'Không có nội dung nào trong khung soạn thảo.', 'warning');
+                    return;
+                }
+
+                // Gộp tất cả nội dung
+                let allContent = Array.from(textareas).map(ta => ta.value).join('\n\n');
+
+                // Tìm các khối TikZ
+                const tikzRegex = /\\begin{tikzpicture}[\s\S]*?\\end{tikzpicture}/g;
+                const tikzBlocks = allContent.match(tikzRegex);
+
+                if (!tikzBlocks || tikzBlocks.length === 0) {
+                    Swal.fire('Không tìm thấy TikZ', 'Không có khối \\begin{tikzpicture}...\\end{tikzpicture} nào trong nội dung.', 'info');
+                    return;
+                }
+
+                // Hiển thị popup xử lý
+                Swal.fire({
+                    title: 'Đang xử lý TikZ...',
+                    html: `<div id="swal-message" style="margin-top: 10px;">Tìm thấy <strong>${tikzBlocks.length}</strong> hình TikZ</div><div style="font-family: 'Courier New', Courier, monospace; font-size: 1.5rem; font-weight: bold; margin-top: 15px; color: #8B5CF6;"><span id="swal-timer">00:00:00.000</span></div>`,
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    showCancelButton: true,
+                    cancelButtonText: 'Dừng',
+                    didOpen: () => { Swal.showLoading(); startTimer(document.getElementById('swal-timer')); },
+                    willClose: () => stopTimer()
+                });
+
+                try {
+                    updateSwalProgress('Đang xử lý TikZ...', 'Gửi yêu cầu đến tikz4web.fly.dev...');
+
+                    // Gọi qua Firebase Function proxy (để tránh lỗi CORS)
+                    const processTikz = functions.httpsCallable('processTikzFlyioProxy');
+                    const tikzOnlyText = tikzBlocks.join('\n\n');
+                    const result = await processTikz({ fileContent: tikzOnlyText });
+                    const data = result.data;
+
+                    if (!data.success) {
+                        throw new Error(data.error || 'Lỗi từ dịch vụ TikZ trên Fly.io.');
+                    }
+
+                    updateSwalProgress('Đang xử lý TikZ...', 'Đã nhận link ảnh, đang thay thế...');
+
+                    // Thay thế TikZ bằng ảnh trong allContent
+                    data.images.forEach((image, index) => {
+                        if (tikzBlocks[index] && image.secure_url) {
+                            const urlParts = image.secure_url.split('/upload/');
+                            const transformedUrl = `${urlParts[0]}/upload/q_auto,f_auto,h_250/${urlParts[1]}`;
+                            allContent = allContent.replace(tikzBlocks[index], `<img src='${transformedUrl}' class="img-center">`);
+                        }
+                    });
+
+                    // Cập nhật lại các textarea
+                    stopTimer();
+                    if (window.app && window.app.populateQuestionsFromText) {
+                        window.app.populateQuestionsFromText(allContent);
+                    }
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Hoàn tất!',
+                        text: `Đã xử lý thành công ${data.images.length} hình TikZ.`
+                    });
+
+                } catch (error) {
+                    stopTimer();
+                    console.error('Lỗi xử lý TikZ inline:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Xử lý thất bại',
+                        text: error.message || 'Lỗi không xác định'
+                    });
+                }
+            });
+        }
 
         if (typeof window.initializeAppConverter === 'function') {
             window.initializeAppConverter();
         }
-        
+
         console.log("Các tính năng của trang Soạn thảo đã sẵn sàng!");
     }
-    
+
     // Chạy hàm khởi tạo các tính năng của trang
     initializePageFeatures();
 });

@@ -587,22 +587,18 @@
 
             async function loadStats() {
                 try {
+                    // Query exams and classes from root collections with teacherId filter
                     const [exams, classes] = await Promise.all([
-                        db.collection('users').doc(currentUser.uid).collection('exams').get(),
-                        db.collection('users').doc(currentUser.uid).collection('classes').get()
+                        db.collection('exams').where('teacherId', '==', currentUser.uid).get(),
+                        db.collection('classes').where('teacherId', '==', currentUser.uid).get()
                     ]);
 
                     document.getElementById('total-exams').textContent = exams.size;
                     document.getElementById('total-classes').textContent = classes.size;
 
-                    // Count submissions
-                    let totalSubmissions = 0;
-                    for (const exam of exams.docs) {
-                        const submissions = await db.collection('users').doc(currentUser.uid)
-                            .collection('exams').doc(exam.id).collection('submissions').get();
-                        totalSubmissions += submissions.size;
-                    }
-                    document.getElementById('total-submissions').textContent = totalSubmissions;
+                    // Count submissions from submissions collection
+                    const submissions = await db.collection('submissions').where('teacherId', '==', currentUser.uid).get();
+                    document.getElementById('total-submissions').textContent = submissions.size;
                 } catch (e) {
                     console.error('Load stats error:', e);
                 }
@@ -610,29 +606,21 @@
 
             async function loadRecentSubmissions() {
                 try {
-                    const examsSnapshot = await db.collection('users').doc(currentUser.uid).collection('exams').get();
-                    let allSubmissions = [];
-
-                    for (const exam of examsSnapshot.docs) {
-                        const submissions = await db.collection('users').doc(currentUser.uid)
-                            .collection('exams').doc(exam.id).collection('submissions')
-                            .orderBy('submittedAt', 'desc').limit(5).get();
-
-                        submissions.docs.forEach(s => {
-                            allSubmissions.push({ ...s.data(), examCode: exam.data().examCode });
-                        });
-                    }
-
-                    allSubmissions.sort((a, b) => (b.submittedAt?.toMillis?.() || 0) - (a.submittedAt?.toMillis?.() || 0));
-                    allSubmissions = allSubmissions.slice(0, 5);
+                    // Query submissions from root collection
+                    const submissions = await db.collection('submissions')
+                        .where('teacherId', '==', currentUser.uid)
+                        .orderBy('submittedAt', 'desc')
+                        .limit(5)
+                        .get();
 
                     const container = document.getElementById('recent-submissions');
-                    if (allSubmissions.length === 0) {
+                    if (submissions.empty) {
                         container.innerHTML = `<div class="recent-item"><div class="recent-icon"><i class="fas fa-inbox"></i></div><div class="recent-info"><div class="recent-title" style="color:var(--gray-500);">Chưa có bài nộp</div></div></div>`;
                         return;
                     }
 
-                    container.innerHTML = allSubmissions.map(s => {
+                    container.innerHTML = submissions.docs.map(doc => {
+                        const s = doc.data();
                         const time = s.submittedAt?.toDate?.()?.toLocaleString('vi-VN') || 'N/A';
                         return `
                     <div class="recent-item">

@@ -173,6 +173,14 @@ async function loadTeacherDataForDashboard() {
             const result = await getTeacherData();
             renderExamsList(result.data.exams);
             renderClassesList(result.data.classes);
+
+            // Cập nhật stats cards
+            if (getEl("premiumStatExams")) {
+                getEl("premiumStatExams").textContent = result.data.exams?.length || 0;
+            }
+            if (getEl("premiumStatClasses")) {
+                getEl("premiumStatClasses").textContent = result.data.classes?.length || 0;
+            }
         } else {
             throw new Error("Người dùng không đăng nhập.");
         }
@@ -234,6 +242,12 @@ async function loadSubmissions() {
     try {
         const snapshot = await db.collection("submissions").where("teacherId", "==", currentTeacherId).orderBy("timestamp", "desc").limit(20).get();
         container.innerHTML = "";
+
+        // Cập nhật stats card cho số bài nộp
+        if (getEl("premiumStatSubmissions")) {
+            getEl("premiumStatSubmissions").textContent = snapshot.size || 0;
+        }
+
         if (snapshot.empty) {
             container.innerHTML = `<div class="list-item">Chưa có bài nộp nào.</div>`;
             return;
@@ -390,6 +404,29 @@ function showExamForm(exam = null) {
     getEl("examFormContent").value = (examType === 'TEXT' && isEdit) ? (exam.content || '') : '';
     getEl("examFormPdfUrl").value = (examType === 'PDF' && isEdit) ? (exam.examPdfUrl || '') : '';
     getEl("examFormSolutionUrl").value = (examType === 'PDF' && isEdit) ? (exam.solutionPdfUrl || '') : '';
+
+    // Populate hashtags
+    if (getEl("examFormHashtags")) {
+        getEl("examFormHashtags").value = (isEdit && exam.hashtags) ? exam.hashtags.join(', ') : '';
+    }
+
+    // Populate exam settings
+    if (getEl("examFormShuffleQuestions")) {
+        getEl("examFormShuffleQuestions").checked = isEdit ? (exam.shuffleQuestions || false) : false;
+    }
+    if (getEl("examFormShuffleAnswers")) {
+        getEl("examFormShuffleAnswers").checked = isEdit ? (exam.shuffleAnswers || false) : false;
+    }
+    if (getEl("examFormPassword")) {
+        getEl("examFormPassword").value = (isEdit && exam.password) ? exam.password : '';
+    }
+    if (getEl("examFormOpenTime")) {
+        getEl("examFormOpenTime").value = (isEdit && exam.openTime) ? exam.openTime : '';
+    }
+    if (getEl("examFormCloseTime")) {
+        getEl("examFormCloseTime").value = (isEdit && exam.closeTime) ? exam.closeTime : '';
+    }
+
     toggleExamFormFields();
     getEl("examFormModal").style.display = "flex";
 }
@@ -400,6 +437,11 @@ async function handleExamFormSubmit() {
     const useStorage = getEl('useStorageCheckbox')?.checked;
     const examType = getEl('examFormType').value;
     const examId = getEl("examId").value;
+
+    // Parse hashtags from comma-separated input
+    const hashtagsInput = getEl("examFormHashtags")?.value.trim() || '';
+    const hashtags = hashtagsInput ? hashtagsInput.split(',').map(t => t.trim()).filter(t => t) : [];
+
     const examData = {
         examType: examType,
         examCode: getEl("examFormCode").value.trim(),
@@ -410,6 +452,13 @@ async function handleExamFormSubmit() {
         examPdfUrl: getEl("examFormPdfUrl").value.trim(),
         solutionPdfUrl: getEl("examFormSolutionUrl").value.trim(),
         allowSolutionView: getEl("allowSolutionView")?.checked ?? true,
+        // New fields
+        hashtags: hashtags,
+        shuffleQuestions: getEl("examFormShuffleQuestions")?.checked || false,
+        shuffleAnswers: getEl("examFormShuffleAnswers")?.checked || false,
+        password: getEl("examFormPassword")?.value.trim() || null,
+        openTime: getEl("examFormOpenTime")?.value || null,
+        closeTime: getEl("examFormCloseTime")?.value || null,
     };
     let functionName = '';
     if (examType === 'TEXT' && useStorage) functionName = examId ? "updateExamWithStorage" : "addExamWithStorage";
@@ -924,6 +973,23 @@ document.addEventListener('DOMContentLoaded', () => {
             if (signInButton) signInButton.style.display = 'none';
             showTeacherLoginScreen();
             updateTeacherUI(user);
+
+            // Handle hash-based navigation
+            const currentHash = window.location.hash;
+            console.log("Checking hash:", currentHash);
+            if (currentHash === '#add-exam') {
+                console.log("Hash detected: #add-exam - will open exam form");
+                setTimeout(() => {
+                    showExamForm();
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }, 1500); // Increased timeout to ensure UI is ready
+            } else if (currentHash === '#add-class') {
+                console.log("Hash detected: #add-class - will open class form");
+                setTimeout(() => {
+                    showClassForm();
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }, 1500);
+            }
         },
 
         // 2.2 - Callback onLogout: Sẽ chạy KHI người dùng đăng xuất

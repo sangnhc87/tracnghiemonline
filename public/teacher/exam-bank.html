@@ -460,7 +460,7 @@
                     <button class="btn btn-secondary" onclick="loadExams()">
                         <i class="fas fa-sync-alt"></i> Làm mới
                     </button>
-                    <a href="/" class="btn btn-primary">
+                    <a href="/#add-exam" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Thêm đề mới
                     </a>
                 </div>
@@ -501,6 +501,9 @@
                     <option value="">Tất cả loại</option>
                     <option value="TEXT">Đề TEXT</option>
                     <option value="PDF">Đề PDF</option>
+                </select>
+                <select class="form-select" id="filter-hashtag" style="width:auto;">
+                    <option value="">Tất cả hashtag</option>
                 </select>
                 <select class="form-select" id="sort-order" style="width:auto;">
                     <option value="newest">Mới nhất</option>
@@ -551,8 +554,10 @@
 
             async function loadExams() {
                 try {
-                    const snapshot = await db.collection('users').doc(currentUser.uid)
-                        .collection('exams').orderBy('createdAt', 'desc').get();
+                    // Query from root /exams collection with teacherId filter
+                    const snapshot = await db.collection('exams')
+                        .where('teacherId', '==', currentUser.uid)
+                        .orderBy('createdAt', 'desc').get();
 
                     allExams = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     updateStats();
@@ -572,6 +577,20 @@
                 document.getElementById('total-exams').textContent = allExams.length;
                 document.getElementById('text-exams').textContent = allExams.filter(e => e.examType !== 'PDF').length;
                 document.getElementById('pdf-exams').textContent = allExams.filter(e => e.examType === 'PDF').length;
+
+                // Populate hashtag filter
+                const allHashtags = new Set();
+                allExams.forEach(exam => {
+                    if (exam.hashtags && Array.isArray(exam.hashtags)) {
+                        exam.hashtags.forEach(tag => allHashtags.add(tag));
+                    }
+                });
+
+                const hashtagSelect = document.getElementById('filter-hashtag');
+                hashtagSelect.innerHTML = '<option value="">Tất cả hashtag</option>';
+                Array.from(allHashtags).sort().forEach(tag => {
+                    hashtagSelect.innerHTML += `<option value="${tag}">#${tag}</option>`;
+                });
             }
 
             function renderExams(exams) {
@@ -612,6 +631,7 @@
                             <span><i class="fas fa-calendar"></i> ${date}</span>
                         </div>
                         <div class="exam-preview">${preview || 'Không có nội dung'}</div>
+                        ${exam.hashtags && exam.hashtags.length ? `<div class="exam-hashtags" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;">${exam.hashtags.map(tag => `<span style="background:var(--primary-100);color:var(--primary-700);padding:2px 8px;border-radius:12px;font-size:11px;">#${tag}</span>`).join('')}</div>` : ''}
                     </div>
                     <div class="exam-card-footer">
                         <button class="btn btn-secondary btn-sm" onclick="previewExam('${exam.id}')">
@@ -631,17 +651,20 @@
             // Search and filter
             document.getElementById('search-input').oninput = filterExams;
             document.getElementById('filter-type').onchange = filterExams;
+            document.getElementById('filter-hashtag').onchange = filterExams;
             document.getElementById('sort-order').onchange = filterExams;
 
             function filterExams() {
                 const search = document.getElementById('search-input').value.toLowerCase();
                 const type = document.getElementById('filter-type').value;
+                const hashtag = document.getElementById('filter-hashtag').value;
                 const sort = document.getElementById('sort-order').value;
 
                 let filtered = allExams.filter(exam => {
                     const matchSearch = !search || (exam.examCode || '').toLowerCase().includes(search);
                     const matchType = !type || exam.examType === type || (!exam.examType && type === 'TEXT');
-                    return matchSearch && matchType;
+                    const matchHashtag = !hashtag || (exam.hashtags && exam.hashtags.includes(hashtag));
+                    return matchSearch && matchType && matchHashtag;
                 });
 
                 if (sort === 'oldest') {
@@ -697,7 +720,8 @@
                     try {
                         const newExam = { ...exam, examCode: newCode, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
                         delete newExam.id;
-                        await db.collection('users').doc(currentUser.uid).collection('exams').add(newExam);
+                        // Use root /exams collection
+                        await db.collection('exams').add(newExam);
                         Swal.fire({ icon: 'success', title: 'Đã sao chép!', timer: 1500, showConfirmButton: false });
                         loadExams();
                     } catch (e) {
@@ -722,7 +746,8 @@
 
                 if (result.isConfirmed) {
                     try {
-                        await db.collection('users').doc(currentUser.uid).collection('exams').doc(id).delete();
+                        // Use root /exams collection
+                        await db.collection('exams').doc(id).delete();
                         Swal.fire({ icon: 'success', title: 'Đã xóa!', timer: 1500, showConfirmButton: false });
                         loadExams();
                     } catch (e) {

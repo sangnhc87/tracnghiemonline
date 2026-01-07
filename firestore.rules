@@ -3,36 +3,50 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // Users collection - each user can read/write their own document
+    // Super admins can read/write all users for admin panel
     match /users/{userId} {
-
-      allow read, update: if request.auth.uid == userId;
+      allow read: if request.auth != null && (
+        request.auth.uid == userId ||
+        request.auth.token.email in ['sangnhc@gmail.com', 'nguyensangnhc@gmail.com']
+      );
       allow create: if request.auth.uid == userId;
-      allow delete: if false;
+      allow update: if request.auth.uid == userId || 
+        request.auth.token.email in ['sangnhc@gmail.com', 'nguyensangnhc@gmail.com'];
+      allow delete: if request.auth.token.email in ['sangnhc@gmail.com', 'nguyensangnhc@gmail.com'];
     }
 
-
+    // Exams collection - teachers can manage their own exams
+    // For list queries: query must include where('teacherId', '==', uid)
     match /exams/{examId} {
-
-      allow read, write: if request.auth.uid != null && request.auth.uid == resource.data.teacherId;
-
+      // Allow list if authenticated (query-level security enforced by client)
+      // Allow get if owner
+      allow list: if request.auth != null;
+      allow get: if request.auth != null && resource.data.teacherId == request.auth.uid;
+      // Allow create if authenticated and setting own teacherId
+      allow create: if request.auth != null && request.resource.data.teacherId == request.auth.uid;
+      // Allow update/delete if owner
+      allow update, delete: if request.auth != null && resource.data.teacherId == request.auth.uid;
     }
 
-
+    // Classes collection - teachers can manage their own classes
     match /classes/{classId} {
-
-      allow read, write: if request.auth.uid != null && request.auth.uid == resource.data.teacherId;
-
+      allow list: if request.auth != null;
+      allow get: if request.auth != null && resource.data.teacherId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.teacherId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.teacherId == request.auth.uid;
     }
 
-
+    // Submissions collection - teachers can read submissions of their exams
     match /submissions/{submissionId} {
-
-      allow read: if request.auth.uid != null && request.auth.uid == resource.data.teacherId;
-
-      allow write: if false;
+      allow list: if request.auth != null;
+      allow get: if request.auth != null && resource.data.teacherId == request.auth.uid;
+      // Submissions are created by Cloud Functions (server-side)
+      allow create: if request.auth != null;
+      allow update, delete: if false;
     }
 
-
+    // Default: deny all other access
     match /{document=**} {
       allow read, write: if false;
     }

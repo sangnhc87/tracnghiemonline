@@ -1,12 +1,12 @@
 const { onRequest } = require("firebase-functions/v2/https");
-const {setGlobalOptions} = require("firebase-functions/v2");
+const { setGlobalOptions } = require("firebase-functions/v2");
 const logger = require("firebase-functions/logger");
 const { defineString } = require('firebase-functions/params');
 setGlobalOptions({ region: "asia-southeast1" });
 
 const admin = require("firebase-admin");
 const axios = require("axios");
-const cors = require('cors')({origin: true});
+const cors = require('cors')({ origin: true });
 const { GoogleAuth } = require('google-auth-library');
 const FormData = require('form-data');
 
@@ -47,7 +47,7 @@ exports.getListOfBankFiles = onRequest(async (req, res) => {
 
             const results = (await Promise.all(signedUrlPromises)).filter(Boolean);
             console.log(`User ${uid}: Tìm thấy ${results.length} file ngân hàng.`);
-            
+
             // 3. Trả về kết quả thành công
             res.status(200).json({ data: { files: results } });
 
@@ -75,7 +75,7 @@ exports.consolidateBank = onRequest({ memory: '1GB', timeoutSeconds: 300 }, asyn
             if (!consolidatedContent) {
                 throw new Error("Thiếu nội dung tổng hợp.");
             }
-            
+
             // 3. Logic chính của hàm (giữ nguyên)
             const backupFolderPath = `question_bank_backups/${uid}/`;
             const consolidatedFilePath = `${backupFolderPath}bank_consolidated_${Date.now()}.json`;
@@ -112,7 +112,7 @@ exports.handleTeacherLogin = onRequest(async (req, res) => {
             }
             const idToken = req.headers.authorization.split('Bearer ')[1];
             const decodedToken = await admin.auth().verifyIdToken(idToken);
-            
+
             // 2. Lấy thông tin người dùng từ token đã được xác thực
             const { uid, email, name } = decodedToken;
 
@@ -133,7 +133,7 @@ exports.handleTeacherLogin = onRequest(async (req, res) => {
                 userProfile = userDoc.data();
             }
 
-  
+
             res.status(200).json({ data: userProfile });
 
         } catch (error) {
@@ -159,7 +159,7 @@ exports.updateTeacherAlias = onRequest(async (req, res) => {
             const idToken = req.headers.authorization.split('Bearer ')[1];
             const decodedToken = await admin.auth().verifyIdToken(idToken);
             const uid = decodedToken.uid; // Lấy uid từ token
-            
+
             // 2. Lấy dữ liệu từ body (thay vì data)
             const newAlias = String(req.body.data.alias || "").trim().toLowerCase();
 
@@ -195,7 +195,7 @@ exports.addExam = onRequest(async (req, res) => {
             const { examData } = req.body.data;
             if (!examData || !examData.examCode || !examData.keys) {
                 // Ném lỗi và khối catch sẽ xử lý
-                throw new Error("Thiếu Mã đề hoặc Đáp án."); 
+                throw new Error("Thiếu Mã đề hoặc Đáp án.");
             }
 
             // 3. Logic chính (thay context.auth.uid bằng uid)
@@ -208,7 +208,7 @@ exports.addExam = onRequest(async (req, res) => {
                 cores: String(examData.cores || "").split("|").map(c => parseFloat(c.trim()) || 0.2),
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
             };
-            if (newExam.examType === 'TEXT') { /* ... */ } 
+            if (newExam.examType === 'TEXT') { /* ... */ }
             else if (newExam.examType === 'PDF') { /* ... */ }
             await db.collection("exams").add(newExam);
 
@@ -269,7 +269,7 @@ exports.updateExam = onRequest(async (req, res) => {
             }
 
             await examRef.update(updatedExam);
-            
+
             // 4. Trả về kết quả thành công
             res.status(200).json({ data: { success: true, message: "Đã cập nhật đề thi thành công!" } });
 
@@ -333,10 +333,10 @@ exports.getTeacherFullData = onRequest(async (req, res) => {
             const classesPromise = db.collection("classes").where("teacherId", "==", uid).get();
 
             const [examsSnapshot, classesSnapshot] = await Promise.all([examsPromise, classesPromise]);
-            
+
             const exams = examsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
             const classes = classesSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-            
+
             // 3. Gửi về kết quả thành công dưới định dạng data
             res.status(200).json({ data: { exams, classes } });
 
@@ -370,7 +370,7 @@ exports.getTeacherFullExam = onRequest(async (req, res) => {
             if (!doc.exists || doc.data().teacherId !== uid) {
                 throw new Error("Không có quyền xem đề thi này.");
             }
-            
+
             // 4. Trả về kết quả
             res.status(200).json({ data: { id: doc.id, ...doc.data() } });
 
@@ -424,17 +424,17 @@ exports.updateClass = onRequest(async (req, res) => {
             // 2. Lấy dữ liệu từ body
             const { classId, classData } = req.body.data;
             if (!classId || !classData) throw new Error("Thiếu ID hoặc dữ liệu lớp học.");
-            
+
             // 3. Logic chính
             const classRef = db.collection("classes").doc(classId);
             const doc = await classRef.get();
             if (!doc.exists || doc.data().teacherId !== uid) throw new Error("Không có quyền sửa lớp học này.");
-            
+
             await classRef.update({
                 name: String(classData.name).trim(),
                 students: Array.isArray(classData.students) ? classData.students.filter(s => s.trim() !== "") : []
             });
-            
+
             // 4. Trả về kết quả
             res.status(200).json({ data: { success: true, message: "Đã cập nhật lớp học thành công!" } });
 
@@ -463,9 +463,9 @@ exports.deleteClass = onRequest(async (req, res) => {
             const classRef = db.collection("classes").doc(classId);
             const doc = await classRef.get();
             if (!doc.exists || doc.data().teacherId !== uid) throw new Error("Không có quyền xóa lớp học này.");
-            
+
             await classRef.delete();
-            
+
             // 4. Trả về kết quả
             res.status(200).json({ data: { success: true, message: "Đã xóa lớp học." } });
 
@@ -493,10 +493,10 @@ exports.getTeacherFullClass = onRequest(async (req, res) => {
             // 3. Logic chính
             const doc = await db.collection("classes").doc(classId).get();
             if (!doc.exists || doc.data().teacherId !== uid) throw new Error("Không có quyền xem lớp học này.");
-            
+
             // 4. Trả về kết quả
             res.status(200).json({ data: { id: doc.id, ...doc.data() } });
-            
+
         } catch (error) {
             console.error("Lỗi trong getTeacherFullClass:", error);
             res.status(400).json({ error: { message: error.message } });
@@ -510,18 +510,18 @@ exports.getClassesForStudent = onRequest(async (req, res) => {
             // 1. Lấy dữ liệu từ body
             const teacherAlias = String(req.body.data.teacherAlias || "").trim().toLowerCase();
             if (!teacherAlias) throw new Error("Mã giáo viên là bắt buộc.");
-            
+
             // 2. Logic chính của hàm
             const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
             if (teacherSnapshot.empty) throw new Error("Không tìm thấy giáo viên với Alias này.");
-            
+
             const teacherDoc = teacherSnapshot.docs[0];
             const teacherData = teacherDoc.data();
             const trialEndDateMillis = teacherData.trialEndDate?.toMillis ? teacherData.trialEndDate.toMillis() : new Date(teacherData.trialEndDate).getTime();
             if (!teacherData.trialEndDate || trialEndDateMillis < Date.now()) {
                 throw new Error("Tài khoản của giáo viên này đã hết hạn dùng thử.");
             }
-            
+
             const classesSnapshot = await db.collection("classes").where("teacherId", "==", teacherDoc.id).get();
             const classData = {};
             classesSnapshot.forEach((doc) => { classData[doc.data().name] = doc.data().students || []; });
@@ -543,20 +543,20 @@ exports.loadExamForStudent = onRequest(async (req, res) => {
             // 1. Lấy dữ liệu từ body
             const { teacherAlias, examCode } = req.body.data;
             if (!teacherAlias || !examCode) throw new Error("Mã giáo viên và Mã đề là bắt buộc.");
-            
+
             // 2. Logic chính của hàm
             const teacherSnapshot = await db.collection("users").where("teacherAlias", "==", teacherAlias).limit(1).get();
             if (teacherSnapshot.empty) throw new Error("Không tìm thấy giáo viên.");
-            
+
             const teacherDoc = teacherSnapshot.docs[0];
             const examSnapshot = await db.collection("exams")
-                                         .where("teacherId", "==", teacherDoc.id)
-                                         .where("examCode", "==", examCode.trim())
-                                         .limit(1).get();
+                .where("teacherId", "==", teacherDoc.id)
+                .where("examCode", "==", examCode.trim())
+                .limit(1).get();
             if (examSnapshot.empty) throw new Error(`Không tìm thấy đề thi ${examCode} của giáo viên này.`);
-            
+
             let examData = examSnapshot.docs[0].data();
-            
+
             if (examData.storageVersion === 2 && examData.contentStoragePath) {
                 const file = storage.bucket().file(examData.contentStoragePath);
                 const [contentBuffer] = await file.download();
@@ -608,18 +608,18 @@ exports.submitExam = onRequest({ timeoutSeconds: 60, memory: '256MB' }, async (r
             if (examSnapshot.empty) {
                 throw new Error(`Không tìm thấy đề thi '${examCode}' của giáo viên này.`);
             }
-            
+
             let examData = examSnapshot.docs[0].data();
-            
+
             // ---- 3. XỬ LÝ TRƯỜNG HỢP GIAN LẬN ----
             if (isCheating === true) {
-                await db.collection("submissions").add({ 
-                    teacherId: teacherDoc.id, 
-                    timestamp: admin.firestore.FieldValue.serverTimestamp(), 
-                    examCode, studentName, className, 
-                    score: 0, 
-                    answers: {}, 
-                    isCheating: true 
+                await db.collection("submissions").add({
+                    teacherId: teacherDoc.id,
+                    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                    examCode, studentName, className,
+                    score: 0,
+                    answers: {},
+                    isCheating: true
                 });
                 // Trả về kết quả và kết thúc hàm ở đây
                 return res.status(200).json({ data: { score: 0, examData, detailedResults: {} } });
@@ -631,7 +631,7 @@ exports.submitExam = onRequest({ timeoutSeconds: 60, memory: '256MB' }, async (r
             if (correctKeys.length !== cores.length || correctKeys.length === 0) {
                 throw new Error("Dữ liệu đề thi bị lỗi: Số lượng đáp án và điểm không khớp hoặc rỗng.");
             }
-            
+
             let totalScore = 0;
             const detailedResults = {};
 
@@ -652,22 +652,22 @@ exports.submitExam = onRequest({ timeoutSeconds: 60, memory: '256MB' }, async (r
                         }
                     }
                 }
-                
+
                 const questionScore = isCorrect ? coreValue : 0;
                 totalScore += questionScore;
                 detailedResults[`q${i}`] = { userAnswer: userAnswer || null, correctAnswer, scoreEarned: questionScore };
             }
 
             const finalScore = parseFloat(totalScore.toFixed(2));
-            
+
             // ---- 5. LƯU BÀI NỘP VÀO DATABASE ----
-            await db.collection("submissions").add({ 
-                teacherId: teacherDoc.id, 
-                timestamp: admin.firestore.FieldValue.serverTimestamp(), 
+            await db.collection("submissions").add({
+                teacherId: teacherDoc.id,
+                timestamp: admin.firestore.FieldValue.serverTimestamp(),
                 examCode, studentName, className, answers,
                 score: finalScore,
                 detailedResults,
-                isCheating: false 
+                isCheating: false
             });
 
             // ---- 6. TẢI NỘI DUNG ĐỀ THI TỪ STORAGE NẾU CẦN (ĐỂ TRẢ VỀ CHO CLIENT) ----
@@ -733,7 +733,7 @@ exports.getPdfFromGeneralUrl = onRequest(async (req, res) => {
 
             const response = await axios.get(url, { responseType: 'arraybuffer' });
             const base64 = Buffer.from(response.data, 'binary').toString('base64');
-            
+
             // 3. Trả về kết quả
             res.status(200).json({ data: { base64Data: base64 } });
 
@@ -756,9 +756,9 @@ exports.getStatsInitialData = onRequest(async (req, res) => {
             // 2. Logic chính
             const examsPromise = db.collection('exams').where('teacherId', '==', teacherId).select('examCode').get();
             const classesPromise = db.collection('classes').where('teacherId', '==', teacherId).select('name').get();
-            
+
             const [examsSnapshot, classesSnapshot] = await Promise.all([examsPromise, classesPromise]);
-            
+
             const exams = examsSnapshot.docs.map(doc => doc.data());
             const classes = classesSnapshot.docs.map(doc => doc.data());
 
@@ -783,13 +783,13 @@ exports.getExamStatistics = onRequest({ timeoutSeconds: 120, memory: '256MB' }, 
             const idToken = req.headers.authorization.split('Bearer ')[1];
             const decodedToken = await admin.auth().verifyIdToken(idToken);
             const teacherId = decodedToken.uid;
-            
+
             // 2. Lấy dữ liệu từ body
             const { examCode, className, duplicateHandling } = req.body.data;
             if (!examCode) {
                 throw new Error('Mã đề thi là bắt buộc.');
             }
-            
+
             console.log(`Bắt đầu thống kê: Teacher=${teacherId}, Exam=${examCode}, Class=${className}, Handling=${duplicateHandling}`);
 
             // 3. Logic chính (được copy từ hàm cũ)
@@ -797,7 +797,7 @@ exports.getExamStatistics = onRequest({ timeoutSeconds: 120, memory: '256MB' }, 
             if (className && className !== 'all') {
                 query = query.where('className', '==', className);
             }
-            
+
             const snapshot = await query.orderBy('timestamp', 'desc').get();
             // Thay đổi: dùng res.status().json() để trả về và kết thúc hàm
             if (snapshot.empty) return res.status(200).json({ data: { summary: { count: 0 }, filters: req.body.data } });
@@ -820,10 +820,10 @@ exports.getExamStatistics = onRequest({ timeoutSeconds: 120, memory: '256MB' }, 
             }
 
             if (filteredSubmissions.length === 0) return res.status(200).json({ data: { summary: { count: 0 }, filters: req.body.data } });
-            
+
             const examDocSnapshot = await db.collection('exams').where('teacherId', '==', teacherId).where('examCode', '==', examCode).limit(1).get();
             if (examDocSnapshot.empty) throw new Error(`Không tìm thấy đề thi với mã ${examCode}.`);
-            
+
             const correctKeys = examDocSnapshot.docs[0].data().keys || [];
             let totalScore = 0, highestScore = -1, lowestScore = 11;
             const performanceTiers = { gioi: 0, kha: 0, trungBinh: 0, yeu: 0 };
@@ -852,7 +852,7 @@ exports.getExamStatistics = onRequest({ timeoutSeconds: 120, memory: '256MB' }, 
                     }
                 }
             }
-            
+
             const count = filteredSubmissions.length;
             const average = count > 0 ? totalScore / count : 0;
             filteredSubmissions.sort((a, b) => (b.score || 0) - (a.score || 0));
@@ -862,10 +862,10 @@ exports.getExamStatistics = onRequest({ timeoutSeconds: 120, memory: '256MB' }, 
             // Tạo object kết quả cuối cùng
             const finalResult = {
                 summary: { count, average, highest: highestScore, lowest: lowestScore },
-                scoreDistribution, 
-                performanceTiers, 
+                scoreDistribution,
+                performanceTiers,
                 detailedSubmissions: filteredSubmissions,
-                questionAnalysis, 
+                questionAnalysis,
                 filters: req.body.data
             };
 
@@ -890,7 +890,7 @@ exports.addPdfExam = onRequest(async (req, res) => {
 
             const { examData } = req.body.data;
             if (!examData) throw new Error("Thiếu dữ liệu.");
-            
+
             const examCode = String(examData.examCode || "").trim();
             if (!examCode.toUpperCase().startsWith('PDF-')) {
                 throw new Error("Mã đề PDF phải bắt đầu bằng 'PDF-'.");
@@ -907,7 +907,7 @@ exports.addPdfExam = onRequest(async (req, res) => {
                 solutionPdfUrl: String(examData.solutionPdfUrl || "").trim(),
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
             };
-            
+
             await db.collection("exams").add(newPdfExam);
             res.status(200).json({ data: { success: true, message: "Đã thêm đề thi PDF thành công!" } });
         } catch (error) {
@@ -925,13 +925,13 @@ exports.getPdfExams = onRequest(async (req, res) => {
             const idToken = req.headers.authorization.split('Bearer ')[1];
             const decodedToken = await admin.auth().verifyIdToken(idToken);
             const uid = decodedToken.uid;
-            
+
             const snapshot = await db.collection("exams")
-                                     .where("teacherId", "==", uid)
-                                     .where("examType", "==", "PDF")
-                                     .orderBy("createdAt", "desc")
-                                     .get();
-                                     
+                .where("teacherId", "==", uid)
+                .where("examType", "==", "PDF")
+                .orderBy("createdAt", "desc")
+                .get();
+
             const exams = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             res.status(200).json({ data: exams });
         } catch (error) {
@@ -1018,10 +1018,10 @@ exports.deletePdfExam = onRequest(async (req, res) => {
 
             const { examId } = req.body.data;
             if (!examId) throw new Error("Thiếu ID đề thi.");
-            
+
             const examRef = db.collection("exams").doc(examId);
             const doc = await examRef.get();
-            
+
             if (!doc.exists || doc.data().teacherId !== uid || doc.data().examType !== 'PDF') {
                 throw new Error("Không có quyền xóa hoặc đây không phải đề PDF.");
             }
@@ -1148,7 +1148,7 @@ exports.getContentUrl = onRequest({ memory: '256MB' }, async (req, res) => {
 
             const path = examData.contentStoragePath;
             if (!path) throw new Error("Đề thi này không có nội dung trên Storage.");
-            
+
             const file = storage.bucket().file(path);
             const [downloadURL] = await file.getSignedUrl({
                 action: 'read',
@@ -1180,11 +1180,11 @@ exports.checkTeacherAccess = onRequest((req, res) => {
             res.status(403).send('Unauthorized: Invalid token format.');
             return;
         }
-        
+
         try {
             // Xác thực token và lấy UID
             const decodedIdToken = await admin.auth().verifyIdToken(idToken);
-            const uid = decodedIdToken.uid; 
+            const uid = decodedIdToken.uid;
 
             // --- Bắt đầu logic chính của hàm (giữ nguyên từ code cũ) ---
             const userRef = db.collection("users").doc(uid);
@@ -1236,7 +1236,7 @@ exports.adminGetUsers = onRequest(async (req, res) => {
             if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) throw new Error('Missing Auth Token');
             const idToken = req.headers.authorization.split('Bearer ')[1];
             const decodedToken = await admin.auth().verifyIdToken(idToken);
-            const ADMIN_EMAIL = 'nguyensangnhc@gmail.com'; 
+            const ADMIN_EMAIL = 'nguyensangnhc@gmail.com';
             if (decodedToken.email !== ADMIN_EMAIL) {
                 throw new Error("Bạn không có quyền truy cập chức năng này.");
             }
@@ -1244,14 +1244,14 @@ exports.adminGetUsers = onRequest(async (req, res) => {
             // 3. Logic chính (SỬA Ở ĐÂY)
             // Sắp xếp theo trường 'createdAt' theo thứ tự giảm dần (mới nhất lên đầu)
             const usersSnapshot = await db.collection("users").orderBy("createdAt", "desc").get();
-            
+
             const users = [];
             usersSnapshot.forEach(doc => {
                 const userData = doc.data();
                 // Chuyển đổi timestamp thành chuỗi ISO để gửi về client một cách nhất quán
                 const trialEndDate = userData.trialEndDate ? userData.trialEndDate.toDate().toISOString() : null;
                 const createdAt = userData.createdAt ? userData.createdAt.toDate().toISOString() : null;
-                
+
                 users.push({
                     id: doc.id,
                     email: userData.email,
@@ -1262,7 +1262,7 @@ exports.adminGetUsers = onRequest(async (req, res) => {
                     role: userData.role
                 });
             });
-            
+
             // 4. Trả về kết quả
             res.status(200).json({ data: users });
 
@@ -1270,9 +1270,9 @@ exports.adminGetUsers = onRequest(async (req, res) => {
             console.error("Lỗi trong adminGetUsers:", error);
             // Thêm kiểm tra nếu lỗi do không có trường 'createdAt'
             if (error.code === 'failed-precondition') {
-                 res.status(400).json({ error: { message: "Lỗi Firestore: Cần tạo index cho trường 'createdAt'. Vui lòng kiểm tra link lỗi trong logs của Firebase Functions để tạo index." } });
+                res.status(400).json({ error: { message: "Lỗi Firestore: Cần tạo index cho trường 'createdAt'. Vui lòng kiểm tra link lỗi trong logs của Firebase Functions để tạo index." } });
             } else {
-                 res.status(403).json({ error: { message: error.message || "Không có quyền truy cập." } });
+                res.status(403).json({ error: { message: error.message || "Không có quyền truy cập." } });
             }
         }
     });
@@ -1310,7 +1310,7 @@ exports.adminUpdateUserTrialDate = onRequest(async (req, res) => {
                 trialEndDate: newTimestamp,
                 updatedAt: admin.firestore.FieldValue.serverTimestamp()
             });
-            
+
             // 5. Trả về kết quả
             res.status(200).json({ data: { success: true, message: "Đã cập nhật ngày hết hạn thành công!" } });
 
@@ -1335,7 +1335,7 @@ exports.processTikzProxy = onRequest({ timeoutSeconds: 300, memory: '1GB' }, asy
             if (!converterUrlValue) {
                 throw new Error("URL dịch vụ chuyển đổi chưa được cấu hình phía server.");
             }
-            
+
             const endpoint = `${converterUrlValue}/process-tex-file`;
             console.log(`Proxying TikZ request to: ${endpoint}`);
 
@@ -1346,10 +1346,10 @@ exports.processTikzProxy = onRequest({ timeoutSeconds: 300, memory: '1GB' }, asy
                 filename: 'temp_tikz_batch.tex',
                 contentType: 'text/plain',
             });
-            
+
             const response = await axios.post(endpoint, form, {
                 headers: form.getHeaders(),
-                timeout: 290000 
+                timeout: 290000
             });
 
             // Trả về kết quả
@@ -1372,15 +1372,14 @@ exports.processTikzFlyioProxy = onRequest({ timeoutSeconds: 300, memory: '1GB' }
             if (!fileContent) {
                 throw new Error("Thiếu nội dung file TikZ (fileContent).");
             }
-            
-            // Lấy biến môi trường (bạn đã định nghĩa ở đầu file)
-            const flyioUrlValue = FLYIO_URL.value();
-            if (!flyioUrlValue) {
-                throw new Error("URL dịch vụ Fly.io chưa được cấu hình phía server.");
-            }
-            
+
+            // Sử dụng URL cố định cho tikz4web.fly.dev
+            const flyioUrlValue = 'https://tikz4web.fly.dev';
+
             const endpoint = `${flyioUrlValue}/process-tex-file`;
             console.log(`Proxying TikZ request to Fly.io: ${endpoint}`);
+            console.log(`Content length: ${fileContent.length} characters`);
+            console.log(`Content preview: ${fileContent.substring(0, 200)}...`);
 
             // Logic chính
             const FormData = require('form-data');
@@ -1389,7 +1388,7 @@ exports.processTikzFlyioProxy = onRequest({ timeoutSeconds: 300, memory: '1GB' }
                 filename: 'temp_tikz_batch_flyio.tex',
                 contentType: 'text/plain',
             });
-            
+
             const response = await axios.post(endpoint, form, {
                 headers: form.getHeaders(),
                 timeout: 290000
@@ -1415,7 +1414,7 @@ exports.getBankBackupUrl = onRequest(async (req, res) => {
             const idToken = req.headers.authorization.split('Bearer ')[1];
             const decodedToken = await admin.auth().verifyIdToken(idToken);
             const uid = decodedToken.uid;
-            
+
             const metaRef = db.collection("userBankMetadata").doc(uid);
             const metaDoc = await metaRef.get();
 
@@ -1425,17 +1424,17 @@ exports.getBankBackupUrl = onRequest(async (req, res) => {
 
             const backupPath = metaDoc.data().backupFilePath;
             const file = storage.bucket().file(backupPath);
-            
+
             const [url] = await file.getSignedUrl({
                 action: 'read',
                 expires: Date.now() + 5 * 60 * 1000, // URL có hiệu lực 5 phút
             });
 
-            const result = { 
+            const result = {
                 downloadUrl: url,
-                lastModified: metaDoc.data().lastModified 
+                lastModified: metaDoc.data().lastModified
             };
-            
+
             res.status(200).json({ data: result });
 
         } catch (error) {
@@ -1456,7 +1455,7 @@ exports.finalizeBankBackup = onRequest(async (req, res) => {
             const { filePath } = req.body.data;
 
             if (!filePath || !filePath.startsWith(`question_bank_backups/${uid}/`)) {
-                 throw new Error("Đường dẫn file sao lưu không hợp lệ hoặc bạn không có quyền.");
+                throw new Error("Đường dẫn file sao lưu không hợp lệ hoặc bạn không có quyền.");
             }
 
             const metaRef = db.collection("userBankMetadata").doc(uid);
@@ -1487,12 +1486,12 @@ exports.testAuth = onRequest(async (req, res) => {
         }
 
         const idToken = req.headers.authorization.split('Bearer ')[1];
-        
+
         try {
             // Đây là bước quan trọng: tự tay xác thực token
             console.log("testAuth: Đang thử xác thực token...");
             const decodedToken = await admin.auth().verifyIdToken(idToken);
-            
+
             // NẾU THÀNH CÔNG, GỬI VỀ UID
             console.log(`testAuth: Token hợp lệ! UID: ${decodedToken.uid}`);
             res.status(200).send({ success: true, uid: decodedToken.uid });
@@ -1539,7 +1538,7 @@ exports.adminGetTeacherDetails = onRequest(async (req, res) => {
             // 5. Tính toán dung lượng lưu trữ từ các file content
             const contentPrefix = `exam_content/${teacherUid}/`;
             const [contentFiles] = await storage.bucket().getFiles({ prefix: contentPrefix });
-            
+
             let totalSizeBytes = 0;
             contentFiles.forEach(file => {
                 totalSizeBytes += parseInt(file.metadata.size, 10);
@@ -1547,7 +1546,7 @@ exports.adminGetTeacherDetails = onRequest(async (req, res) => {
             const totalSizeMB = (totalSizeBytes / (1024 * 1024)).toFixed(2);
 
             // 6. Trả về kết quả tổng hợp
-            res.status(200).json({ 
+            res.status(200).json({
                 data: {
                     profile: teacherProfile,
                     exams: exams,
@@ -1555,7 +1554,7 @@ exports.adminGetTeacherDetails = onRequest(async (req, res) => {
                         totalFiles: contentFiles.length,
                         totalSizeMB: totalSizeMB
                     }
-                } 
+                }
             });
 
         } catch (error) {
@@ -1664,24 +1663,24 @@ exports.adminDeleteUser = onRequest({ timeoutSeconds: 300, memory: '512MB' }, as
             console.log("Đang xóa các lớp học...");
             const deletedClasses = await deleteCollection(db.collection('classes').where('teacherId', '==', userId), batchSize);
             console.log(`Đã xóa ${deletedClasses} lớp học.`);
-            
+
             console.log("Đang xóa các đề thi...");
             const deletedExams = await deleteCollection(db.collection('exams').where('teacherId', '==', userId), batchSize);
             console.log(`Đã xóa ${deletedExams} đề thi.`);
 
             console.log("Đang xóa document người dùng...");
             await db.collection('users').doc(userId).delete();
-            
+
             // 4. Xóa file trong Cloud Storage
             console.log("Đang xóa file trên Storage...");
             const bucket = storage.bucket();
             await bucket.deleteFiles({ prefix: `exam_content/${userId}/` });
             await bucket.deleteFiles({ prefix: `question_bank_backups/${userId}/` });
-            
+
             // 5. Xóa tài khoản trong Firebase Authentication
             console.log("Đang xóa tài khoản Authentication...");
             await admin.auth().deleteUser(userId);
-            
+
             console.log(`Đã xóa hoàn toàn người dùng ${userId}.`);
             res.status(200).json({ data: { success: true, message: `Đã xóa hoàn toàn người dùng và dữ liệu liên quan.` } });
 
@@ -1712,7 +1711,7 @@ exports.getCurriculumTree = onRequest(async (req, res) => {
             const uid = decodedToken.uid;
 
             const doc = await db.collection("curriculums").doc(uid).get();
-            
+
             if (!doc.exists) {
                 // Nếu chưa có, trả về cây rỗng để client có thể bắt đầu
                 return res.status(200).json({ data: { treeData: [] } });
@@ -1806,11 +1805,11 @@ exports.getCurriculumContent = onRequest(async (req, res) => {
             if (!path) {
                 throw new Error("Thiếu đường dẫn đến file nội dung (path).");
             }
-            
+
             // Cần khởi tạo storage nếu chưa có ở đầu file
-            const bucket = admin.storage().bucket(); 
+            const bucket = admin.storage().bucket();
             const file = bucket.file(path);
-            
+
             const [exists] = await file.exists();
             if (!exists) {
                 throw new Error("File không tồn tại.");
